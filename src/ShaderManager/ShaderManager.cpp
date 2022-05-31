@@ -4,7 +4,7 @@ star::shadermanager::ShaderManager::ShaderManager(std::shared_ptr<common::Config
 
 }
 
-int star::shadermanager::ShaderManager::AddShader(const std::string& pathToFile){
+uint8_t star::shadermanager::ShaderManager::AddShader(const std::string& pathToFile){
     //create shader object for new thing 
     common::Shader_File_Type fileType = common::FileHelpers::GetFileType(pathToFile); 
 

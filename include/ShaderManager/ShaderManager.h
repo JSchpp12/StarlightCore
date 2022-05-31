@@ -19,7 +19,7 @@ namespace star{
             ShaderManager(std::shared_ptr<common::ConfigFile> configFile); 
 
             ///add shader to manager, will return handle to compiled resource
-            int AddShader(const std::string& pathToFile); 
+            uint8_t AddShader(const std::string& pathToFile); 
         protected: 
 
         private:

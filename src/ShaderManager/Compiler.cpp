@@ -1,26 +1,22 @@
 #include "Compiler.h"
 
 std::vector<uint32_t> star::shadermanager::Compiler::Compile(const std::string& pathToFile, bool optimize){
-    shaderc::Compiler compiler; 
-    shaderc::CompileOptions options; 
+    shaderc::Compiler shaderCompiler; 
+    shaderc::CompileOptions compilerOptions; 
 
     auto stageC = GetShaderCStageFlag(pathToFile); 
     auto name = common::FileHelpers::GetFileNameWithExtension(pathToFile); 
+    auto fileCode = common::FileHelpers::ReadFile(pathToFile, true); 
 
-    // Like -DMY_DEFINE=1
-    //options.AddMacroDefinition("MY_DEFINE", "1");
-    if (optimize){
-        options.SetOptimizationLevel(shaderc_optimization_level_size);
-    }
+    std::string preprocessed = PreprocessShader(name, stageC, fileCode.c_str()); 
 
-    shaderc::SpvCompilationResult result = compiler.CompileGlslToSpv(pathToFile, stageC, name.c_str(), options); 
+    shaderc::SpvCompilationResult compileResult = shaderCompiler.CompileGlslToSpv(preprocessed.c_str(), stageC, name.c_str(), compilerOptions); 
 
-    if (result.GetCompilationStatus() != shaderc_compilation_status_success) {
-        std::cerr << result.GetErrorMessage();
+    if (compileResult.GetCompilationStatus() != shaderc_compilation_status_success) {
+        std::cerr << compileResult.GetErrorMessage();
         return std::vector<uint32_t>(); 
     }
-
-    return { result.cbegin(), result.cend() };
+    return { compileResult.cbegin(), compileResult.cend() };
 }
 
 shaderc_shader_kind star::shadermanager::Compiler::GetShaderCStageFlag(const std::string& pathToFile){
@@ -44,4 +40,22 @@ shaderc_shader_kind star::shadermanager::Compiler::GetShaderCStageFlag(const std
     //         throw std::runtime_error("Invalid option -- ShadercHelper"); 
     //     }
     // }
+}
+
+std::string star::shadermanager::Compiler::PreprocessShader(const std::string& sourceName, shaderc_shader_kind stage, const std::string& source){
+    shaderc::Compiler compiler;
+    shaderc::CompileOptions options;
+
+    // Like -DMY_DEFINE=1
+    options.AddMacroDefinition("MY_DEFINE", "1");
+
+    shaderc::PreprocessedSourceCompilationResult result =
+        compiler.PreprocessGlsl(source, stage, sourceName.c_str(), options);
+
+    if (result.GetCompilationStatus() != shaderc_compilation_status_success) {
+        std::cerr << result.GetErrorMessage();
+        return "";
+    }
+
+    return { result.cbegin(), result.cend() };
 }
