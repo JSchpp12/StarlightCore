@@ -1,6 +1,6 @@
 #include "Compiler.h"
 
-std::vector<uint32_t> star::shadermanager::Compiler::Compile(const std::string& pathToFile, bool optimize){
+std::vector<uint32_t> star::core::Compiler::Compile(const std::string& pathToFile, bool optimize){
     shaderc::Compiler shaderCompiler; 
     shaderc::CompileOptions compilerOptions; 
 
@@ -19,7 +19,7 @@ std::vector<uint32_t> star::shadermanager::Compiler::Compile(const std::string& 
     return { compileResult.cbegin(), compileResult.cend() };
 }
 
-shaderc_shader_kind star::shadermanager::Compiler::GetShaderCStageFlag(const std::string& pathToFile){
+shaderc_shader_kind star::core::Compiler::GetShaderCStageFlag(const std::string& pathToFile){
 
    auto extension = common::FileHelpers::GetFileExtension(pathToFile); 
 
@@ -42,7 +42,7 @@ shaderc_shader_kind star::shadermanager::Compiler::GetShaderCStageFlag(const std
     // }
 }
 
-std::string star::shadermanager::Compiler::PreprocessShader(const std::string& sourceName, shaderc_shader_kind stage, const std::string& source){
+std::string star::core::Compiler::PreprocessShader(const std::string& sourceName, shaderc_shader_kind stage, const std::string& source){
     shaderc::Compiler compiler;
     shaderc::CompileOptions options;
 

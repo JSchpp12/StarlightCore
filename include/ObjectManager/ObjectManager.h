@@ -13,7 +13,7 @@
 namespace star{
     namespace core{
         //TODO: inherit from manager base
-        class ObjectManager{
+        class ObjectManager : public common::FileResourceManager<Object> {
         public: 
             common::Handle Add(const std::string& pathToFile); 
 

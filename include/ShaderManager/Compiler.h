@@ -9,7 +9,7 @@
 #include <exception>
 
 namespace star{
-    namespace shadermanager{
+    namespace core{
         class Compiler{
         public:   
             //compile provided shader to spirv

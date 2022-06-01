@@ -8,7 +8,7 @@
 #include <iostream> 
 
 namespace star{
-    namespace shadermanager{
+    namespace core{
         class GLSLShader : public common::Shader{
             public:
                 static GLSLShader* New(common::Pipe_Stage stage, const std::string& pathToFile); 

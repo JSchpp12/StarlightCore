@@ -2,8 +2,9 @@
 
 #include "SC/FileHelpers.h"
 #include "SC/Enums.h"
-#include "SC/Manager.h"
+#include "SC/ResourceContainer.hpp"
 #include "SC/ConfigFile.h"
+#include "SC/FileResourceManager.hpp"
 
 #include "GLSLShader.h"
 #include "Compiler.h"
@@ -13,18 +14,17 @@
 #include <memory>
 
 namespace star{
-    namespace shadermanager{
-        class ShaderManager : public common::Manager {
+    namespace core{
+        class ShaderManager : public common::FileResourceManager<common::Shader> {
         public: 
-            ShaderManager(std::shared_ptr<common::ConfigFile> configFile); 
+            ShaderManager(); 
 
             ///add shader to manager, will return handle to compiled resource
-            uint8_t AddShader(const std::string& pathToFile); 
+            virtual common::Handle Add(const std::string& pathToFile); 
         protected: 
 
-        private:
-            //common::ResourceHolder<common::Shader, std::string> holder; 
-            std::vector<std::unique_ptr<common::Shader>> shaderContainer; 
+        private: 
+            
         };
     }
 }

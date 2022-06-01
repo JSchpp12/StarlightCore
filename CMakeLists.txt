@@ -8,6 +8,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_MACOSX_RPATH 1)
 cmake_policy(SET CMP0076 NEW)
 
+find_package(Vulkan REQUIRED FATAL_ERROR)
+
 if (GIT_FOUND)
 	if(GIT_SUBMODULE AND PULL_SUBMODULE)
 		message(STATUS "Submodule update")
@@ -53,12 +55,21 @@ SET(${PROJECT_NAME}_SOURCES
 	"src/ShaderManager/Compiler.cpp" 
 	"src/ShaderManager/GLSLShader.cpp" 
 	"src/ShaderManager/ShaderManager.cpp"
+	"src/EntityManager/EntityManager.cpp"
+	"src/EntityManager/Entity.cpp"
+	"src/ObjectManager/ObjectManager.cpp"
+	"src/ObjectManager/Object.cpp"
 )
 
 SET(${PROJECT_NAME}_HEADERS
 	"include/ShaderManager/Compiler.h"
 	"include/ShaderManager/GLSLShader.h"
 	"include/ShaderManager/ShaderManager.h"
+	"include/EntityManager/EntityManager.h"
+	"include/EntityManager/Entity.h"
+	"include/ObjectManager/ObjectManager.h"
+	"include/ObjectManager/Object.h"
+	"include/Vertex.hpp"
 )
 
 SET(${${PROJECT_NAME}_HEADER_ONLY}
@@ -84,6 +95,8 @@ set(SHADERC_ENABLE_SHARED_CRT ON CACHE BOOL "" FORCE)
 set(SHADERC_SKIP_COPYRIGHT_CHECK ON CACHE BOOL "" FORCE)
 add_subdirectory("external/shaderc")
 
+add_subdirectory("external/tinyobjloader")
+
 add_library(${PROJECT_NAME} STATIC "${${PROJECT_NAME}_SOURCES}")
 
 #TODO: move to external file 
@@ -98,18 +111,35 @@ else()
 	message(FATAL_ERROR "StarlightCommon was not found. This is needed for compilation.")
 endif()
 
+if(DEFINED glm_SOURCE_DIR)
+    set(GLM_HEADER_DIR ${glm_SOURCE_DIR})
+endif()
+
+if (NOT IS_DIRECTORY ${GLM_HEADER_DIR})
+    message(FATAL_ERROR "GLM is required. Pull copy into external directory or ensure it is included elsewhere.")
+endif()
+
 target_link_libraries(${PROJECT_NAME}
 	PRIVATE
+		${Vulkan_LIBRARIES}
 		shaderc
+		tinyobjloader
 )
 message("test: ${StarlightCommon_INCLUDE_DIR}")
 target_include_directories(${PROJECT_NAME}
 	PRIVATE
-		${CMAKE_CURRENT_SOURCE_DIR}/include/Shadermanager
+		${CMAKE_CURRENT_SOURCE_DIR}/include/ShaderManager
+		${CMAKE_CURRENT_SOURCE_DIR}/include/EntityManager
+		${CMAKE_CURRENT_SOURCE_DIR}/include/ObjectManager
 		${StarlightCommon_INCLUDE_DIR}
 	PUBLIC 
+		${Vulkan_INCLUDE_DIRS}
 		${CMAKE_CURRENT_SOURCE_DIR}/include
+		${CMAKE_CURRENT_SOURCE_DIR}/include/Classes
 		${CMAKE_CURRENT_SOURCE_DIR}/external/shaderc/libshaderc/include
+		#${CMAKE_CURRENT_SOURCE_DIR}/external/tinyobjectloader
+		"external/tinyobjloader"
+		${GLM_HEADER_DIR}
 		#$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 		#$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/interface>
 		#$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
