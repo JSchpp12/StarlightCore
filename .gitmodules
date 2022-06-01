@@ -10,3 +10,9 @@
 [submodule "external/spirvtools"]
 	path = external/spirvtools
 	url = https://github.com/KhronosGroup/SPIRV-Tools.git
+[submodule "external/tinyobjloader"]
+	path = external/tinyobjloader
+	url = https://github.com/tinyobjloader/tinyobjloader.git
+[submodule "external/tinyobjectloader"]
+	path = external/tinyobjectloader
+	url = https://github.com/tinyobjloader/tinyobjloader.git
