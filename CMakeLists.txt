@@ -61,6 +61,8 @@ SET(${PROJECT_NAME}_SOURCES
 	"src/Object.cpp"
 	"src/TextureManager.cpp"
 	"src/RenderEngine.cpp"
+	"src/Windowing.cpp"
+	"src/VulkanRenderer.cpp"
 )
 
 SET(${PROJECT_NAME}_HEADERS
@@ -74,6 +76,8 @@ SET(${PROJECT_NAME}_HEADERS
 	"include/TextureManager.h"
 	"include/VulkanVertex.hpp"
 	"include/RenderEngine.h"
+	"include/Windowing.h"
+	"include/VulkanRenderer.h"
 )
 
 SET(${PROJECT_NAME}_INCLUDE "${PROJECT_SOURCE_DIR}/src")
@@ -99,26 +103,27 @@ add_subdirectory("external/tinyobjloader")
 
 add_library(${PROJECT_NAME} STATIC "${${PROJECT_NAME}_SOURCES}")
 
-#TODO: move to external file 
-#check for starlight common 
+#ensure all needed external dependencies are available
 if (DEFINED StarlightCommon_SOURCE_DIR)
 	set(STARCOMMON_HEADER_DIR ${StarlightCommon_SOURCE_DIR})
 endif()
-
 if (IS_DIRECTORY ${STARCOMMON_HEADER_DIR})
 	set(StarlightCommon_INCLUDE_DIR ${STARCOMMON_HEADER_DIR}/include)
 else()
 	message(FATAL_ERROR "StarlightCommon was not found. This is needed for compilation.")
 endif()
-
+#glm
 if(DEFINED glm_SOURCE_DIR)
     set(GLM_HEADER_DIR ${glm_SOURCE_DIR})
 endif()
-
 if (NOT IS_DIRECTORY ${GLM_HEADER_DIR})
     message(FATAL_ERROR "GLM is required. Pull copy into external directory or ensure it is included elsewhere.")
 endif()
-
+#glfw
+if (NOT DEFINED GLFW_SOURCE_DIR)
+	message(FATAL_ERROR "GLFW is required. Ensure copy is available for core.")
+endif()
+#stb
 if (NOT DEFINED STB_DIRECTORY)
 	if(IS_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/external/stb)
 		set(STB_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/external/stb)
@@ -126,11 +131,14 @@ if (NOT DEFINED STB_DIRECTORY)
 		message(FATAL_ERROR "Stb is needed for compilation. Pull copy into external directory.")
 	endif()
 endif()
+
+
 target_link_libraries(${PROJECT_NAME}
 	PRIVATE
 		${Vulkan_LIBRARIES}
 		shaderc
 		tinyobjloader
+		glfw
 )
 message("test: ${StarlightCommon_INCLUDE_DIR}")
 target_include_directories(${PROJECT_NAME}
