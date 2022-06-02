@@ -52,28 +52,28 @@ if (GIT_FOUND)
 endif()
 
 SET(${PROJECT_NAME}_SOURCES
-	"src/ShaderManager/Compiler.cpp" 
-	"src/ShaderManager/GLSLShader.cpp" 
-	"src/ShaderManager/ShaderManager.cpp"
-	"src/EntityManager/EntityManager.cpp"
-	"src/EntityManager/Entity.cpp"
-	"src/ObjectManager/ObjectManager.cpp"
-	"src/ObjectManager/Object.cpp"
+	"src/Compiler.cpp" 
+	"src/GLSLShader.cpp" 
+	"src/ShaderManager.cpp"
+	"src/EntityManager.cpp"
+	"src/Entity.cpp"
+	"src/ObjectManager.cpp"
+	"src/Object.cpp"
+	"src/TextureManager.cpp"
+	"src/RenderEngine.cpp"
 )
 
 SET(${PROJECT_NAME}_HEADERS
-	"include/ShaderManager/Compiler.h"
-	"include/ShaderManager/GLSLShader.h"
-	"include/ShaderManager/ShaderManager.h"
-	"include/EntityManager/EntityManager.h"
-	"include/EntityManager/Entity.h"
-	"include/ObjectManager/ObjectManager.h"
-	"include/ObjectManager/Object.h"
-	"include/Vertex.hpp"
-)
-
-SET(${${PROJECT_NAME}_HEADER_ONLY}
-	""
+	"include/Compiler.h"
+	"include/GLSLShader.h"
+	"include/ShaderManager.h"
+	"include/EntityManager.h"
+	"include/Entity.h"
+	"include/ObjectManager.h"
+	"include/Object.h"
+	"include/TextureManager.h"
+	"include/VulkanVertex.hpp"
+	"include/RenderEngine.h"
 )
 
 SET(${PROJECT_NAME}_INCLUDE "${PROJECT_SOURCE_DIR}/src")
@@ -119,6 +119,13 @@ if (NOT IS_DIRECTORY ${GLM_HEADER_DIR})
     message(FATAL_ERROR "GLM is required. Pull copy into external directory or ensure it is included elsewhere.")
 endif()
 
+if (NOT DEFINED STB_DIRECTORY)
+	if(IS_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/external/stb)
+		set(STB_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/external/stb)
+	else()
+		message(FATAL_ERROR "Stb is needed for compilation. Pull copy into external directory.")
+	endif()
+endif()
 target_link_libraries(${PROJECT_NAME}
 	PRIVATE
 		${Vulkan_LIBRARIES}
@@ -128,10 +135,8 @@ target_link_libraries(${PROJECT_NAME}
 message("test: ${StarlightCommon_INCLUDE_DIR}")
 target_include_directories(${PROJECT_NAME}
 	PRIVATE
-		${CMAKE_CURRENT_SOURCE_DIR}/include/ShaderManager
-		${CMAKE_CURRENT_SOURCE_DIR}/include/EntityManager
-		${CMAKE_CURRENT_SOURCE_DIR}/include/ObjectManager
 		${StarlightCommon_INCLUDE_DIR}
+		${STB_DIRECTORY}
 	PUBLIC 
 		${Vulkan_INCLUDE_DIRS}
 		${CMAKE_CURRENT_SOURCE_DIR}/include

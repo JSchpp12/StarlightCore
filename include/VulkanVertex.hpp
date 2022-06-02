@@ -1,16 +1,14 @@
 #pragma once 
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
+#include "Vertex.hpp"
+
 #include <vulkan/vulkan.hpp>
 
 #include <array> 
 
 namespace star{
     namespace core{
-        struct Vertex{
-            glm::vec3 pos;
-            glm::vec3 color; 
-            glm::vec2 texCoord; 
+        struct VulkanVertex{
+            common::Vertex vertex; 
 
             /// <summary>
             /// Generates VkVertexInputBindingDescription from vertex object. This describes at which rate to load data from memory throughout the verticies. 

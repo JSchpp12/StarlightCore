@@ -5,7 +5,7 @@ star::common::Handle star::core::ObjectManager::Add(const std::string& pathToFil
 
 	bool hasBeenLoaded = this->fileContainer.FileLoaded(pathToFile);
 	if (!hasBeenLoaded){
-		std::unique_ptr<std::vector<Vertex>> readVertexList(new std::vector<Vertex>); 
+		std::unique_ptr<std::vector<common::Vertex>> readVertexList(new std::vector<common::Vertex>); 
 		std::unique_ptr<std::vector<uint16_t>> readIndiciesList(new std::vector<uint16_t>); 
 
 		/* Load Object From File */ 
@@ -26,7 +26,7 @@ star::common::Handle star::core::ObjectManager::Add(const std::string& pathToFil
 		for (const auto& shape : shapes) {
 			//tinyobj ensures three verticies per triangle  -- assuming unique verticies 
 			for (const auto& index : shape.mesh.indices) {
-				Vertex vertex{};
+				common::Vertex vertex{};
 
 				vertex.pos = {
 					//must multiply index by 3 due to object being type float rather than glm::vec3 
@@ -60,7 +60,7 @@ star::common::Handle star::core::ObjectManager::Add(const std::string& pathToFil
 		maxVal *= 0.5; 
 
 		//SAME AS ABOVE 
-		Vertex* currVertex; 
+		common::Vertex* currVertex; 
 		for (size_t i = 0; i < readVertexList->size(); i++){
 			currVertex = &readVertexList->at(i); 
 			currVertex->pos.x /= maxVal; 
@@ -69,7 +69,7 @@ star::common::Handle star::core::ObjectManager::Add(const std::string& pathToFil
 			currVertex->pos.z -= 0.7;
 		}
 
-		std::unique_ptr<Object> newObject(new Object(std::move(readVertexList), std::move(readIndiciesList))); 
+		std::unique_ptr<common::Object> newObject(new common::Object(std::move(readVertexList), std::move(readIndiciesList))); 
 
 		return this->fileContainer.AddFileResource(pathToFile, newObject); 
 	}else{

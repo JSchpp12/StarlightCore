@@ -3,7 +3,7 @@
 #include "SC/FileHelpers.h"
 #include "SC/Enums.h"
 #include "SC/ResourceContainer.hpp"
-#include "SC/ConfigFile.h"
+#include "SC/ConfigFile.hpp"
 #include "SC/FileResourceManager.hpp"
 
 #include "GLSLShader.h"
