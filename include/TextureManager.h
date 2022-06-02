@@ -9,9 +9,9 @@
 
 namespace star{
     namespace core{
-        class TextureManager : common::FileResourceManager<common::Texture>{
+        class TextureManager : public common::FileResourceManager<common::Texture> {
         public: 
-            common::Handle Add(const std::string& pathToFile, int numChannels); 
+            virtual common::Handle Add(const std::string& pathToFile); 
         protected: 
 
         private: 

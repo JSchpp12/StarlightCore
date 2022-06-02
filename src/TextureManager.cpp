@@ -1,6 +1,6 @@
 #include "TextureManager.h"
 
-star::common::Handle star::core::TextureManager::Add(const std::string& pathToFile, int numChannels){
+star::common::Handle star::core::TextureManager::Add(const std::string& pathToFile){
 
     
     bool fileLoaded = this->fileContainer.FileLoaded(pathToFile); 
