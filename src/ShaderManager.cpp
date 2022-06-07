@@ -1,7 +1,12 @@
 #include "ShaderManager.h"
 
-star::core::ShaderManager::ShaderManager()
+star::core::ShaderManager::ShaderManager(const std::string& defaultVert, const std::string& defaultFrag)
 {
+    this->defaultVertShader = this->Add(defaultVert); 
+    this->defaultFragShader = this->Add(defaultFrag); 
+}
+
+star::core::ShaderManager::~ShaderManager(){
     
 }
 
@@ -20,3 +25,13 @@ star::common::Handle star::core::ShaderManager::Add(const std::string& pathToFil
         throw std::runtime_error("This file type is not yet supported"); 
     }
 }
+
+//star::common::Shader* star::core::ShaderManager::Get(const common::Handle& handle) {
+//    if (handle.type != common::Handle_Type::defaultHandle) {
+//        this->FileResourceManager::Get(handle); 
+//    }
+//    else {
+//        //determine what type of shader to return 
+//
+//    }
+//}

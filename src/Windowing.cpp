@@ -9,23 +9,28 @@ star::core::Windowing::Windowing(int width, int height, GLFWkeyfun keyboardCallb
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
     //create a window, 3rd argument allows selection of monitor, 4th argument only applies to openGL
-    this->window = glfwCreateWindow(width, height, "Vulkan", nullptr, nullptr);
+    this->glfwWindow = glfwCreateWindow(width, height, "Vulkan", nullptr, nullptr);
 
     //need to give GLFW a pointer to current instance of this class
-    glfwSetWindowUserPointer(this->window, this);
+    glfwSetWindowUserPointer(this->glfwWindow, this);
 
     // glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 
     //set keyboard callbacks
-    auto callback = glfwSetKeyCallback(this->window, keyboardCallbackFunction);
+    auto callback = glfwSetKeyCallback(this->glfwWindow, keyboardCallbackFunction);
 }
 
-bool star::core::Windowing::ShouldCloseWindow(){
-    return glfwWindowShouldClose(this->window); 
+bool star::core::Windowing::shouldCloseWindow(){
+    return glfwWindowShouldClose(this->glfwWindow); 
 }
 
-void star::core::Windowing::PollWindowEvents(){
+void star::core::Windowing::pollWindowEvents(){
     glfwPollEvents(); 
+}
+
+const char** star::core::Windowing::getRequiredExtensions(uint32_t& extensionCount){
+        //get required vulkan extensions from glfw
+    return glfwGetRequiredInstanceExtensions(&extensionCount);
 }
 
 // static void star::core::Windowing::ResizeWindowCallback(GLFWwindow* window, int width, int height){

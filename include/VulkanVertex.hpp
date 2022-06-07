@@ -1,5 +1,5 @@
 #pragma once 
-#include "Vertex.hpp"
+#include "SC/Vertex.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -22,7 +22,7 @@ namespace star{
                 bindingDescription.binding = 0; //specifies index of the binding in the array of bindings
 
                 //number of bytes from one entry to the next
-                bindingDescription.stride = sizeof(Vertex);
+                bindingDescription.stride = sizeof(common::Vertex);
 
                 //can have one of the following: 
                     //1. VK_VERTEX_INPUT_RATE_VERTEX: move to the next data entry after each vertex
@@ -62,18 +62,18 @@ namespace star{
 
                 //the binding is loading over vertex at a time and the position attribute is at an offset of 0 bytes from the beginning of the struct.
                 //offset macro calculates this distance for us
-                attributeDescriptions[0].offset = offsetof(Vertex, pos);
+                attributeDescriptions[0].offset = offsetof(common::Vertex, pos);
 
                 attributeDescriptions[1].binding = 0; 
                 attributeDescriptions[1].location = 1; 
                 attributeDescriptions[1].format = vk::Format::eR32G32B32Sfloat; 
-                attributeDescriptions[1].offset = offsetof(Vertex, color); 
+                attributeDescriptions[1].offset = offsetof(common::Vertex, color); 
 
                 /*Binding for vertex texture coordinates*/
                 attributeDescriptions[2].binding = 0; 
                 attributeDescriptions[2].location = 2; 
                 attributeDescriptions[2].format = vk::Format::eR32G32B32Sfloat; 
-                attributeDescriptions[2].offset = offsetof(Vertex, texCoord); 
+                attributeDescriptions[2].offset = offsetof(common::Vertex, texCoord); 
 
                 return attributeDescriptions;
             }

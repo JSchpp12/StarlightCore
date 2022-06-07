@@ -1,4 +1,5 @@
 #pragma once 
+#include "Image.h"
 
 #include "SC/FileResourceManager.hpp"
 #include "SC/Texture.hpp"
@@ -11,11 +12,14 @@ namespace star{
     namespace core{
         class TextureManager : public common::FileResourceManager<common::Texture> {
         public: 
-            virtual common::Handle Add(const std::string& pathToFile); 
+            ~TextureManager(); 
+            
+            common::Handle Add(const std::string& pathToFile); 
+
         protected: 
 
         private: 
-
+            unsigned char* loadImage(const std::string& path, int& texWidth, int& texHeight, int& texChannel); 
         }; 
     }
 }

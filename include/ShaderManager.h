@@ -17,14 +17,24 @@ namespace star{
     namespace core{
         class ShaderManager : public common::FileResourceManager<common::Shader> {
         public: 
-            ShaderManager(); 
+            /// <summary>
+            /// Create shader manager with default shaders to be used if objects are not explicitly provided shaders
+            /// </summary>
+            /// <param name="defaultVert"></param>
+            /// <param name="defaultFrag"></param>
+            ShaderManager(const std::string& defaultVert, const std::string& defaultFrag);
+
+            ~ShaderManager(); 
 
             ///add shader to manager, will return handle to compiled resource
             virtual common::Handle Add(const std::string& pathToFile); 
+
+            //common::Shader* Get(const common::Handle& handle) override; 
         protected: 
 
         private: 
-            
+            common::Handle defaultVertShader, defaultFragShader; 
+
         };
     }
 }

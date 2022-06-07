@@ -101,7 +101,7 @@ add_subdirectory("external/shaderc")
 
 add_subdirectory("external/tinyobjloader")
 
-add_library(${PROJECT_NAME} STATIC "${${PROJECT_NAME}_SOURCES}")
+add_library(${PROJECT_NAME} STATIC "${${PROJECT_NAME}_SOURCES}" "include/Image.h" "src/Image.cpp")
 
 #ensure all needed external dependencies are available
 if (DEFINED StarlightCommon_SOURCE_DIR)
