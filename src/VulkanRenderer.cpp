@@ -7,7 +7,8 @@ star::core::VulkanRenderer::VulkanRenderer(common::ConfigFile* configFile,
                                             common::FileResourceManager<common::Object>* objectManager, 
                                             common::FileResourceManager<common::Texture>* textureManager, 
                                             std::vector<common::Handle>* objectHandleList) : 
-    star::common::Renderer(configFile, shaderManager, objectManager, textureManager, objectHandleList)
+    star::common::Renderer(configFile, shaderManager, objectManager, textureManager, objectHandleList), 
+    glfwRequiredExtensionsCount(new uint32_t)
 { 
     common::Object* currObject; 
 
@@ -68,20 +69,43 @@ void star::core::VulkanRenderer::updateUniformBuffer(uint32_t currentImage) {
     vkUnmapMemory(device, uniformBuffersMemory[currentImage]);
 }
 
-void star::core::VulkanRenderer::prepareGLFW(const char** requiredExtensions, uint32_t numRequiredExtensions, GLFWwindow* window){
-    this->glfwWindow = window; 
+void star::core::VulkanRenderer::prepareGLFW(int width, int height, GLFWkeyfun keyboardCallbackFunction){
+    //actually make sure to init glfw
+    glfwInit();
+    //tell GLFW to create a window but to not include a openGL instance as this is a default behavior
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    //disable resizing functionality in glfw as this will not be handled in the first tutorial
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+
+    //create a window, 3rd argument allows selection of monitor, 4th argument only applies to openGL
+    this->glfwWindow = glfwCreateWindow(width, height, "Vulkan", nullptr, nullptr);
+
+    //need to give GLFW a pointer to current instance of this class
+    glfwSetWindowUserPointer(this->glfwWindow, this);
+
+    // glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+
+    //set keyboard callbacks
+    auto callback = glfwSetKeyCallback(this->glfwWindow, keyboardCallbackFunction);
 
     // this->glfwRequiredExtensions = std::make_unique<std::vector<vk::ExtensionProperties>>(new std::vector<vk::ExtensionProperties>(**requiredExtensions)); 
-    this->glfwRequiredExtensions = std::make_unique<const char**>(requiredExtensions); 
-    this->glfwRequiredExtensionsCount = std::make_unique<uint32_t>(numRequiredExtensions); 
+    this->glfwRequiredExtensions = std::make_unique<const char**>(glfwGetRequiredInstanceExtensions(this->glfwRequiredExtensionsCount.get()));
 
     createInstance(); 
 
     VkSurfaceKHR surfaceTmp; 
-    if (glfwCreateWindowSurface(this->instance, window, nullptr, &surfaceTmp) != VK_SUCCESS) {
+    if (glfwCreateWindowSurface(this->instance, this->glfwWindow, nullptr, &surfaceTmp) != VK_SUCCESS) {
         throw std::runtime_error("failed to create window surface");
     }
-    this->surface = new vk::SurfaceKHR(surfaceTmp); 
+    this->surface = new vk::UniqueSurfaceKHR(surfaceTmp, this->instance); 
+}
+
+bool star::core::VulkanRenderer::shouldCloseWindow() {
+    return glfwWindowShouldClose(this->glfwWindow);
+}
+
+void star::core::VulkanRenderer::pollEvents() {
+    glfwPollEvents();
 }
 
 void star::core::VulkanRenderer::prepare(){
@@ -110,7 +134,7 @@ void star::core::VulkanRenderer::prepare(){
     createFenceImageTracking(); 
 }
 
-void star::core::VulkanRenderer::drawFrame(){
+void star::core::VulkanRenderer::draw(){
     /* Goals of each call to drawFrame:
    *   get an image from the swap chain
    *   execute command buffer with that image as attachment in the framebuffer
@@ -131,7 +155,7 @@ void star::core::VulkanRenderer::drawFrame(){
     this->device.waitForFences(inFlightFences[currentFrame], VK_TRUE, UINT64_MAX); 
 
     /* Get Image From Swapchain */
-    uint32_t imageIndex;
+
 
     //as is extension we must use vk*KHR naming convention
     //UINT64_MAX -> 3rd argument: used to specify timeout in nanoseconds for image to become available
@@ -146,13 +170,14 @@ void star::core::VulkanRenderer::drawFrame(){
         recreateSwapChain();
         return;
     }
-    else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+    else if (result.result != vk::Result::eSuccess && result.result != vk::Result::eSuboptimalKHR) {
         //for VK_SUBOPTIMAL_KHR can also recreate swap chain. However, chose to continue to presentation stage
         throw std::runtime_error("failed to aquire swap chain image");
     }
+    uint32_t imageIndex = result.value;
 
     //check if a previous frame is using the current image
-    if (!imagesInFlight[imageIndex]) {
+    if (imagesInFlight[imageIndex]) {
         this->device.waitForFences(1,&imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX); 
     }
     //mark image as now being in use by this frame by assigning the fence to it 
@@ -185,7 +210,7 @@ void star::core::VulkanRenderer::drawFrame(){
     submitInfo.pSignalSemaphores = signalSemaphores;
 
     //set fence to unsignaled state
-    this->device.resetFences(inFlightFences[currentFrame]); 
+    this->device.resetFences(1, &inFlightFences[currentFrame]); 
 
     auto submitResult = this->graphicsQueue.submit(1, &submitInfo, inFlightFences[currentFrame]); 
     if(submitResult != vk::Result::eSuccess){
@@ -218,7 +243,7 @@ void star::core::VulkanRenderer::drawFrame(){
         frameBufferResized = false;
         recreateSwapChain();
     }
-    else if (result != VK_SUCCESS) {
+    else if (presentResult != vk::Result::eSuccess) {
         throw std::runtime_error("failed to present swap chain image");
     }
 
@@ -252,7 +277,7 @@ void star::core::VulkanRenderer::cleanup(){
 
     this->device.destroy(); 
 
-    this->instance.destroySurfaceKHR(*this->surface); 
+    this->instance.destroySurfaceKHR(this->surface->get()); 
     this->instance.destroy(); 
 
     glfwDestroyWindow(this->glfwWindow); 
@@ -435,7 +460,7 @@ star::core::VulkanRenderer::QueueFamilyIndices star::core::VulkanRenderer::findQ
     //need to find a graphicsQueue that supports VK_QUEUE_GRAPHICS_BIT 
     int i = 0;
     for (const auto& queueFamily : queueFamilies) {
-        vk::Bool32 presentSupport = device.getSurfaceSupportKHR(i, *this->surface); 
+        vk::Bool32 presentSupport = device.getSurfaceSupportKHR(i, this->surface->get()); 
 
         //pick the family that supports presenting to the display 
         if (presentSupport) {
@@ -478,22 +503,22 @@ star::core::VulkanRenderer::SwapChainSupportDetails star::core::VulkanRenderer::
     uint32_t formatCount, presentModeCount;
 
     //get surface capabilities 
-    details.capabilities = device.getSurfaceCapabilitiesKHR(*this->surface); 
+    details.capabilities = device.getSurfaceCapabilitiesKHR(this->surface->get()); 
 
-    device.getSurfaceFormatsKHR(*this->surface, &formatCount, nullptr);
+    device.getSurfaceFormatsKHR(this->surface->get(), &formatCount, nullptr);
      
-    device.getSurfacePresentModesKHR(*this->surface, &presentModeCount, nullptr); 
+    device.getSurfacePresentModesKHR(this->surface->get(), &presentModeCount, nullptr);
 
     if (formatCount != 0) {
         //resize vector in order to hold all available formats
         details.formats.resize(formatCount);
-        device.getSurfaceFormatsKHR(*this->surface, &formatCount, details.formats.data()); 
+        device.getSurfaceFormatsKHR(this->surface->get(), &formatCount, details.formats.data());
     }
 
     if (presentModeCount != 0) {
         //resize for same reasons as format 
         details.presentModes.resize(presentModeCount);
-        device.getSurfacePresentModesKHR(*this->surface, &presentModeCount, details.presentModes.data()); 
+        device.getSurfacePresentModesKHR(this->surface->get(), &presentModeCount, details.presentModes.data());
     }
 
     return details;
@@ -565,7 +590,7 @@ void star::core::VulkanRenderer::createSwapChain(){
     vk::SwapchainCreateInfoKHR createInfo{};
     createInfo.sType = vk::StructureType::eSwapchainCreateInfoKHR; 
     //createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;     
-    createInfo.surface = *surface;
+    createInfo.surface = this->surface->get();
 
     //specify image information for the surface 
     createInfo.minImageCount = imageCount;
@@ -1924,6 +1949,8 @@ void star::core::VulkanRenderer::createSemaphores() {
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         this->imageAvailableSemaphores[i] = this->device.createSemaphore(semaphoreInfo);
+        this->renderFinishedSemaphores[i] = this->device.createSemaphore(semaphoreInfo); 
+
         if (!this->imageAvailableSemaphores[i]) {
             throw std::runtime_error("failed to create semaphores for a frame");
         }

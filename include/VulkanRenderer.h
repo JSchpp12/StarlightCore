@@ -22,10 +22,10 @@ namespace star{
         class VulkanRenderer : public common::Renderer{
         public:
             vk::Instance instance;
-            vk::SurfaceKHR* surface;
+            vk::UniqueSurfaceKHR* surface;
 
             std::unique_ptr<const char**> glfwRequiredExtensions; 
-            std::unique_ptr<uint32_t> glfwRequiredExtensionsCount; 
+            std::unique_ptr<uint32_t> glfwRequiredExtensionsCount;
             
             VulkanRenderer(common::ConfigFile* configFile, common::FileResourceManager<common::Shader>* shaderManager, common::FileResourceManager<common::Object>* objectManager, common::FileResourceManager<common::Texture>* textureManager, std::vector<common::Handle>* objectHandleList);
             
@@ -35,11 +35,15 @@ namespace star{
             void createInstance();
 
             //attach vulkan to GLFW
-            void prepareGLFW(const char** requiredExtensions, uint32_t numRequiredExtensions, GLFWwindow* window);
+            void prepareGLFW(int width, int height, GLFWkeyfun keyboardCallbackFunction);
+
+            bool shouldCloseWindow(); 
+
+            void pollEvents(); 
 
             void prepare();
 
-            void drawFrame();  
+            void draw();  
 
             void cleanup(); 
         
@@ -59,12 +63,13 @@ namespace star{
                 std::vector<vk::SurfaceFormatKHR> formats;
                 std::vector<vk::PresentModeKHR> presentModes;
             };
+            const bool enableValidationLayers = true;
 
-            #ifdef NDEBUG 
+/*            #ifdef NDEBUG 
                 const bool enableValidationLayers = false;
             #else
                 const bool enableValidationLayers = true;
-            #endif    
+            #endif  */  
 
             bool frameBufferResized = false; //explicit declaration of resize, used if driver does not trigger VK_ERROR_OUT_OF_DATE
 
@@ -143,10 +148,6 @@ namespace star{
             };
 
             void updateUniformBuffer(uint32_t currentImage);
-
-            void prepareGLFW(int width, int height ); 
-
-            void initWindow(); 
 
             void cleanupSwapChain(); 
 

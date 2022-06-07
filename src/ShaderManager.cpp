@@ -20,6 +20,7 @@ star::common::Handle star::core::ShaderManager::Add(const std::string& pathToFil
     bool hasBeenLoaded = this->fileContainer.FileLoaded(pathToFile); 
     if(!hasBeenLoaded && (fileType == common::Shader_File_Type::glsl)){
         std::unique_ptr<common::Shader> newShader(GLSLShader::New(stage, pathToFile));
+        std::cout << "Completed compilation of: " << pathToFile << std::endl; 
         return this->fileContainer.AddFileResource(pathToFile, newShader);  
     }else{
         throw std::runtime_error("This file type is not yet supported"); 

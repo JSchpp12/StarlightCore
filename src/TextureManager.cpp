@@ -4,9 +4,10 @@
  #include <stb_image.h>
 
 star::core::TextureManager::~TextureManager(){
-    for (size_t i = 0; i < this->fileContainer.container.size(); i++) {
-        stbi_image_free(this->fileContainer.container.at(i)->data()); 
-    }
+    //TODO: might have memory leak here...
+    //for (size_t i = 0; i < this->fileContainer.container.size(); i++) {
+    //    stbi_image_free(this->fileContainer.container.at(i)->data()); 
+    //}
 }
 
 star::common::Handle star::core::TextureManager::Add(const std::string& pathToFile){

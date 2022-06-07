@@ -11,7 +11,6 @@ star::common::Handle star::core::ObjectManager::Add(const std::string& pathToFil
 	if (!hasBeenLoaded){
 		std::unique_ptr<std::vector<common::Vertex>> readVertexList(new std::vector<common::Vertex>);
 		std::unique_ptr<std::vector<uint32_t>> readIndiciesList(new std::vector<uint32_t>);
-		this->load(pathToFile, readVertexList.get(), readIndiciesList.get());
 		std::unique_ptr<common::Object> newObject(this->create(pathToFile)); 
 		return this->fileContainer.AddFileResource(pathToFile, newObject); 
 	}else{
@@ -33,14 +32,15 @@ star::common::Handle star::core::ObjectManager::Add(const std::string& pathToFil
 //	}
 //}
 
-star::common::Handle star::core::ObjectManager::Add(const std::string& pathToFile, common::Handle vertShader, common::Handle fragShader, common::Handle texture) {
+star::common::Handle star::core::ObjectManager::Add(const std::string& pathToFile, common::Handle texture, common::Handle vertShader, common::Handle fragShader) {
 	bool hasBeenLoaded = this->fileContainer.FileLoaded(pathToFile); 
 
 	if (!hasBeenLoaded) {
 		std::unique_ptr<std::vector<common::Vertex>> readVertexList(new std::vector<common::Vertex>);
 		std::unique_ptr<std::vector<uint32_t>> readIndiciesList(new std::vector<uint32_t>);
-		this->load(pathToFile, readVertexList.get(), readIndiciesList.get());
-		std::unique_ptr<common::Object> newObject(this->create(pathToFile, vertShader, fragShader, texture)); 
+
+		//std::unique_ptr<common::Object> newObject(this->create(pathToFile, vertShader, fragShader, texture)); 
+		std::unique_ptr<common::Object> newObject(this->create(pathToFile, texture, vertShader, fragShader)); 
 		return this->fileContainer.AddFileResource(pathToFile, newObject); 
 	}
 	else {
@@ -87,7 +87,7 @@ void star::core::ObjectManager::load(const std::string& pathToFile, std::vector<
 
 			vertex.texCoord = {
 				attrib.texcoords[2 * index.texcoord_index + 0],
-				attrib.texcoords[2 * index.texcoord_index + 1]
+				1.0f - attrib.texcoords[2 * index.texcoord_index + 1]			//image needs to be flipped where 0 is the top (-1.0)
 			};
 
 			vertexList->push_back(vertex);
@@ -96,7 +96,7 @@ void star::core::ObjectManager::load(const std::string& pathToFile, std::vector<
 	}
 
 	//scale up factor 
-	maxVal *= 0.5;
+	//maxVal *= 0.5;
 
 	//SAME AS ABOVE 
 	common::Vertex* currVertex;
