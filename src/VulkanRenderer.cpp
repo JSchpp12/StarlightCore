@@ -73,7 +73,7 @@ void star::core::VulkanRenderer::updateUniformBuffer(uint32_t currentImage) {
     vkUnmapMemory(device, uniformBuffersMemory[currentImage]);
 }
 
-void star::core::VulkanRenderer::prepareGLFW(int width, int height, GLFWkeyfun keyboardCallbackFunction){
+void star::core::VulkanRenderer::prepareGLFW(int width, int height, GLFWkeyfun keyboardCallbackFunction, GLFWmousebuttonfun mouseButtonCallback, GLFWcursorposfun cursorPositionCallback, GLFWscrollfun scrollCallback){
     //actually make sure to init glfw
     glfwInit();
     //tell GLFW to create a window but to not include a openGL instance as this is a default behavior
@@ -91,6 +91,12 @@ void star::core::VulkanRenderer::prepareGLFW(int width, int height, GLFWkeyfun k
 
     //set keyboard callbacks
     auto callback = glfwSetKeyCallback(this->glfwWindow, keyboardCallbackFunction);
+
+    auto cursorCallback = glfwSetCursorPosCallback(this->glfwWindow, cursorPositionCallback); 
+
+    auto mouseBtnCallback = glfwSetMouseButtonCallback(this->glfwWindow, mouseButtonCallback); 
+
+    auto mouseScrollCallback = glfwSetScrollCallback(this->glfwWindow, scrollCallback); 
 
     // this->glfwRequiredExtensions = std::make_unique<std::vector<vk::ExtensionProperties>>(new std::vector<vk::ExtensionProperties>(**requiredExtensions)); 
     this->glfwRequiredExtensions = std::make_unique<const char**>(glfwGetRequiredInstanceExtensions(this->glfwRequiredExtensionsCount.get()));
