@@ -60,8 +60,8 @@ SET(${PROJECT_NAME}_SOURCES
 	"src/ObjectManager.cpp"
 	"src/Object.cpp"
 	"src/TextureManager.cpp"
-	"src/RenderEngine.cpp"
-	"src/Windowing.cpp"
+	
+	
 	"src/VulkanRenderer.cpp"
 )
 
