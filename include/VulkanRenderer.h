@@ -35,7 +35,7 @@ namespace star{
             void createInstance();
 
             //attach vulkan to GLFW
-            void prepareGLFW(int width, int height, GLFWkeyfun keyboardCallbackFunction);
+            void prepareGLFW(int width, int height, GLFWkeyfun keyboardCallbackFunction,GLFWmousebuttonfun mouseButtonCallback, GLFWcursorposfun cursorPositionCallback, GLFWscrollfun scrollCallback);
 
             bool shouldCloseWindow(); 
 

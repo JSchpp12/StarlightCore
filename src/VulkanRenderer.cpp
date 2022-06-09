@@ -27,6 +27,8 @@ star::core::VulkanRenderer::~VulkanRenderer(){
 }
 
 void star::core::VulkanRenderer::updateUniformBuffer(uint32_t currentImage) {
+    auto currObject = this->objectManager->Get(this->objectList->at(0)); 
+
     static auto startTime = std::chrono::high_resolution_clock::now();
 
     auto currentTime = std::chrono::high_resolution_clock::now();
@@ -37,7 +39,9 @@ void star::core::VulkanRenderer::updateUniformBuffer(uint32_t currentImage) {
 
     //glm::mat4(1,0f) = identity matrix
     //time * radians(90) = rotate 90degrees per second
-    ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    //ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    ubo.model = currObject->getModelMatrix(); 
+    //ubo.model = glm::mat4(1.f);
 
     //ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)); 
 
@@ -69,7 +73,7 @@ void star::core::VulkanRenderer::updateUniformBuffer(uint32_t currentImage) {
     vkUnmapMemory(device, uniformBuffersMemory[currentImage]);
 }
 
-void star::core::VulkanRenderer::prepareGLFW(int width, int height, GLFWkeyfun keyboardCallbackFunction){
+void star::core::VulkanRenderer::prepareGLFW(int width, int height, GLFWkeyfun keyboardCallbackFunction, GLFWmousebuttonfun mouseButtonCallback, GLFWcursorposfun cursorPositionCallback, GLFWscrollfun scrollCallback){
     //actually make sure to init glfw
     glfwInit();
     //tell GLFW to create a window but to not include a openGL instance as this is a default behavior
@@ -87,6 +91,12 @@ void star::core::VulkanRenderer::prepareGLFW(int width, int height, GLFWkeyfun k
 
     //set keyboard callbacks
     auto callback = glfwSetKeyCallback(this->glfwWindow, keyboardCallbackFunction);
+
+    auto cursorCallback = glfwSetCursorPosCallback(this->glfwWindow, cursorPositionCallback); 
+
+    auto mouseBtnCallback = glfwSetMouseButtonCallback(this->glfwWindow, mouseButtonCallback); 
+
+    auto mouseScrollCallback = glfwSetScrollCallback(this->glfwWindow, scrollCallback); 
 
     // this->glfwRequiredExtensions = std::make_unique<std::vector<vk::ExtensionProperties>>(new std::vector<vk::ExtensionProperties>(**requiredExtensions)); 
     this->glfwRequiredExtensions = std::make_unique<const char**>(glfwGetRequiredInstanceExtensions(this->glfwRequiredExtensionsCount.get()));
