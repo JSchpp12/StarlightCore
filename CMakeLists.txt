@@ -133,13 +133,34 @@ if (NOT DEFINED STB_DIRECTORY)
 endif()
 
 
-target_link_libraries(${PROJECT_NAME}
-	PRIVATE
-		${Vulkan_LIBRARIES}
-		shaderc
-		tinyobjloader
-		glfw
-)
+
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    #macos
+	message("Warning - vulkan libs need to be linked to manually on macos")
+	target_link_libraries(${PROJECT_NAME}
+		PRIVATE
+			shaderc
+			tinyobjloader
+			glfw
+	)
+else()
+	#windows and linux
+	target_link_libraries(${PROJECT_NAME}
+		PRIVATE
+			${Vulkan_LIBRARIES}
+			shaderc
+			tinyobjloader
+			glfw
+	)
+endif()
+
+#if( OR )
+	#macos 
+	#target_link_libraries(HelloSquareTextured
+	#	spirv-cross
+	#)
+    
+#endif()
 message("test: ${StarlightCommon_INCLUDE_DIR}")
 target_include_directories(${PROJECT_NAME}
 	PRIVATE

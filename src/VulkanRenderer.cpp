@@ -103,8 +103,10 @@ void star::core::VulkanRenderer::prepareGLFW(int width, int height, GLFWkeyfun k
 
     createInstance(); 
 
-    VkSurfaceKHR surfaceTmp; 
-    if (glfwCreateWindowSurface(this->instance, this->glfwWindow, nullptr, &surfaceTmp) != VK_SUCCESS) {
+    VkSurfaceKHR surfaceTmp;
+    auto vkerr = glfwCreateWindowSurface(this->instance, this->glfwWindow, nullptr, &surfaceTmp);
+    
+    if (vkerr != VK_SUCCESS) {
         throw std::runtime_error("failed to create window surface");
     }
     this->surface = new vk::UniqueSurfaceKHR(surfaceTmp, this->instance); 
@@ -356,6 +358,7 @@ void star::core::VulkanRenderer::createInstance(){
 
     //enumerate required extensions
     std::vector<vk::ExtensionProperties> requiredExtensions(***this->glfwRequiredExtensions);
+
     vk::enumerateInstanceExtensionProperties(nullptr, this->glfwRequiredExtensionsCount.get(), requiredExtensions.data());
 
     //get a count of the number of supported extensions on the system
@@ -365,24 +368,57 @@ void star::core::VulkanRenderer::createInstance(){
     //query the extension details
     vk::enumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data());
 
+    std::vector<const char*> enableExtensionNames;
+    /*
+    for (const auto& extension : enableExtensionNames){
+        
+    }*/
+    //"VK_KHR_get_physical_device_properties2"
+    
+    bool enableExtras = true;
+
     int foundExtensions = 0;
     for (const auto& extension : requiredExtensions){
         bool found = false;
 
         for (const auto& availableExtension : extensions){
+            /*
             if (found){
                 foundExtensions++; 
                 break;
-            }
+            }*/
 
-            found = ((*extension.extensionName == *availableExtension.extensionName) && (extension.specVersion == availableExtension.specVersion));
+            if(((strcmp(extension.extensionName, availableExtension.extensionName) == 0) && (extension.specVersion == availableExtension.specVersion))){
+                foundExtensions++;
+                enableExtensionNames.push_back(availableExtension.extensionName);
+                break;
+            }
         }
-        
     }
 
     if (foundExtensions != *this->glfwRequiredExtensionsCount.get()) {
         throw std::runtime_error("Not all required extensions found for glfw");
     }
+    
+    //find any additional extensions required by system -- VK_KHR_get_physical_device_properties2
+    int foundAdditional = 0;
+    if (this->deviceRequiredExtensions.size() != 0){
+        for (const auto* name : this->deviceRequiredExtensions){
+            for (const auto& extension : extensions){
+                if(strcmp("VK_KHR_get_physical_device_properties2", extension.extensionName) == 0){
+                    foundAdditional++;
+                    enableExtensionNames.push_back(extension.extensionName);
+                }
+            }
+        }
+    }
+    
+    if (foundAdditional != this->deviceRequiredExtensions.size()){
+        throw std::runtime_error("Not all required device extensions found");
+    }
+
+    
+    //vk::enumerateInstanceExtensionProperties(nullptr, this->glfwRequiredExtensionsCount.get(), systemRequiredExtensions.data());
 
     vk::ApplicationInfo appInfo{};
     appInfo.sType = vk::StructureType::eApplicationInfo;  
@@ -396,8 +432,8 @@ void star::core::VulkanRenderer::createInstance(){
     vk::InstanceCreateInfo createInfo{};
     createInfo.sType = vk::StructureType::eInstanceCreateInfo; 
     createInfo.pApplicationInfo = &appInfo;
-    createInfo.enabledExtensionCount = *this->glfwRequiredExtensionsCount.get();
-    createInfo.ppEnabledExtensionNames = *this->glfwRequiredExtensions.get(); 
+    createInfo.enabledExtensionCount = enableExtensionNames.size();
+    createInfo.ppEnabledExtensionNames = &enableExtensionNames[0];
     createInfo.enabledLayerCount = 0;
     if (enableValidationLayers) {
         createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
@@ -487,6 +523,12 @@ star::core::VulkanRenderer::QueueFamilyIndices star::core::VulkanRenderer::findQ
 
         //--COULD DO :: pick a device that supports both of these in the same queue for increased performance--
         i++;
+    }
+    
+    if(!indicies.transferFamily.has_value()){
+        if (indicies.graphicsFamily.has_value() && queueFamilies.at(indicies.graphicsFamily.value()).queueFlags & vk::QueueFlagBits::eTransfer){
+            indicies.transferFamily = indicies.graphicsFamily.value();
+        }
     }
 
     return indicies;

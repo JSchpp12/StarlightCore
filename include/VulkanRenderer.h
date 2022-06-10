@@ -144,7 +144,13 @@ namespace star{
             };
 
             const std::vector<const char*> deviceExtensions = {
-                VK_KHR_SWAPCHAIN_EXTENSION_NAME  //image presentation is not built into the vulkan core...need to enable it through an extension 
+                VK_KHR_SWAPCHAIN_EXTENSION_NAME,  //image presentation is not built into the vulkan core...need to enable it through an extension
+                "VK_KHR_portability_subset"
+            };
+            
+            std::vector<const char*> deviceRequiredExtensions = {
+                "VK_KHR_get_physical_device_properties2",
+                "VK_EXT_metal_surface"
             };
 
             void updateUniformBuffer(uint32_t currentImage);
