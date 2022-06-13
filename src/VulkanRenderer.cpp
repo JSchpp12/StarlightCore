@@ -6,8 +6,9 @@ star::core::VulkanRenderer::VulkanRenderer(common::ConfigFile* configFile,
                                             common::FileResourceManager<common::Shader>* shaderManager, 
                                             common::FileResourceManager<common::Object>* objectManager, 
                                             common::FileResourceManager<common::Texture>* textureManager, 
+                                            common::Camera* inCamera,
                                             std::vector<common::Handle>* objectHandleList) : 
-    star::common::Renderer(configFile, shaderManager, objectManager, textureManager, objectHandleList), 
+    star::common::Renderer(configFile, shaderManager, objectManager, textureManager, inCamera, objectHandleList), 
     glfwRequiredExtensionsCount(new uint32_t)
 { 
     common::Object* currObject; 
@@ -40,7 +41,7 @@ void star::core::VulkanRenderer::updateUniformBuffer(uint32_t currentImage) {
     //glm::mat4(1,0f) = identity matrix
     //time * radians(90) = rotate 90degrees per second
     //ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    ubo.model = currObject->getModelMatrix(); 
+    ubo.model = currObject->getDisplayMatrix(); 
     //ubo.model = glm::mat4(1.f);
 
     //ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)); 
@@ -49,10 +50,11 @@ void star::core::VulkanRenderer::updateUniformBuffer(uint32_t currentImage) {
     /* LookAt takes:
     *   1. eye position
     *   2. center position
-    *   3. center position
-    *   4. up axis
+    *   3. up axis
     */
-    ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    //ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    ubo.view = this->camera->getDisplayMatrix(); 
+
 
     //perspective projection with 45 degree vertical field of view -- important to use swapChainExtent to calculate aspect ratio (REFRESH WITH WINDOW RESIZE)
     /* perspective takes:

@@ -6,12 +6,15 @@ star::core::ObjectManager::~ObjectManager(){
 
 star::common::Handle star::core::ObjectManager::Add(const std::string& pathToFile){
     //TODO: verify file type
+	//TODO: have object manager register callbacks for objects -- if needed
 
 	bool hasBeenLoaded = this->fileContainer.FileLoaded(pathToFile);
 	if (!hasBeenLoaded){
 		std::unique_ptr<std::vector<common::Vertex>> readVertexList(new std::vector<common::Vertex>);
 		std::unique_ptr<std::vector<uint32_t>> readIndiciesList(new std::vector<uint32_t>);
 		std::unique_ptr<common::Object> newObject(this->create(pathToFile)); 
+		
+		//record callbacks for object
 		return this->fileContainer.AddFileResource(pathToFile, newObject); 
 	}else{
 		throw std::runtime_error("This object is already loaded"); 

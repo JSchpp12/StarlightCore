@@ -60,9 +60,8 @@ SET(${PROJECT_NAME}_SOURCES
 	"src/ObjectManager.cpp"
 	"src/Object.cpp"
 	"src/TextureManager.cpp"
-	
-	
 	"src/VulkanRenderer.cpp"
+	"src/InteractionSystem.cpp"
 )
 
 SET(${PROJECT_NAME}_HEADERS
@@ -78,6 +77,7 @@ SET(${PROJECT_NAME}_HEADERS
 	"include/RenderEngine.h"
 	"include/Windowing.h"
 	"include/VulkanRenderer.h"
+	"include/Interactionmanager.h"
 )
 
 SET(${PROJECT_NAME}_INCLUDE "${PROJECT_SOURCE_DIR}/src")

@@ -5,6 +5,7 @@
 #include "SC/RenderObject.hpp"
 #include "SC/Object.hpp"
 #include "SC/Vertex.hpp"
+#include "InteractionSystem.h"
 
 #include <tiny_obj_loader.h>
 
