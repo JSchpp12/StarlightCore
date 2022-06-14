@@ -6,6 +6,7 @@
 #include "SC/Renderer.hpp"
 #include "SC/ConfigFile.hpp"
 #include "SC/Handle.hpp"
+#include "SC/Camera.hpp"
 #include "VulkanVertex.hpp"
 
 #include <stb_image.h>
@@ -27,7 +28,7 @@ namespace star{
             std::unique_ptr<const char**> glfwRequiredExtensions; 
             std::unique_ptr<uint32_t> glfwRequiredExtensionsCount;
             
-            VulkanRenderer(common::ConfigFile* configFile, common::FileResourceManager<common::Shader>* shaderManager, common::FileResourceManager<common::Object>* objectManager, common::FileResourceManager<common::Texture>* textureManager, std::vector<common::Handle>* objectHandleList);
+            VulkanRenderer(common::ConfigFile* configFile, common::FileResourceManager<common::Shader>* shaderManager, common::FileResourceManager<common::Object>* objectManager, common::FileResourceManager<common::Texture>* textureManager, common::Camera* inCamera, std::vector<common::Handle>* objectHandleList);
             
             ~VulkanRenderer(); 
 
