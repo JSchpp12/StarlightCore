@@ -61,6 +61,7 @@ SET(${PROJECT_NAME}_SOURCES
 	"src/Object.cpp"
 	"src/TextureManager.cpp"
 	"src/VulkanRenderer.cpp"
+	"src/VulkanObject.cpp"
 )
 
 SET(${PROJECT_NAME}_HEADERS
@@ -72,10 +73,12 @@ SET(${PROJECT_NAME}_HEADERS
 	"include/ObjectManager.h"
 	"include/Object.h"
 	"include/TextureManager.h"
-	"include/VulkanVertex.hpp"
 	"include/RenderEngine.h"
 	"include/Windowing.h"
 	"include/VulkanRenderer.h"
+	"include/VulkanObject.h"
+	#header only files
+	"include/VulkanVertex.hpp"
 )
 
 SET(${PROJECT_NAME}_INCLUDE "${PROJECT_SOURCE_DIR}/src")
