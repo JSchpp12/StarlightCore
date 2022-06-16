@@ -193,7 +193,7 @@ void star::core::VulkanRenderer::prepare() {
         .build();
 
     this->globalSetLayout = StarDescriptorSetLayout::Builder(this->device)
-        .addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
+        .addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
         .build();
     this->globalDescriptorSets.resize(this->swapChainImages.size());
 
