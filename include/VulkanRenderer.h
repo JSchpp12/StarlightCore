@@ -10,6 +10,8 @@
 #include "SC/Enums.h"
 #include "VulkanVertex.hpp"
 #include "VulkanObject.h"
+#include "Star_Descriptors.hpp"
+
 
 #include <stb_image.h>
 
@@ -67,6 +69,7 @@ namespace star {
                 std::vector<vk::PresentModeKHR> presentModes;
             };
 
+
 #ifdef NDEBUG 
             const bool enableValidationLayers = false;
 #else
@@ -106,10 +109,6 @@ namespace star {
 
             //pipeline and dependency storage
             vk::RenderPass renderPass;
-            vk::DescriptorSetLayout descriptorSetLayout;
-
-            vk::DescriptorPool descriptorPool;
-            std::vector<vk::DescriptorSet> descriptorSets;
 
             //queue family
             vk::Queue graphicsQueue;
@@ -129,6 +128,11 @@ namespace star {
             std::vector<vk::Framebuffer> swapChainFramebuffers;
             std::vector<vk::Fence> inFlightFences;
             std::vector<vk::Fence> imagesInFlight;
+
+            std::unique_ptr<StarDescriptorPool> globalPool{};
+            std::unique_ptr<StarDescriptorSetLayout> globalSetLayout{}; 
+            std::vector<std::vector<vk::DescriptorSet>> globalDescriptorSets; 
+
 
             //depth testing storage 
             vk::Image depthImage;
@@ -227,7 +231,7 @@ namespace star {
             /// <summary>
             /// Create the descriptors for the buffers that will be passed to the GPU with additional information regarding verticies. (model-view-projection matricies)
             /// </summary>
-            void createDescriptorSetLayout();
+            //void createDescriptorSetLayout();
 
             /// <summary>
             /// Create a graphics pipeline to handle the needs for the application with the vertex and fragment shaders. The pipeline is immutable so it must be created if any changes are needed.
@@ -332,7 +336,7 @@ namespace star {
             /// </summary>
             void createRenderingBuffers();
 
-            /// <summary>
+   /*         /// <summary>
             /// Create descriptor pools to bind the uniform buffer descriptor to each VkBuffer. 
             /// </summary>
             void createDescriptorPool();
@@ -340,7 +344,7 @@ namespace star {
             /// <summary>
             /// Allocate memory for the descriptor sets. 
             /// </summary>
-            void createDescriptorSets();
+            void createDescriptorSets();*/
 
             /// <summary>
             /// Allocate and record the commands for each swapchain image

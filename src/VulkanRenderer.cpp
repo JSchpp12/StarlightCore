@@ -85,43 +85,47 @@ void star::core::VulkanRenderer::updateUniformBuffer(uint32_t currentImage) {
     auto currentTime = std::chrono::high_resolution_clock::now();
     float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
-    //create new ubo object which will create transformation around the Z axis 
-    UniformBufferObject ubo{};
+    VulkanObject* tmpVulkanObject = &this->vulkanObjects.at(0); 
+    std::vector<UniformBufferObject> ubos; 
+    ubos.resize(tmpVulkanObject->getNumRenderObjects());
 
-    //glm::mat4(1,0f) = identity matrix
-    //time * radians(90) = rotate 90degrees per second
-    //ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    ubo.model = currObject->getDisplayMatrix();
-    //ubo.model = glm::mat4(1.f);
+    for (size_t i = 0; i < tmpVulkanObject->getNumRenderObjects(); i++) {
+        UniformBufferObject& currUbo = ubos.at(i);
+        common::Object* currObject = this->objectManager->Get(tmpVulkanObject->getObjectHandleAt(i)); 
 
-    //ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)); 
+        //glm::mat4(1,0f) = identity matrix
+        //time * radians(90) = rotate 90degrees per second
+        //ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        currUbo.model = currObject->getDisplayMatrix();
 
-    //look at geometry from above at 45 degree angle 
-    /* LookAt takes:
-    *   1. eye position
-    *   2. center position
-    *   3. up axis
-    */
-    //ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    ubo.view = this->camera->getDisplayMatrix();
+        //look at geometry from above at 45 degree angle 
+        /* LookAt takes:
+        *   1. eye position
+        *   2. center position
+        *   3. up axis
+        */
+        //ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        currUbo.view = this->camera->getDisplayMatrix();
 
+        //perspective projection with 45 degree vertical field of view -- important to use swapChainExtent to calculate aspect ratio (REFRESH WITH WINDOW RESIZE)
+        /* perspective takes:
+        *   1. fov
+        *   2. aspect ratio
+        *   3. near view plane
+        *   4. far view plane
+        */
+        currUbo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
 
-    //perspective projection with 45 degree vertical field of view -- important to use swapChainExtent to calculate aspect ratio (REFRESH WITH WINDOW RESIZE)
-    /* perspective takes:
-    *   1. fov
-    *   2. aspect ratio
-    *   3. near view plane
-    *   4. far view plane
-    */
-    ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
-
-    //glm designed for openGL where the Y coordinate of the flip coordinates is inverted. Fix this by flipping the sign on the scaling factor of the Y axis in the projection matrix.
-    ubo.proj[1][1] *= -1;
+        //glm designed for openGL where the Y coordinate of the flip coordinates is inverted. Fix this by flipping the sign on the scaling factor of the Y axis in the projection matrix.
+        currUbo.proj[1][1] *= -1;
+    }
 
     //copy data to the current uniform buffer 
+
+    auto tmp = sizeof(UniformBufferObject) * ubos.size();
     void* data;
-    vkMapMemory(device, uniformBuffersMemory[currentImage], 0, sizeof(ubo), 0, &data);
-    memcpy(data, &ubo, sizeof(ubo));
+    vkMapMemory(device, uniformBuffersMemory[currentImage], 0, sizeof(ubos), 0, &data);
+    memcpy(data, ubos.data(), sizeof(ubos.at(0)) * ubos.size());
     vkUnmapMemory(device, uniformBuffersMemory[currentImage]);
 }
 
@@ -171,13 +175,28 @@ void star::core::VulkanRenderer::pollEvents() {
 }
 
 void star::core::VulkanRenderer::prepare() {
+
+    VulkanObject* tmpVulkanObject = &this->vulkanObjects.at(0); 
+
     //init vulkan 
     pickPhysicalDevice();
     createLogicalDevice();
     createSwapChain();
     createImageViews();
     createRenderPass();
-    createDescriptorSetLayout();
+    //createDescriptorSetLayout();
+
+        //set up pool
+    this->globalPool = StarDescriptorPool::Builder(this->device)
+        .setMaxSets((this->swapChainImages.size() * tmpVulkanObject->getNumRenderObjects()))
+        .addPoolSize(vk::DescriptorType::eUniformBuffer, this->swapChainImages.size() * tmpVulkanObject->getNumRenderObjects())
+        .build();
+
+    this->globalSetLayout = StarDescriptorSetLayout::Builder(this->device)
+        .addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
+        .build();
+    this->globalDescriptorSets.resize(this->swapChainImages.size());
+
     createGraphicsPipeline();
     createDepthResources();
     createFramebuffers();
@@ -188,8 +207,38 @@ void star::core::VulkanRenderer::prepare() {
     createVertexBuffers();
     createIndexBuffer();
     createRenderingBuffers();
-    createDescriptorPool();
-    createDescriptorSets();
+
+    for (size_t i = 0; i < this->swapChainImages.size(); i++) {
+        //for (size_t j = 0; j < tmpVulkanObject->getNumRenderObjects(); j++) {
+        auto bufferInfo = vk::DescriptorBufferInfo{};
+        bufferInfo.buffer = uniformBuffers[i];
+        bufferInfo.offset = 0;
+        bufferInfo.range = sizeof(UniformBufferObject); 
+
+        std::vector<vk::DescriptorSet> newSets;
+        StarDescriptorWriter(this->device, *this->globalSetLayout, *this->globalPool)
+            .writeBuffer(0, &bufferInfo)
+            .build(newSets, true);
+
+        this->globalDescriptorSets[i].push_back(newSets.at(0));
+
+        auto bufferInfo2 = vk::DescriptorBufferInfo{}; 
+        bufferInfo2.buffer = uniformBuffers[i];
+        bufferInfo2.offset = sizeof(UniformBufferObject); 
+        bufferInfo2.range = sizeof(UniformBufferObject);
+
+
+        //WARNING: only using the first set created 
+        std::vector<vk::DescriptorSet> newSetsN;
+        StarDescriptorWriter(this->device, *this->globalSetLayout, *this->globalPool)
+            .writeBuffer(0, &bufferInfo2)
+            .build(newSetsN, true);
+
+        this->globalDescriptorSets[i].push_back(newSetsN.at(0));
+    }
+
+    //createDescriptorPool();
+    //createDescriptorSets();
     createCommandBuffers();
     createSemaphores();
     createFences();
@@ -321,7 +370,7 @@ void star::core::VulkanRenderer::cleanup() {
     this->device.destroyImage(this->textureImage);
     this->device.freeMemory(this->textureImageMemory);
 
-    this->device.destroyDescriptorSetLayout(this->descriptorSetLayout);
+    //this->device.destroyDescriptorSetLayout(this->descriptorSetLayout);
 
     VulkanObject* currVulkanObject = &this->vulkanObjects.at(0);
 
@@ -376,7 +425,7 @@ void star::core::VulkanRenderer::cleanupSwapChain() {
         this->device.freeMemory(uniformBuffersMemory[i]);
     }
 
-    this->device.destroyDescriptorPool(this->descriptorPool);
+    //this->device.destroyDescriptorPool(this->descriptorPool);
 }
 
 bool star::core::VulkanRenderer::checkValidationLayerSupport() {
@@ -754,9 +803,9 @@ void star::core::VulkanRenderer::recreateSwapChain() {
     //uniform buffers are dependent on the number of swap chain images, will need to recreate since they are destroyed in cleanupSwapchain()
     createRenderingBuffers();
 
-    createDescriptorPool();
+    //createDescriptorPool();
 
-    createDescriptorSets();
+    //createDescriptorSets();
 
     createCommandBuffers();
 }
@@ -1003,39 +1052,39 @@ vk::Format star::core::VulkanRenderer::findSupportedFormat(const std::vector<vk:
     throw std::runtime_error("failed to find supported format!");
 }
 
-void star::core::VulkanRenderer::createDescriptorSetLayout() {
-    vk::DescriptorSetLayoutBinding setLayoutBindings;
-
-    /* Binding 0 : Uniform buffers (MVP matricies) */
-    setLayoutBindings.binding = 0;
-    setLayoutBindings.descriptorType = vk::DescriptorType::eUniformBuffer;    //for this, we are using a uniform buffer object (UBO)
-    setLayoutBindings.descriptorCount = 1;                                   //can pass an array of uniform buffer objects, for this we are only using one 
-
-    //which shader stages are going to use the descriptor 
-    setLayoutBindings.stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment;
-
-    //only needed for image sampling related descriptors -- not used now
-    setLayoutBindings.pImmutableSamplers = nullptr;
-
-    //binding for combined image sampler descriptor
-    vk::DescriptorSetLayoutBinding samplerLayoutBinding{};
-    samplerLayoutBinding.binding = 1;
-    samplerLayoutBinding.descriptorCount = 1;
-    samplerLayoutBinding.descriptorType = vk::DescriptorType::eCombinedImageSampler;
-    samplerLayoutBinding.pImmutableSamplers = nullptr;
-    samplerLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eFragment;                     //use in the fragment shader
-
-    std::array<vk::DescriptorSetLayoutBinding, 2> bindings = { setLayoutBindings, samplerLayoutBinding };
-    vk::DescriptorSetLayoutCreateInfo layoutInfo{};
-    layoutInfo.sType = vk::StructureType::eDescriptorSetLayoutCreateInfo;
-    layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
-    layoutInfo.pBindings = bindings.data();
-
-    this->descriptorSetLayout = device.createDescriptorSetLayout(layoutInfo);
-    if (!this->descriptorSetLayout) {
-        throw std::runtime_error("failed to create descriptor set layout!");
-    }
-}
+//void star::core::VulkanRenderer::createDescriptorSetLayout() {
+//    vk::DescriptorSetLayoutBinding setLayoutBindings;
+//
+//    /* Binding 0 : Uniform buffers (MVP matricies) */
+//    setLayoutBindings.binding = 0;
+//    setLayoutBindings.descriptorType = vk::DescriptorType::eUniformBuffer;    //for this, we are using a uniform buffer object (UBO)
+//    setLayoutBindings.descriptorCount = 1;                                   //can pass an array of uniform buffer objects, for this we are only using one 
+//
+//    //which shader stages are going to use the descriptor 
+//    setLayoutBindings.stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment;
+//
+//    //only needed for image sampling related descriptors -- not used now
+//    setLayoutBindings.pImmutableSamplers = nullptr;
+//
+//    //binding for combined image sampler descriptor
+//    vk::DescriptorSetLayoutBinding samplerLayoutBinding{};
+//    samplerLayoutBinding.binding = 1;
+//    samplerLayoutBinding.descriptorCount = 1;
+//    samplerLayoutBinding.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+//    samplerLayoutBinding.pImmutableSamplers = nullptr;
+//    samplerLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eFragment;                     //use in the fragment shader
+//
+//    std::array<vk::DescriptorSetLayoutBinding, 2> bindings = { setLayoutBindings, samplerLayoutBinding };
+//    vk::DescriptorSetLayoutCreateInfo layoutInfo{};
+//    layoutInfo.sType = vk::StructureType::eDescriptorSetLayoutCreateInfo;
+//    layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+//    layoutInfo.pBindings = bindings.data();
+//
+//    this->descriptorSetLayout = device.createDescriptorSetLayout(layoutInfo);
+//    if (!this->descriptorSetLayout) {
+//        throw std::runtime_error("failed to create descriptor set layout!");
+//    }
+//}
 
 void star::core::VulkanRenderer::createGraphicsPipeline() {
     auto bindingDescriptions = VulkanVertex::getBindingDescription();
@@ -1231,13 +1280,14 @@ void star::core::VulkanRenderer::createGraphicsPipeline() {
         dynamicStateInfo.dynamicStateCount = 2;
         dynamicStateInfo.pDynamicStates = dynamicStates;
 
+        std::vector<vk::DescriptorSetLayout> descriptorSetLayouts{this->globalSetLayout->getDescriptorSetLayout()};
         /* Pipeline Layout */
         //uniform values in shaders need to be defined here 
         vk::PipelineLayoutCreateInfo pipelineLayoutInfo{};
         //pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         pipelineLayoutInfo.sType = vk::StructureType::ePipelineLayoutCreateInfo;
-        pipelineLayoutInfo.setLayoutCount = 1;
-        pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
+        pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size());
+        pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
         pipelineLayoutInfo.pushConstantRangeCount = 0;
         pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
@@ -1815,7 +1865,9 @@ void star::core::VulkanRenderer::createIndexBuffer() {
 void star::core::VulkanRenderer::createRenderingBuffers() {
     /*Create Uniform Buffer */
     //just set up the buffers, we are not going to be updating the buffers here since they need updated every frame
-    vk::DeviceSize uboBufferSize = sizeof(UniformBufferObject);
+    VulkanObject* tmpVulkanObject = &this->vulkanObjects.at(0); 
+
+    vk::DeviceSize uboBufferSize = sizeof(UniformBufferObject) * tmpVulkanObject->getNumRenderObjects();
 
     uniformBuffers.resize(swapChainImages.size());
     uniformBuffersMemory.resize(swapChainImages.size());
@@ -1825,98 +1877,98 @@ void star::core::VulkanRenderer::createRenderingBuffers() {
     }
 }
 
-void star::core::VulkanRenderer::createDescriptorPool() {
-    //descriptor sets cant be created directly, they must be allocated from a pool like command buffers. 
-    vk::DescriptorPoolSize descriptorPoolSize{};
+//void star::core::VulkanRenderer::createDescriptorPool() {
+//    //descriptor sets cant be created directly, they must be allocated from a pool like command buffers. 
+//    vk::DescriptorPoolSize descriptorPoolSize{};
+//
+//    std::array<vk::DescriptorPoolSize, 2> poolSizes{};
+//
+//    /* Uniform Buffers : 1 for scene and 1 per object */
+//    poolSizes[0].type = vk::DescriptorType::eUniformBuffer;
+//    poolSizes[0].descriptorCount = static_cast<uint32_t>(swapChainImages.size());     //allocate a descriptor for each frame
+//    poolSizes[1].type = vk::DescriptorType::eCombinedImageSampler;
+//    poolSizes[1].descriptorCount = static_cast<uint32_t>(swapChainImages.size());
+//
+//    vk::DescriptorPoolCreateInfo poolInfo{};
+//    poolInfo.sType = vk::StructureType::eDescriptorPoolCreateInfo;
+//    poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+//    poolInfo.pPoolSizes = poolSizes.data();
+//    poolInfo.maxSets = static_cast<uint32_t>(swapChainImages.size());
+//
+//    //must also define max number of descriptor sets that are available 
+//    poolInfo.maxSets = static_cast<uint32_t>(swapChainImages.size());
+//
+//    //can leave flags at 0, can use VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT to allow for changing a descriptor set after creation
+//    poolInfo.flags = {};
+//
+//    this->descriptorPool = this->device.createDescriptorPool(poolInfo);
+//    if (!descriptorPool) {
+//        throw std::runtime_error("failed to create descriptor pool");
+//    }
+//}
 
-    std::array<vk::DescriptorPoolSize, 2> poolSizes{};
-
-    /* Uniform Buffers : 1 for scene and 1 per object */
-    poolSizes[0].type = vk::DescriptorType::eUniformBuffer;
-    poolSizes[0].descriptorCount = static_cast<uint32_t>(swapChainImages.size());     //allocate a descriptor for each frame
-    poolSizes[1].type = vk::DescriptorType::eCombinedImageSampler;
-    poolSizes[1].descriptorCount = static_cast<uint32_t>(swapChainImages.size());
-
-    vk::DescriptorPoolCreateInfo poolInfo{};
-    poolInfo.sType = vk::StructureType::eDescriptorPoolCreateInfo;
-    poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
-    poolInfo.pPoolSizes = poolSizes.data();
-    poolInfo.maxSets = static_cast<uint32_t>(swapChainImages.size());
-
-    //must also define max number of descriptor sets that are available 
-    poolInfo.maxSets = static_cast<uint32_t>(swapChainImages.size());
-
-    //can leave flags at 0, can use VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT to allow for changing a descriptor set after creation
-    poolInfo.flags = {};
-
-    this->descriptorPool = this->device.createDescriptorPool(poolInfo);
-    if (!descriptorPool) {
-        throw std::runtime_error("failed to create descriptor pool");
-    }
-}
-
-void star::core::VulkanRenderer::createDescriptorSets() {
-    //describe the descriptor set layouts to vulkan when allocating memory
-    std::vector<vk::DescriptorSetLayout> layouts(swapChainImages.size(), descriptorSetLayout);
-
-    vk::DescriptorSetAllocateInfo allocInfo{};
-    allocInfo.sType = vk::StructureType::eDescriptorSetAllocateInfo;
-    allocInfo.descriptorPool = descriptorPool;
-    allocInfo.descriptorSetCount = static_cast<uint32_t>(swapChainImages.size());
-    allocInfo.pSetLayouts = layouts.data();
-
-    descriptorSets.resize(swapChainImages.size());
-
-    //make call to allocate memory
-    this->descriptorSets = this->device.allocateDescriptorSets(allocInfo);
-    if (this->descriptorSets.size() == 0) {
-        throw std::runtime_error("failed to allocate descriptor sets");
-    }
-
-    //apply information to each of the previously allocated descriptor set 
-    for (size_t i = 0; i < swapChainImages.size(); i++) {
-        vk::DescriptorBufferInfo uboBufferInfo{};
-        uboBufferInfo.buffer = uniformBuffers[i];
-        uboBufferInfo.offset = 0;
-        uboBufferInfo.range = sizeof(UniformBufferObject);
-
-        //create pool for texture and texture sampler
-        vk::DescriptorImageInfo imageInfo{};
-        imageInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-        imageInfo.imageView = textureImageView;
-        imageInfo.sampler = textureSampler;
-
-        std::array<vk::WriteDescriptorSet, 2> writeDescriptorSets{};
-        /* Binding 0: Uniform Buffer */
-        writeDescriptorSets[0].sType = vk::StructureType::eWriteDescriptorSet;
-        writeDescriptorSets[0].dstSet = descriptorSets[i];      //which descriptor set to update 
-        writeDescriptorSets[0].dstBinding = 0;                  //which binding to update - the UBO was previously given an index of 0
-        writeDescriptorSets[0].dstArrayElement = 0;             //descriptors can be arrays, specifiy first index of array to update - not using array here 
-
-        writeDescriptorSets[0].descriptorType = vk::DescriptorType::eUniformBuffer;
-        writeDescriptorSets[0].descriptorCount = 1;             //possible to update more than one descriptor in an array, starting at index dstArrayElement
-
-        //reference array with descriptorCount and actually configures the descriptor. Depends on the type of descriptor which should be used. 
-        writeDescriptorSets[0].pBufferInfo = &uboBufferInfo;    //used for descriptors that refer to buffer data 
-        writeDescriptorSets[0].pImageInfo = nullptr;            //used for descriptors that refer to image data 
-        writeDescriptorSets[0].pTexelBufferView = nullptr;      //used for descriptors that refer to buffer views
-
-        /* Binding 1: Texture Attributes */
-        writeDescriptorSets[1].sType = vk::StructureType::eWriteDescriptorSet;
-        writeDescriptorSets[1].dstSet = descriptorSets[i];
-        writeDescriptorSets[1].dstBinding = 1;
-        writeDescriptorSets[1].dstArrayElement = 0;
-        writeDescriptorSets[1].descriptorType = vk::DescriptorType::eCombinedImageSampler;
-        writeDescriptorSets[1].descriptorCount = 1;
-        writeDescriptorSets[1].pImageInfo = &imageInfo;         //ref to image that will be allocated to this pool
-
-        //make actual call to vulkan to update the descriptor sets
-        this->device.updateDescriptorSets(writeDescriptorSets, nullptr);
-        //vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr); //can also take a vkCopyDescriptorSet -> can be used to copy descriptors to each other
-    }
-
-    /*NOTE: descriptor sets do not need to be explicitly destroyed since they will be cleaned when the descriptor pool is destroyed*/
-}
+//void star::core::VulkanRenderer::createDescriptorSets() {
+//    //describe the descriptor set layouts to vulkan when allocating memory
+//    std::vector<vk::DescriptorSetLayout> layouts(swapChainImages.size(), descriptorSetLayout);
+//
+//    vk::DescriptorSetAllocateInfo allocInfo{};
+//    allocInfo.sType = vk::StructureType::eDescriptorSetAllocateInfo;
+//    allocInfo.descriptorPool = descriptorPool;
+//    allocInfo.descriptorSetCount = static_cast<uint32_t>(swapChainImages.size());
+//    allocInfo.pSetLayouts = layouts.data();
+//
+//    descriptorSets.resize(swapChainImages.size());
+//
+//    //make call to allocate memory
+//    this->descriptorSets = this->device.allocateDescriptorSets(allocInfo);
+//    if (this->descriptorSets.size() == 0) {
+//        throw std::runtime_error("failed to allocate descriptor sets");
+//    }
+//
+//    //apply information to each of the previously allocated descriptor set 
+//    for (size_t i = 0; i < swapChainImages.size(); i++) {
+//        vk::DescriptorBufferInfo uboBufferInfo{};
+//        uboBufferInfo.buffer = uniformBuffers[i];
+//        uboBufferInfo.offset = 0;
+//        uboBufferInfo.range = sizeof(UniformBufferObject);
+//
+//        //create pool for texture and texture sampler
+//        vk::DescriptorImageInfo imageInfo{};
+//        imageInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+//        imageInfo.imageView = textureImageView;
+//        imageInfo.sampler = textureSampler;
+//
+//        std::array<vk::WriteDescriptorSet, 2> writeDescriptorSets{};
+//        /* Binding 0: Uniform Buffer */
+//        writeDescriptorSets[0].sType = vk::StructureType::eWriteDescriptorSet;
+//        writeDescriptorSets[0].dstSet = descriptorSets[i];      //which descriptor set to update 
+//        writeDescriptorSets[0].dstBinding = 0;                  //which binding to update - the UBO was previously given an index of 0
+//        writeDescriptorSets[0].dstArrayElement = 0;             //descriptors can be arrays, specifiy first index of array to update - not using array here 
+//
+//        writeDescriptorSets[0].descriptorType = vk::DescriptorType::eUniformBuffer;
+//        writeDescriptorSets[0].descriptorCount = 1;             //possible to update more than one descriptor in an array, starting at index dstArrayElement
+//
+//        //reference array with descriptorCount and actually configures the descriptor. Depends on the type of descriptor which should be used. 
+//        writeDescriptorSets[0].pBufferInfo = &uboBufferInfo;    //used for descriptors that refer to buffer data 
+//        writeDescriptorSets[0].pImageInfo = nullptr;            //used for descriptors that refer to image data 
+//        writeDescriptorSets[0].pTexelBufferView = nullptr;      //used for descriptors that refer to buffer views
+//
+//        /* Binding 1: Texture Attributes */
+//        writeDescriptorSets[1].sType = vk::StructureType::eWriteDescriptorSet;
+//        writeDescriptorSets[1].dstSet = descriptorSets[i];
+//        writeDescriptorSets[1].dstBinding = 1;
+//        writeDescriptorSets[1].dstArrayElement = 0;
+//        writeDescriptorSets[1].descriptorType = vk::DescriptorType::eCombinedImageSampler;
+//        writeDescriptorSets[1].descriptorCount = 1;
+//        writeDescriptorSets[1].pImageInfo = &imageInfo;         //ref to image that will be allocated to this pool
+//
+//        //make actual call to vulkan to update the descriptor sets
+//        this->device.updateDescriptorSets(writeDescriptorSets, nullptr);
+//        //vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr); //can also take a vkCopyDescriptorSet -> can be used to copy descriptors to each other
+//    }
+//
+//    /*NOTE: descriptor sets do not need to be explicitly destroyed since they will be cleaned when the descriptor pool is destroyed*/
+//}
 
 void star::core::VulkanRenderer::createCommandBuffers() {
 
@@ -2033,17 +2085,23 @@ void star::core::VulkanRenderer::createCommandBuffers() {
             *   7 - 8. array of offsets used for dynamic descriptors (not used here)
             */
             //bind the right descriptor set for each swap chain image to the descripts in the shader 
-            this->graphicsCommandBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, vulkanObject.getPipelineLayout(), 0, 1, &this->descriptorSets[i], 0, nullptr);
-            //vkCmdBindDescriptorSets(graphicsCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i], 0, nullptr);
+            //this->graphicsCommandBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, vulkanObject.getPipelineLayout(), 0, 1, , 0, nullptr);
+            uint32_t vertexCount = 0;
+            for (size_t j = 0; j < tmpVulkanObject->getNumRenderObjects(); j++) {
+                common::Object* tmpObject = this->objectManager->Get(tmpVulkanObject->getObjectHandleAt(j)); 
+                this->graphicsCommandBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, tmpVulkanObject->getPipelineLayout(), 0, 1, &this->globalDescriptorSets.at(i).at(j), 0, nullptr);
+                //now create call to draw
+                //Args:    
+                    //2. vertexCount: how many verticies to draw
+                    //3. instanceCount: used for instanced render, use 1 otherwise
+                    //4. firstVertex: offset in VBO, defines lowest value of gl_VertexIndex
+                    //5. firstInstance: offset for instanced rendering, defines lowest value of gl_InstanceIndex -> not using so leave at 1 
+                //TODO: currently drawing ALL verticies...might need to make more flexible with more objects
+                auto numToDraw = tmpVulkanObject->getNumIndiciesForRenderObjectAt(j);
+                vkCmdDrawIndexed(graphicsCommandBuffers[i], numToDraw, 1, 0, vertexCount, 0);
+                vertexCount += tmpVulkanObject->getNumIndiciesForRenderObjectAt(j); 
+            }
 
-            //now create call to draw
-            //Args:    
-                //2. vertexCount: how many verticies to draw
-                //3. instanceCount: used for instanced render, use 1 otherwise
-                //4. firstVertex: offset in VBO, defines lowest value of gl_VertexIndex
-                //5. firstInstance: offset for instanced rendering, defines lowest value of gl_InstanceIndex -> not using so leave at 1 
-            //TODO: currently drawing ALL verticies...might need to make more flexible with more objects
-            vkCmdDrawIndexed(graphicsCommandBuffers[i], static_cast<uint32_t>(numIndicies), 1, 0, 0, 0);
             //vkCmdDrawIndexed(graphicsCommandBuffers[i], 3, 1, 0, 0, 0); 
 
             //can now finish render pass

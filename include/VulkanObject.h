@@ -31,7 +31,11 @@ namespace star {
 			uint64_t totalNumVerticies = 0; 
 			uint64_t totalNumIndicies = 0; 
 
+			//std::vector<vk::DescriptorSet> imageDescriptorSets; 
+
 			VulkanObject(); 
+
+			static void registerVulkanRuntimeInfo(vk::Device newDevice, size_t numImages); 
 
 			void registerShader(vk::ShaderStageFlagBits stage, common::Handle newShaderHandle); 
 
@@ -80,13 +84,32 @@ namespace star {
 
 			std::vector<common::Handle> getRenderObjectList(); 
 
+			uint32_t getNumIndiciesForRenderObjectAt(size_t index); 
+
 		protected:
 
 
 		private:
+			struct descriptorSetData {
+				vk::DescriptorSet descriptorSet;
+				vk::DescriptorSetLayout layout; 
+			};
+			struct perImageData {
+				vk::Buffer uniformBuffer; 
+				std::vector<descriptorSetData> uboDescriptorSets;
+			};
+
+			static vk::Device device; 
+			static size_t numInFlightImages; 
+			static bool deviceRegistered;
+
+			//only 10 of these are permitted in general 
+			vk::DescriptorPool descriptorPool; 
+
 			std::map<vk::ShaderStageFlagBits, common::Handle> shaderContainer; 
 			std::map<vk::ShaderStageFlagBits, vk::ShaderModule> shaderModuleContainer; 
 			std::vector<common::Handle> baseObjectHandles;
+			std::vector<perImageData> perImageData; 
 			std::vector<size_t> numVerticiesPerObject; 
 			std::vector<size_t> numIndiciesPerObject; 
 

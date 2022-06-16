@@ -1,7 +1,19 @@
 #include "VulkanObject.h"
 
+
+vk::Device star::core::VulkanObject::device; 
+bool star::core::VulkanObject::deviceRegistered = false; 
+size_t star::core::VulkanObject::numInFlightImages; 
+
 star::core::VulkanObject::VulkanObject()
-{ }
+{ 
+	this->perImageData.resize(numInFlightImages); 
+}
+
+void star::core::VulkanObject::registerVulkanRuntimeInfo(vk::Device newDevice, size_t numImages) {
+	device = newDevice; 
+	deviceRegistered = true; 
+}
 
 void star::core::VulkanObject::registerShader(vk::ShaderStageFlagBits stage, common::Handle newShaderHandle) {
 	this->shaderContainer.insert(std::pair<vk::ShaderStageFlagBits, common::Handle>(stage, newShaderHandle)); 
@@ -68,6 +80,11 @@ star::common::Handle star::core::VulkanObject::getObjectHandleAt(const size_t& i
 std::vector<star::common::Handle> star::core::VulkanObject::getRenderObjectList() {
 	return this->baseObjectHandles;
 }
+
+uint32_t star::core::VulkanObject::getNumIndiciesForRenderObjectAt(size_t index) {
+	return this->numIndiciesPerObject.at(index); 
+}
+ 
 
 //
 //void star::core::VulkanObject::createVertexBuffer(std::vector<common::Object*>& objects) {
