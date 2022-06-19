@@ -4,71 +4,17 @@ typedef std::chrono::high_resolution_clock Clock;
 
 star::core::VulkanRenderer::VulkanRenderer(common::ConfigFile* configFile,
     common::FileResourceManager<common::Shader>* shaderManager,
-    common::FileResourceManager<common::Object>* objectManager,
+    common::FileResourceManager<common::LogicalObject>* objectManager,
     common::FileResourceManager<common::Texture>* textureManager,
     common::Camera* inCamera,
     std::vector<common::Handle>* objectHandleList) :
     star::common::Renderer(configFile, shaderManager, objectManager, textureManager, inCamera, objectHandleList),
     glfwRequiredExtensionsCount(new uint32_t)
 {
-    common::Object* currentObject;
+    common::LogicalObject* currentObject;
 
     //TODO: check data before creating needed objects -- ensure all objects are valid  
     //find out how many unique vulkan objects will be needed 
-    vk::ShaderStageFlagBits stages{};
-    this->vulkanObjects.push_back(VulkanObject());
-
-    for (size_t i = 0; i < this->objectList->size(); i++) {
-        currentObject = this->objectManager->Get(this->objectList->at(i));
-
-        this->numVerticies += currentObject->getVerticies()->size();
-        this->numIndicies += currentObject->getIndicies()->size();
-
-        //check if the vulkan object has a shader registered for the desired stage that is different than the one needed for the current object
-        for (auto& object : this->vulkanObjects) {
-            //check if object shaders are in vulkan object
-            if (!object.hasShader(vk::ShaderStageFlagBits::eVertex) && (!object.hasShader(vk::ShaderStageFlagBits::eFragment))) {
-                //vulkan object does not have either a vertex or a fragment shader 
-                object.registerShader(vk::ShaderStageFlagBits::eVertex, currentObject->getVertShader());
-                object.registerShader(vk::ShaderStageFlagBits::eFragment, currentObject->getFragShader());
-                object.addObject(this->objectList->at(i), currentObject);
-            }
-            else if ((object.getBaseShader(vk::ShaderStageFlagBits::eVertex).containerIndex != currentObject->getVertShader().containerIndex) ||
-                (object.getBaseShader(vk::ShaderStageFlagBits::eFragment).containerIndex != currentObject->getFragShader().containerIndex)) {
-                //vulkan object has shaders but they are not the same as the shaders needed for current render object
-                VulkanObject newObject;
-                newObject.registerShader(vk::ShaderStageFlagBits::eVertex, currentObject->getVertShader());
-                newObject.registerShader(vk::ShaderStageFlagBits::eFragment, currentObject->getFragShader());
-                newObject.addObject(this->objectList->at(i), currentObject);
-                this->vulkanObjects.push_back(newObject);
-            }
-            else {
-                //vulkan object has the same shaders as the render object 
-                object.addObject(this->objectList->at(i), currentObject);
-            }
-        }
-    }
-
-    //newVulkanObject = new VulkanObject();
-    ////create vulkan objects by grouping render objects that can share a pipeline object
-    //for (size_t i = 0; i < this->shaderManager->count(); i++) {
-    //    std::unique_ptr<std::vector<common::Handle>> groupedObjectHandles;
-    //    std::vector<common::Object*> groupedObjects; 
-
-    //    for (size_t j = 0; j < this->objectList->size(); j++) {
-    //        currentObject = this->objectManager->Get(this->objectList->at(j));
-    //        this->numVerticies += currentObject->getVerticies()->size();
-    //        this->numIndicies += currentObject->getIndicies()->size();
-
-    //        if (currentObject->getVertShader().containerIndex == i) {
-    //            //record the handle for the current render object
-    //            newVulkanObject->addObject(this->objectList->at(j)); 
-    //        }
-    //    }
-
-    //    //record copy of new object
-    //    this->vulkanObjects.push_back(*newVulkanObject);
-    //    delete(newVulkanObject); 
 }
 
 star::core::VulkanRenderer::~VulkanRenderer() {
@@ -78,25 +24,54 @@ star::core::VulkanRenderer::~VulkanRenderer() {
 }
 
 void star::core::VulkanRenderer::updateUniformBuffer(uint32_t currentImage) {
-    auto currObject = this->objectManager->Get(this->objectList->at(0));
-
     static auto startTime = std::chrono::high_resolution_clock::now();
 
     auto currentTime = std::chrono::high_resolution_clock::now();
     float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
-    VulkanObject* tmpVulkanObject = &this->vulkanObjects.at(0); 
+    //update global ubo 
+    GlobalUniformBufferObject globalUbo; 
+    globalUbo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
+    //glm designed for openGL where the Y coordinate of the flip coordinates is inverted. Fix this by flipping the sign on the scaling factor of the Y axis in the projection matrix.
+    globalUbo.proj[1][1] *= -1;
+    globalUbo.view = this->camera->getDisplayMatrix();
+    //globalUbo.view = glm::lookAt(glm::vec3(3.0f, 3.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+
+    void* globalData = this->device.mapMemory(this->globalUniformBuffersMemory[currentImage], 0, sizeof(GlobalUniformBufferObject));
+    memcpy(globalData, &globalUbo, sizeof(globalUbo)); 
+    this->device.unmapMemory(globalUniformBuffersMemory[currentImage]);
+
+    //update per object data
+
+    VulkanObject* tmpVulkanObject = this->vulkanObjects.at(0).get();
+    common::LogicalObject* currObject = nullptr;
+
     std::vector<UniformBufferObject> ubos; 
     ubos.resize(tmpVulkanObject->getNumRenderObjects());
 
-    for (size_t i = 0; i < tmpVulkanObject->getNumRenderObjects(); i++) {
-        UniformBufferObject& currUbo = ubos.at(i);
-        common::Object* currObject = this->objectManager->Get(tmpVulkanObject->getObjectHandleAt(i)); 
+    currObject = this->objectManager->Get(tmpVulkanObject->getRenderObjectAt(0)->getHandle());
 
+
+    //UniformBufferObject obj; 
+    //obj.model = currObject->getDisplayMatrix(); 
+    ////obj.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+
+    //void* data = this->device.mapMemory(this->uniformBuffersMemory[currentImage], 0, sizeof(UniformBufferObject));
+    //memcpy(data, &obj, sizeof(obj));
+    //this->device.unmapMemory(uniformBuffersMemory[currentImage]); 
+
+    std::unique_ptr<UniformBufferObject> newBufferObject; 
+    auto test = tmpVulkanObject->getNumRenderObjects();
+    for (size_t i = 0; i < tmpVulkanObject->getNumRenderObjects(); i++) {
+        newBufferObject = std::make_unique<UniformBufferObject>(UniformBufferObject());
+
+        RenderObject* currRenderObject = tmpVulkanObject->getRenderObjectAt(i);
+        currObject = this->objectManager->Get(currRenderObject->getHandle()); 
+            //this->objectManager->Get(tmpVulkanObject->getObjectHandleAt(i));
         //glm::mat4(1,0f) = identity matrix
         //time * radians(90) = rotate 90degrees per second
-        //ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        currUbo.model = currObject->getDisplayMatrix();
+        
+        newBufferObject->model = currObject->getDisplayMatrix();
 
         //look at geometry from above at 45 degree angle 
         /* LookAt takes:
@@ -104,8 +79,7 @@ void star::core::VulkanRenderer::updateUniformBuffer(uint32_t currentImage) {
         *   2. center position
         *   3. up axis
         */
-        //ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        currUbo.view = this->camera->getDisplayMatrix();
+
 
         //perspective projection with 45 degree vertical field of view -- important to use swapChainExtent to calculate aspect ratio (REFRESH WITH WINDOW RESIZE)
         /* perspective takes:
@@ -114,19 +88,17 @@ void star::core::VulkanRenderer::updateUniformBuffer(uint32_t currentImage) {
         *   3. near view plane
         *   4. far view plane
         */
-        currUbo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
+        //copy data to the current uniform buffer 
 
-        //glm designed for openGL where the Y coordinate of the flip coordinates is inverted. Fix this by flipping the sign on the scaling factor of the Y axis in the projection matrix.
-        currUbo.proj[1][1] *= -1;
+        ubos.at(i) = *newBufferObject;
+
     }
 
-    //copy data to the current uniform buffer 
-
-    auto tmp = sizeof(UniformBufferObject) * ubos.size();
-    void* data;
-    vkMapMemory(device, uniformBuffersMemory[currentImage], 0, sizeof(ubos), 0, &data);
-    memcpy(data, ubos.data(), sizeof(ubos.at(0)) * ubos.size());
-    vkUnmapMemory(device, uniformBuffersMemory[currentImage]);
+    auto tmp1 = sizeof(UniformBufferObject);
+    auto tmp = sizeof(ubos) * ubos.size();
+    void* data = this->device.mapMemory(this->uniformBuffersMemory[currentImage], 0, sizeof(UniformBufferObject) * tmpVulkanObject->getNumRenderObjects());
+    memcpy(data, ubos.data(), sizeof(UniformBufferObject) * ubos.size());
+    this->device.unmapMemory(uniformBuffersMemory[currentImage]);
 }
 
 void star::core::VulkanRenderer::prepareGLFW(int width, int height, GLFWkeyfun keyboardCallbackFunction, GLFWmousebuttonfun mouseButtonCallback, GLFWcursorposfun cursorPositionCallback, GLFWscrollfun scrollCallback) {
@@ -175,27 +147,76 @@ void star::core::VulkanRenderer::pollEvents() {
 }
 
 void star::core::VulkanRenderer::prepare() {
-
-    VulkanObject* tmpVulkanObject = &this->vulkanObjects.at(0); 
-
     //init vulkan 
     pickPhysicalDevice();
     createLogicalDevice();
     createSwapChain();
+
     createImageViews();
     createRenderPass();
-    //createDescriptorSetLayout();
+
+    common::LogicalObject* currObject = nullptr; 
+    vk::ShaderStageFlagBits stages{};
+    this->vulkanObjects.push_back(std::make_unique<VulkanObject>(this->device, this->swapChainImages.size()));
+    VulkanObject* tmpVulkanObject = this->vulkanObjects.at(0).get();
+
+    for (size_t i = 0; i < this->objectList->size(); i++) {
+        currObject = this->objectManager->Get(this->objectList->at(i));
+
+        this->numVerticies += currObject->getVerticies()->size();
+        this->numIndicies += currObject->getIndicies()->size();
+
+        //check if the vulkan object has a shader registered for the desired stage that is different than the one needed for the current object
+        for (size_t j = 0; j < this->vulkanObjects.size(); j++) {
+            //check if object shaders are in vulkan object
+            VulkanObject* object = this->vulkanObjects.at(j).get(); 
+            if (!object->hasShader(vk::ShaderStageFlagBits::eVertex) && (!object->hasShader(vk::ShaderStageFlagBits::eFragment))) {
+                //vulkan object does not have either a vertex or a fragment shader 
+                object->registerShader(vk::ShaderStageFlagBits::eVertex, currObject->getVertShader());
+                object->registerShader(vk::ShaderStageFlagBits::eFragment, currObject->getFragShader());
+                object->addObject(this->objectList->at(i), currObject, this->swapChainImages.size());
+            }
+            else if ((object->getBaseShader(vk::ShaderStageFlagBits::eVertex).containerIndex != currObject->getVertShader().containerIndex) ||
+                (object->getBaseShader(vk::ShaderStageFlagBits::eFragment).containerIndex != currObject->getFragShader().containerIndex)) {
+                //vulkan object has shaders but they are not the same as the shaders needed for current render object
+                this->vulkanObjects.push_back(std::make_unique<VulkanObject>(this->device, this->swapChainImages.size()));
+                VulkanObject* newObject = this->vulkanObjects.at(this->vulkanObjects.size()).get();
+                newObject->registerShader(vk::ShaderStageFlagBits::eVertex, currObject->getVertShader());
+                newObject->registerShader(vk::ShaderStageFlagBits::eFragment, currObject->getFragShader());
+                newObject->addObject(this->objectList->at(i), currObject, this->swapChainImages.size());
+
+            }
+            else {
+                //vulkan object has the same shaders as the render object 
+                object->addObject(this->objectList->at(i), currObject, this->swapChainImages.size());
+            }
+        }
+    }
 
         //set up pool
+    //one uniform buffer per frame
     this->globalPool = StarDescriptorPool::Builder(this->device)
+        .setMaxSets((this->swapChainImages.size()))
+        .addPoolSize(vk::DescriptorType::eUniformBuffer, this->swapChainImages.size())
+        .build();
+    //need object information for each frame 
+    this->perObjectStaticPool = StarDescriptorPool::Builder(this->device)
         .setMaxSets((this->swapChainImages.size() * tmpVulkanObject->getNumRenderObjects()))
         .addPoolSize(vk::DescriptorType::eUniformBuffer, this->swapChainImages.size() * tmpVulkanObject->getNumRenderObjects())
+        //.addPoolSize(vk::DescriptorType::eCombinedImageSampler, this->swapChainImages.size() * tmpVulkanObject->getNumRenderObjects())
         .build();
 
     this->globalSetLayout = StarDescriptorSetLayout::Builder(this->device)
         .addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
         .build();
+
+    this->perObjectStaticLayout = StarDescriptorSetLayout::Builder(this->device)
+        .addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex, 1)
+        .build(); 
+
     this->globalDescriptorSets.resize(this->swapChainImages.size());
+
+
 
     createGraphicsPipeline();
     createDepthResources();
@@ -208,34 +229,96 @@ void star::core::VulkanRenderer::prepare() {
     createIndexBuffer();
     createRenderingBuffers();
 
+    //group up descriptors into sets 
+    std::unique_ptr<std::vector<vk::DescriptorBufferInfo>> bufferInfos{}; 
+
+    //tmp
+    //this->perObjectDescriptorSets.resize(this->swapChainImages.size());
+    //for (auto& tmp : this->perObjectDescriptorSets) {
+    //    tmp.resize(tmpVulkanObject->getNumRenderObjects()); 
+    //}
+
     for (size_t i = 0; i < this->swapChainImages.size(); i++) {
-        //for (size_t j = 0; j < tmpVulkanObject->getNumRenderObjects(); j++) {
-        auto bufferInfo = vk::DescriptorBufferInfo{};
-        bufferInfo.buffer = uniformBuffers[i];
-        bufferInfo.offset = 0;
-        bufferInfo.range = sizeof(UniformBufferObject); 
+        //global
+        bufferInfos = std::make_unique<std::vector<vk::DescriptorBufferInfo>>(); 
 
-        std::vector<vk::DescriptorSet> newSets;
+        bufferInfos->push_back(vk::DescriptorBufferInfo{
+            this->globalUniformBuffers[i],
+            0,
+            sizeof(GlobalUniformBufferObject) });
+
         StarDescriptorWriter(this->device, *this->globalSetLayout, *this->globalPool)
-            .writeBuffer(0, &bufferInfo)
-            .build(newSets, true);
+            .writeBuffer(0, &bufferInfos.get()->at(0))
+            .build(this->globalDescriptorSets.at(i));
 
-        this->globalDescriptorSets[i].push_back(newSets.at(0));
+        //auto bufferInfo1 = vk::DescriptorBufferInfo{
+        //    this->uniformBuffers[i],
+        //    sizeof(UniformBufferObject),
+        //    sizeof(UniformBufferObject)
+        //}; 
 
-        auto bufferInfo2 = vk::DescriptorBufferInfo{}; 
-        bufferInfo2.buffer = uniformBuffers[i];
-        bufferInfo2.offset = sizeof(UniformBufferObject); 
-        bufferInfo2.range = sizeof(UniformBufferObject);
+        //push this to the correct object 
 
+        ////create offset into per object ubo 
+        for (size_t j = 0; j < tmpVulkanObject->getNumRenderObjects(); j++) {
+            //per object data -- updated every frame
+            auto bufferInfo = vk::DescriptorBufferInfo{
+                this->uniformBuffers[i],
+                sizeof(UniformBufferObject) * j,
+                sizeof(UniformBufferObject) };
 
-        //WARNING: only using the first set created 
-        std::vector<vk::DescriptorSet> newSetsN;
-        StarDescriptorWriter(this->device, *this->globalSetLayout, *this->globalPool)
-            .writeBuffer(0, &bufferInfo2)
-            .build(newSetsN, true);
-
-        this->globalDescriptorSets[i].push_back(newSetsN.at(0));
+            //bufferInfos = std::make_unique<std::vector<vk::DescriptorBufferInfo>>();
+            StarDescriptorWriter(this->device, *this->perObjectStaticLayout, *this->perObjectStaticPool)
+                .writeBuffer(0, &bufferInfo)
+                .build(tmpVulkanObject->getRenderObjectAt(j)->getDefaultDescriptorSets()->at(i));
+        }
     }
+
+    //bufferInfos = std::make_unique<std::vector<vk::DescriptorBufferInfo>>();
+    //bufferInfos->push_back(
+    //    vk::DescriptorBufferInfo{
+    //        this->uniformBuffers[0],
+    //        0,
+    //        sizeof(UniformBufferObject) });
+
+    //StarDescriptorWriter(this->device, *this->perObjectStaticLayout, *this->perObjectStaticPool)
+    //    .writeBuffer(0, bufferInfos.get())
+    //    .build(testSet, true);
+
+    //for (size_t i = 0; i < this->swapChainImages.size(); i++) {
+    //    //for (size_t j = 0; j < tmpVulkanObject->getNumRenderObjects(); j++) {
+    //    auto bufferInfo = vk::DescriptorBufferInfo{};
+    //    bufferInfo.buffer = uniformBuffers[i];
+    //    bufferInfo.offset = 0;
+    //    bufferInfo.range = sizeof(UniformBufferObject); 
+
+    //    std::vector<vk::DescriptorSet> newSets;
+    //    StarDescriptorWriter(this->device, *this->globalSetLayout, *this->globalPool)
+    //        .writeBuffer(0, &bufferInfo)
+    //        .build(newSets, true);
+
+    //    this->globalDescriptorSets[i].push_back(newSets.at(0));
+
+    //    auto bufferInfo2 = vk::DescriptorBufferInfo{}; 
+    //    bufferInfo2.buffer = uniformBuffers[i];
+    //    bufferInfo2.offset = sizeof(UniformBufferObject); 
+    //    bufferInfo2.range = sizeof(UniformBufferObject);
+
+
+    //    //create pool for texture and texture sampler
+    //    vk::DescriptorImageInfo imageInfo{};
+    //    imageInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+    //    imageInfo.imageView = textureImageView;
+    //    imageInfo.sampler = textureSampler;
+
+    //    //WARNING: only using the first set created 
+    //    std::vector<vk::DescriptorSet> newSetsN;
+    //    StarDescriptorWriter(this->device, *this->globalSetLayout, *this->globalPool)
+    //        .writeBuffer(0, &bufferInfo2)
+    //        .build(newSetsN, true);
+
+    //    this->globalDescriptorSets[i].push_back(newSetsN.at(0));
+    //}
 
     //createDescriptorPool();
     //createDescriptorSets();
@@ -372,7 +455,7 @@ void star::core::VulkanRenderer::cleanup() {
 
     //this->device.destroyDescriptorSetLayout(this->descriptorSetLayout);
 
-    VulkanObject* currVulkanObject = &this->vulkanObjects.at(0);
+    VulkanObject* currVulkanObject = this->vulkanObjects.at(0).get();
 
     this->device.destroyBuffer(currVulkanObject->indexBuffer);
     this->device.freeMemory(currVulkanObject->indexBufferMemory);
@@ -384,6 +467,23 @@ void star::core::VulkanRenderer::cleanup() {
         this->device.destroySemaphore(imageAvailableSemaphores[i]);
         this->device.destroyFence(inFlightFences[i]);
     }
+
+
+    currVulkanObject->cleanup(); 
+    this->device.destroyDescriptorSetLayout(this->globalSetLayout->getDescriptorSetLayout());
+    this->device.destroyDescriptorPool(this->globalPool->getDescriptorPool()); 
+    this->device.destroyDescriptorSetLayout(this->perObjectStaticLayout->getDescriptorSetLayout()); 
+    this->device.destroyDescriptorPool(this->perObjectStaticPool->getDescriptorPool()); 
+
+    //this->device.destroyDescriptorSetLayout(this->globalSetLayout->getDescriptorSetLayout()); 
+    //this->device.destroyDescriptorSetLayout(this->perObjectStaticLayout->getDescriptorSetLayout()); 
+    //for (size_t i = 0; i < currVulkanObject->getNumRenderObjects(); i++) {
+    //    currRenderObject = currVulkanObject->getRenderObjectAt(i); 
+    //    std::vector<vk::DescriptorSetcurrRenderObject->getDefaultDescriptorSets()
+    //}
+    //this->device.destroyDescriptorPool(*this->globalPool.get());
+
+    //this->device.destroyDescriptorSetLayout(*this->globalSetLayout.get()); 
 
     this->device.destroyCommandPool(this->transferCommandPool);
     this->device.destroyCommandPool(this->graphicsCommandPool);
@@ -398,7 +498,7 @@ void star::core::VulkanRenderer::cleanup() {
 }
 
 void star::core::VulkanRenderer::cleanupSwapChain() {
-    auto tmpVulkanObject = this->vulkanObjects.at(0);
+    auto& tmpVulkanObject = this->vulkanObjects.at(0);
     this->device.destroyImageView(this->depthImageView);
     this->device.destroyImage(this->depthImage);
     this->device.freeMemory(this->depthImageMemory);
@@ -410,8 +510,8 @@ void star::core::VulkanRenderer::cleanupSwapChain() {
     this->device.freeCommandBuffers(this->graphicsCommandPool, this->graphicsCommandBuffers);
 
 
-    this->device.destroyPipeline(tmpVulkanObject.pipelines.at(0));
-    this->device.destroyPipelineLayout(tmpVulkanObject.getPipelineLayout());
+    this->device.destroyPipeline(tmpVulkanObject->pipelines.at(0));
+    this->device.destroyPipelineLayout(tmpVulkanObject->getPipelineLayout());
     this->device.destroyRenderPass(this->renderPass);
 
     for (auto imageView : this->swapChainImageViews) {
@@ -423,6 +523,9 @@ void star::core::VulkanRenderer::cleanupSwapChain() {
     for (size_t i = 0; i < swapChainImages.size(); i++) {
         this->device.destroyBuffer(uniformBuffers[i]);
         this->device.freeMemory(uniformBuffersMemory[i]);
+
+        this->device.destroyBuffer(this->globalUniformBuffers[i]); 
+        this->device.freeMemory(this->globalUniformBuffersMemory[i]);
     }
 
     //this->device.destroyDescriptorPool(this->descriptorPool);
@@ -1090,6 +1193,7 @@ void star::core::VulkanRenderer::createGraphicsPipeline() {
     auto bindingDescriptions = VulkanVertex::getBindingDescription();
     auto attributeDescriptions = VulkanVertex::getAttributeDescriptions();
 
+
     //common::Object* currObject = this->objectManager->Get(objectHandle); 
 
     //auto fragShaderCode = readFile("media/shaders/fragShader.frag.spv");
@@ -1098,18 +1202,19 @@ void star::core::VulkanRenderer::createGraphicsPipeline() {
         throw std::runtime_error("The creation of more than one pipeline is not yet supported");
     }
 
-    for (VulkanObject& vulkanObject : this->vulkanObjects) {
-        auto vertShaderCode = this->shaderManager->Get(vulkanObject.getBaseShader(vk::ShaderStageFlagBits::eVertex))->GetSpirV();
-        auto fragShaderCode = this->shaderManager->Get(vulkanObject.getBaseShader(vk::ShaderStageFlagBits::eFragment))->GetSpirV();
-        vulkanObject.registerShaderModule(vk::ShaderStageFlagBits::eVertex, createShaderModule(vertShaderCode));
-        vulkanObject.registerShaderModule(vk::ShaderStageFlagBits::eFragment, createShaderModule(fragShaderCode));
+    for (size_t i = 0; i < this->vulkanObjects.size(); i++) {
+        VulkanObject* vulkanObject = this->vulkanObjects.at(i).get(); 
+        auto vertShaderCode = this->shaderManager->Get(vulkanObject->getBaseShader(vk::ShaderStageFlagBits::eVertex))->GetSpirV();
+        auto fragShaderCode = this->shaderManager->Get(vulkanObject->getBaseShader(vk::ShaderStageFlagBits::eFragment))->GetSpirV();
+        vulkanObject->registerShaderModule(vk::ShaderStageFlagBits::eVertex, createShaderModule(vertShaderCode));
+        vulkanObject->registerShaderModule(vk::ShaderStageFlagBits::eFragment, createShaderModule(fragShaderCode));
 
         //assign each shader module to a specific stage of the graphics pipeline
         //vert shader first
         vk::PipelineShaderStageCreateInfo vertShaderStageInfo{};
         vertShaderStageInfo.sType = vk::StructureType::ePipelineShaderStageCreateInfo;
         vertShaderStageInfo.stage = vk::ShaderStageFlagBits::eVertex;
-        vertShaderStageInfo.module = vulkanObject.getShaderModule(vk::ShaderStageFlagBits::eVertex);
+        vertShaderStageInfo.module = vulkanObject->getShaderModule(vk::ShaderStageFlagBits::eVertex);
         vertShaderStageInfo.pName = "main"; //the function to invoke in the shader module
         //optional member -> pSpecializationInfo: 
         //  allows specification for values to shader constants. Use a single single shader module whos function could be customized through this optional value. 
@@ -1120,7 +1225,7 @@ void star::core::VulkanRenderer::createGraphicsPipeline() {
         vk::PipelineShaderStageCreateInfo fragShaderStageInfo{};
         fragShaderStageInfo.sType = vk::StructureType::ePipelineShaderStageCreateInfo;
         fragShaderStageInfo.stage = vk::ShaderStageFlagBits::eFragment;
-        fragShaderStageInfo.module = vulkanObject.getShaderModule(vk::ShaderStageFlagBits::eFragment);
+        fragShaderStageInfo.module = vulkanObject->getShaderModule(vk::ShaderStageFlagBits::eFragment);
         fragShaderStageInfo.pName = "main";
 
         //store these creation infos for later use 
@@ -1280,7 +1385,12 @@ void star::core::VulkanRenderer::createGraphicsPipeline() {
         dynamicStateInfo.dynamicStateCount = 2;
         dynamicStateInfo.pDynamicStates = dynamicStates;
 
-        std::vector<vk::DescriptorSetLayout> descriptorSetLayouts{this->globalSetLayout->getDescriptorSetLayout()};
+        // vk::PushConstantRange pushConstant; 
+        // pushConstant.offset = 0; 
+        // pushConstant.size = sizeof(ObjectPushConstants); 
+        // pushConstant.stageFlags = vk::ShaderStageFlagBits::eVertex; 
+
+        std::vector<vk::DescriptorSetLayout> descriptorSetLayouts{this->globalSetLayout->getDescriptorSetLayout(), this->perObjectStaticLayout->getDescriptorSetLayout()};
         /* Pipeline Layout */
         //uniform values in shaders need to be defined here 
         vk::PipelineLayoutCreateInfo pipelineLayoutInfo{};
@@ -1288,14 +1398,16 @@ void star::core::VulkanRenderer::createGraphicsPipeline() {
         pipelineLayoutInfo.sType = vk::StructureType::ePipelineLayoutCreateInfo;
         pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size());
         pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
-        pipelineLayoutInfo.pushConstantRangeCount = 0;
-        pipelineLayoutInfo.pPushConstantRanges = nullptr;
+        // pipelineLayoutInfo.pushConstantRangeCount = 1;
+        // pipelineLayoutInfo.pPushConstantRanges = &pushConstant;
+        pipelineLayoutInfo.pushConstantRangeCount = 0; 
+        pipelineLayoutInfo.pPushConstantRanges = nullptr; 
 
         vk::PipelineLayout newLayout = this->device.createPipelineLayout(pipelineLayoutInfo);
         if (!newLayout) {
             throw std::runtime_error("failed to create pipeline layout");
         }
-        vulkanObject.setPipelineLayout(newLayout);
+        vulkanObject->setPipelineLayout(newLayout);
 
         /* Pipeline */
         vk::GraphicsPipelineCreateInfo pipelineInfo{};
@@ -1311,7 +1423,7 @@ void star::core::VulkanRenderer::createGraphicsPipeline() {
         pipelineInfo.pDepthStencilState = &depthStencil;
         pipelineInfo.pColorBlendState = &colorBlending;
         pipelineInfo.pDynamicState = nullptr; // Optional
-        pipelineInfo.layout = vulkanObject.getPipelineLayout();
+        pipelineInfo.layout = vulkanObject->getPipelineLayout();
         //render pass info - ensure renderpass is compatible with pipeline --check khronos docs
         pipelineInfo.renderPass = renderPass;
         pipelineInfo.subpass = 0; //index where the graphics pipeline will be used 
@@ -1330,11 +1442,11 @@ void star::core::VulkanRenderer::createGraphicsPipeline() {
         if (result.value.size() > 1) {
             throw std::runtime_error("unknown error has occurred, more than one pipeline was created ");
         }
-        vulkanObject.addPipelines(result.value);
+        vulkanObject->addPipelines(result.value);
 
         //destroy the shader modules that were created 
-        this->device.destroyShaderModule(vulkanObject.getShaderModule(vk::ShaderStageFlagBits::eVertex));
-        this->device.destroyShaderModule(vulkanObject.getShaderModule(vk::ShaderStageFlagBits::eFragment));
+        this->device.destroyShaderModule(vulkanObject->getShaderModule(vk::ShaderStageFlagBits::eVertex));
+        this->device.destroyShaderModule(vulkanObject->getShaderModule(vk::ShaderStageFlagBits::eFragment));
     }
 }
 
@@ -1735,27 +1847,28 @@ void star::core::VulkanRenderer::createVertexBuffers() {
     vk::DeviceMemory stagingBufferMemory;
 
     //TODO: ensure that more objects can be drawn 
-    common::Object* currRenderObject = nullptr;
+    common::LogicalObject* currObject = nullptr;
+
     std::vector<common::Vertex>* currRenderObjectVerticies = nullptr;
 
     std::unique_ptr<std::vector<star::common::Vertex>> vertexList;
     size_t vertexCounter = 0;
 
-    for (auto& vulkanObject : this->vulkanObjects) {
+    for (size_t i = 0; i < this->vulkanObjects.size(); i++){
+        VulkanObject* vulkanObject = this->vulkanObjects.at(i).get(); 
+
         vertexCounter = 0;
         vertexList = std::make_unique<std::vector<star::common::Vertex>>(std::vector<star::common::Vertex>());
 
-        //go through all of the render objects in the vulkanObject 
-        auto renderHandleList = vulkanObject.getRenderObjectList();
-
         //only resize vector container once 
-        vertexList->resize(vulkanObject.totalNumVerticies);
+        vertexList->resize(vulkanObject->totalNumVerticies);
 
-        for (size_t i = 0; i < renderHandleList.size(); i++) {
-            currRenderObject = this->objectManager->Get(renderHandleList.at(i));
+        for (size_t i = 0; i < vulkanObject->getNumRenderObjects(); i++) {
+            RenderObject* currRenderObject= vulkanObject->getRenderObjectAt(i);
+            currObject = this->objectManager->Get(currRenderObject->getHandle());
 
             //go through all objects in object list and generate the vertex indicies -- only works with 1 object at the moment 
-            currRenderObjectVerticies = currRenderObject->getVerticies();
+            currRenderObjectVerticies = currObject->getVerticies();
 
             //copy verticies from the render object into the total vertex list for the vulkan object
             for (size_t j = 0; j < currRenderObjectVerticies->size(); j++) {
@@ -1783,9 +1896,9 @@ void star::core::VulkanRenderer::createVertexBuffers() {
         //VK_BUFFER_USAGE_TRANSFER_SRC_BIT: buffer can be used as source in a memory transfer 
         //VK_BUFFER_USAGE_TRANSFER_DST_BIT: buffer can be used as destination in a memory transfer 
         //createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
-        createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal, vulkanObject.vertexBuffer, vulkanObject.vertexBufferMemory);
+        createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal, vulkanObject->vertexBuffer, vulkanObject->vertexBufferMemory);
 
-        copyBuffer(stagingBuffer, vulkanObject.vertexBuffer, bufferSize); //actually call to copy memory
+        copyBuffer(stagingBuffer, vulkanObject->vertexBuffer, bufferSize); //actually call to copy memory
 
 
         //cleanup 
@@ -1810,23 +1923,23 @@ void star::core::VulkanRenderer::createIndexBuffer() {
     vk::DeviceMemory stagingBufferMemory;
 
     //TODO: will only support one object at the moment
-    std::unique_ptr<std::vector<common::Handle>> renderObjectHandles;
     std::unique_ptr<std::vector<uint32_t>> indiciesList;
     std::vector<uint32_t>* currRenderObjectIndicies = nullptr;
-    common::Object* currRenderObject = nullptr;
+    common::LogicalObject* currObject = nullptr;
     size_t indexCounter = 0; //used to keep track of index offsets 
     bool firstObject = true;
 
     //go through each vulkan object and build its index list
-    for (auto& vulkanObject : this->vulkanObjects) {
+    for (size_t i = 0; i < this->vulkanObjects.size(); i++){
+        VulkanObject* vulkanObject = this->vulkanObjects.at(i).get(); 
         indiciesList = std::make_unique<std::vector<uint32_t>>(std::vector<uint32_t>());
-        renderObjectHandles = std::make_unique<std::vector<common::Handle>>(vulkanObject.getRenderObjectList());
 
         //calc number of indicies
-        indiciesList->resize(vulkanObject.totalNumIndicies);
+        indiciesList->resize(vulkanObject->totalNumIndicies);
 
-        for (size_t i = 0; i < renderObjectHandles->size(); i++) {
-            currRenderObjectIndicies = this->objectManager->Get(renderObjectHandles->at(i))->getIndicies();
+        for (size_t i = 0; i < vulkanObject->getNumRenderObjects(); i++) {
+            RenderObject* currRenderObject = vulkanObject->getRenderObjectAt(i);
+            currRenderObjectIndicies = this->objectManager->Get(currRenderObject->getHandle())->getIndicies();
 
             for (size_t j = 0; j < currRenderObjectIndicies->size(); j++) {
                 if (i > 0) {
@@ -1853,9 +1966,9 @@ void star::core::VulkanRenderer::createIndexBuffer() {
 
         //note the use of VK_BUFFER_USAGE_INDEX_BUFFER_BIT due to the use of the indicies
         //createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
-        createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal, vulkanObject.indexBuffer, vulkanObject.indexBufferMemory);
+        createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal, vulkanObject->indexBuffer, vulkanObject->indexBufferMemory);
 
-        copyBuffer(stagingBuffer, vulkanObject.indexBuffer, bufferSize);
+        copyBuffer(stagingBuffer, vulkanObject->indexBuffer, bufferSize);
 
         this->device.destroyBuffer(stagingBuffer);
         this->device.freeMemory(stagingBufferMemory);
@@ -1865,7 +1978,7 @@ void star::core::VulkanRenderer::createIndexBuffer() {
 void star::core::VulkanRenderer::createRenderingBuffers() {
     /*Create Uniform Buffer */
     //just set up the buffers, we are not going to be updating the buffers here since they need updated every frame
-    VulkanObject* tmpVulkanObject = &this->vulkanObjects.at(0); 
+    VulkanObject* tmpVulkanObject = this->vulkanObjects.at(0).get();
 
     vk::DeviceSize uboBufferSize = sizeof(UniformBufferObject) * tmpVulkanObject->getNumRenderObjects();
 
@@ -1875,6 +1988,16 @@ void star::core::VulkanRenderer::createRenderingBuffers() {
     for (size_t i = 0; i < swapChainImages.size(); i++) {
         createBuffer(uboBufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, uniformBuffers[i], uniformBuffersMemory[i]);
     }
+
+    vk::DeviceSize globalBufferSize = sizeof(GlobalUniformBufferObject); 
+
+    this->globalUniformBuffers.resize(swapChainImages.size());
+    this->globalUniformBuffersMemory.resize(swapChainImages.size()); 
+
+    for (size_t i = 0; i < swapChainImages.size(); i++) {
+        createBuffer(globalBufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, globalUniformBuffers[i], globalUniformBuffersMemory[i]); 
+    }
+
 }
 
 //void star::core::VulkanRenderer::createDescriptorPool() {
@@ -1994,7 +2117,7 @@ void star::core::VulkanRenderer::createCommandBuffers() {
             throw std::runtime_error("More than one shader group is not yet supported"); 
         }
 
-        VulkanObject* tmpVulkanObject = &this->vulkanObjects.at(0);
+        VulkanObject* tmpVulkanObject = this->vulkanObjects.at(0).get();
 
         /* Begin command buffer recording */
         for (size_t i = 0; i < graphicsCommandBuffers.size(); i++) {
@@ -2064,16 +2187,16 @@ void star::core::VulkanRenderer::createCommandBuffers() {
                 //2. compute or graphics pipeline
                 //3. pipeline object
             //vkCmdBindPipeline(graphicsCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-            this->graphicsCommandBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, vulkanObject.pipelines.at(0));
+            this->graphicsCommandBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, vulkanObject->pipelines.at(0));
 
-            vk::Buffer vertexBuffers[] = { vulkanObject.vertexBuffer };
+            vk::Buffer vertexBuffers[] = { vulkanObject->vertexBuffer };
             //TODO: need to allow for an offset for each buffer
             vk::DeviceSize offsets = {};
 
             //bind vertex buffers -> how to pass information to the vertex shader once it is uploaded to the GPU
-            this->graphicsCommandBuffers[i].bindVertexBuffers(0, vulkanObject.vertexBuffer, offsets);
+            this->graphicsCommandBuffers[i].bindVertexBuffers(0, vulkanObject->vertexBuffer, offsets);
 
-            this->graphicsCommandBuffers[i].bindIndexBuffer(vulkanObject.indexBuffer, 0, vk::IndexType::eUint32);
+            this->graphicsCommandBuffers[i].bindIndexBuffer(vulkanObject->indexBuffer, 0, vk::IndexType::eUint32);
 
             /* vkCmdBindDescriptorSets:
             *   1.
@@ -2086,10 +2209,23 @@ void star::core::VulkanRenderer::createCommandBuffers() {
             */
             //bind the right descriptor set for each swap chain image to the descripts in the shader 
             //this->graphicsCommandBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, vulkanObject.getPipelineLayout(), 0, 1, , 0, nullptr);
+
+            //bind global descriptor
+            this->graphicsCommandBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, tmpVulkanObject->getPipelineLayout(), 0, 1, &this->globalDescriptorSets.at(i), 0, nullptr);
+
             uint32_t vertexCount = 0;
+            //for (size_t j = 0; j < tmpVulkanObject->getNumRenderObjects(); j++) {
             for (size_t j = 0; j < tmpVulkanObject->getNumRenderObjects(); j++) {
-                common::Object* tmpObject = this->objectManager->Get(tmpVulkanObject->getObjectHandleAt(j)); 
-                this->graphicsCommandBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, tmpVulkanObject->getPipelineLayout(), 0, 1, &this->globalDescriptorSets.at(i).at(j), 0, nullptr);
+                // pushConstant = std::make_unique<ObjectPushConstants>();
+                // auto tmp = ObjectPushConstants(); 
+                RenderObject* renderObj = tmpVulkanObject->getRenderObjectAt(j);
+                common::LogicalObject* tmpObject = this->objectManager->Get(renderObj->getHandle());
+
+                //this->graphicsCommandBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, tmpVulkanObject->getPipelineLayout(), 0, 1, &testSet, 0, nullptr);
+                auto test = renderObj->getDefaultDescriptorSets(); 
+                this->graphicsCommandBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, tmpVulkanObject->getPipelineLayout(), 1, 1, &renderObj->getDefaultDescriptorSets()->at(i), 0, nullptr);
+                //this->graphicsCommandBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, tmpVulkanObject->getPipelineLayout(), 1, 1, &this->testSets.at((i * 2) + j), 0, nullptr);
+                //this->graphicsCommandBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, tmpVulkanObject->getPipelineLayout(), 1, 1, &this->perObjectDescriptorSets.at(i).at(j), 0, nullptr);
                 //now create call to draw
                 //Args:    
                     //2. vertexCount: how many verticies to draw
@@ -2097,15 +2233,19 @@ void star::core::VulkanRenderer::createCommandBuffers() {
                     //4. firstVertex: offset in VBO, defines lowest value of gl_VertexIndex
                     //5. firstInstance: offset for instanced rendering, defines lowest value of gl_InstanceIndex -> not using so leave at 1 
                 //TODO: currently drawing ALL verticies...might need to make more flexible with more objects
-                auto numToDraw = tmpVulkanObject->getNumIndiciesForRenderObjectAt(j);
-                vkCmdDrawIndexed(graphicsCommandBuffers[i], numToDraw, 1, 0, vertexCount, 0);
-                vertexCount += tmpVulkanObject->getNumIndiciesForRenderObjectAt(j); 
+                // pushConstant->modelIndex = j; 
+                // this->graphicsCommandBuffers[i].pushConstants(tmpVulkanObject->getPipelineLayout(), vk::ShaderStageFlagBits::eVertex, 0, sizeof(ObjectPushConstants), pushConstant.get());
+                auto numToDraw = renderObj->getNumVerticies(); 
+                this->graphicsCommandBuffers[i].drawIndexed(numToDraw, 1, 0, vertexCount, 0);
+                //vkCmdDrawIndexed(graphicsCommandBuffers[i], numToDraw, 1, 0, vertexCount, 0);
+                vertexCount += renderObj->getNumIndicies(); 
             }
 
             //vkCmdDrawIndexed(graphicsCommandBuffers[i], 3, 1, 0, 0, 0); 
 
             //can now finish render pass
-            vkCmdEndRenderPass(graphicsCommandBuffers[i]);
+            //vkCmdEndRenderPass(graphicsCommandBuffers[i]);
+            this->graphicsCommandBuffers[i].endRenderPass(); 
 
             //record command buffer
             if (vkEndCommandBuffer(graphicsCommandBuffers[i]) != VK_SUCCESS) {
@@ -2113,17 +2253,6 @@ void star::core::VulkanRenderer::createCommandBuffers() {
             }
         }
     }
-
-    /* Transfer Command Buffer */
-    //transferCommandBuffers.resize(swapChainFramebuffers.size()); 
-    //VkCommandBufferAllocateInfo transferAllocInfo{}; 
-    //transferAllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO; 
-    //transferAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; 
-    //transferAllocInfo.commandPool = transferCommandPool; 
-    //allocInfo.commandBufferCount = 1; 
-
-    //if (vkAllocateCommandBuffers(device, &transferAllocInfo, &transferCommandBuffers)); 
-
 }
 
 void star::core::VulkanRenderer::createSemaphores() {

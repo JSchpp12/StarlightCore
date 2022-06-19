@@ -12,7 +12,7 @@ star::common::Handle star::core::ObjectManager::Add(const std::string& pathToFil
 	if (!hasBeenLoaded){
 		std::unique_ptr<std::vector<common::Vertex>> readVertexList(new std::vector<common::Vertex>);
 		std::unique_ptr<std::vector<uint32_t>> readIndiciesList(new std::vector<uint32_t>);
-		std::unique_ptr<common::Object> newObject(this->create(pathToFile)); 
+		std::unique_ptr<common::LogicalObject> newObject(this->create(pathToFile)); 
 		
 		//record callbacks for object
 		return this->fileContainer.AddFileResource(pathToFile, newObject); 
@@ -43,7 +43,7 @@ star::common::Handle star::core::ObjectManager::Add(const std::string& pathToFil
 		std::unique_ptr<std::vector<uint32_t>> readIndiciesList(new std::vector<uint32_t>);
 
 		//std::unique_ptr<common::Object> newObject(this->create(pathToFile, vertShader, fragShader, texture)); 
-		std::unique_ptr<common::Object> newObject(this->create(pathToFile, texture, vertShader, fragShader)); 
+		std::unique_ptr<common::LogicalObject> newObject(this->create(pathToFile, texture, vertShader, fragShader)); 
 		return this->fileContainer.AddFileResource(pathToFile, newObject); 
 	}
 	else {
@@ -114,11 +114,11 @@ void star::core::ObjectManager::load(const std::string& pathToFile, std::vector<
 	std::cout << "Loaded: " << pathToFile << std::endl; 
 }
 
-star::common::Object* star::core::ObjectManager::create(const std::string& pathToFile, common::Handle texture, common::Handle vertShader, common::Handle fragShader) {
+star::common::LogicalObject* star::core::ObjectManager::create(const std::string& pathToFile, common::Handle texture, common::Handle vertShader, common::Handle fragShader) {
 	std::unique_ptr<std::vector<common::Vertex>> readVertexList(new std::vector<common::Vertex>);
 	std::unique_ptr<std::vector<uint32_t>> readIndiciesList(new std::vector<uint32_t>);
 
 	//load object 
 	this->load(pathToFile, readVertexList.get(), readIndiciesList.get());
-	return new common::Object(std::move(readVertexList), std::move(readIndiciesList), vertShader, fragShader, texture);
+	return new common::LogicalObject(std::move(readVertexList), std::move(readIndiciesList), vertShader, fragShader, texture);
 }

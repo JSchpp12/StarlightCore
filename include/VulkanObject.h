@@ -1,9 +1,11 @@
 #pragma once 
 
-#include "SC/Object.hpp"
+#include "SC/LogicalObject.hpp"
 #include "SC/Handle.hpp"
 #include "SC/Enums.h"
+#include "SC/Shader.h"
 #include "VulkanVertex.hpp"
+#include "Star_RenderObject.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -18,6 +20,14 @@ namespace star {
 		/// </summary>
 		class VulkanObject {
 		public:
+			class Builder {
+			public:
+
+			protected:
+
+			private: 
+
+			};
 			std::vector<vk::Pipeline> pipelines;
 
 			//vertex buffer
@@ -31,11 +41,14 @@ namespace star {
 			uint64_t totalNumVerticies = 0; 
 			uint64_t totalNumIndicies = 0; 
 
-			//std::vector<vk::DescriptorSet> imageDescriptorSets; 
+			//no copy
+			VulkanObject(const VulkanObject&) = delete; 
 
-			VulkanObject(); 
+			VulkanObject(vk::Device& device, size_t numSwapChainImages) :
+				device(device),
+				renderObjects() {};
 
-			static void registerVulkanRuntimeInfo(vk::Device newDevice, size_t numImages); 
+			void cleanup(); 
 
 			void registerShader(vk::ShaderStageFlagBits stage, common::Handle newShaderHandle); 
 
@@ -43,7 +56,7 @@ namespace star {
 			/// Add a new rendering object which will be rendered with the pipeline contained in this vulkan object.
 			/// </summary>
 			/// <param name="newObjectHandle"></param>
-			void addObject(common::Handle newObjectHandle, common::Object* newObject); 
+			void addObject(common::Handle newObjectHandle, common::LogicalObject* newObject, size_t numSwapChainImages);
 
 			/// <summary>
 			/// Get the handle for one of the base shaders of this object.
@@ -80,38 +93,21 @@ namespace star {
 
 			size_t getNumRenderObjects(); 
 
-			common::Handle getObjectHandleAt(const size_t& index); 
-
-			std::vector<common::Handle> getRenderObjectList(); 
-
-			uint32_t getNumIndiciesForRenderObjectAt(size_t index); 
+			RenderObject* getRenderObjectAt(size_t index);
 
 		protected:
 
 
 		private:
-			struct descriptorSetData {
-				vk::DescriptorSet descriptorSet;
-				vk::DescriptorSetLayout layout; 
-			};
-			struct perImageData {
-				vk::Buffer uniformBuffer; 
-				std::vector<descriptorSetData> uboDescriptorSets;
-			};
-
-			static vk::Device device; 
-			static size_t numInFlightImages; 
-			static bool deviceRegistered;
+			vk::Device& device; 
 
 			//only 10 of these are permitted in general 
 			vk::DescriptorPool descriptorPool; 
 
 			std::map<vk::ShaderStageFlagBits, common::Handle> shaderContainer; 
 			std::map<vk::ShaderStageFlagBits, vk::ShaderModule> shaderModuleContainer; 
-			std::vector<common::Handle> baseObjectHandles;
-			std::vector<perImageData> perImageData; 
-			std::vector<size_t> numVerticiesPerObject; 
-			std::vector<size_t> numIndiciesPerObject; 
+
+			std::vector<std::unique_ptr<RenderObject>> renderObjects; 
 
 			vk::PipelineLayout pipelineLayout;
 		};

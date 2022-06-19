@@ -32,7 +32,7 @@ namespace star {
             std::unique_ptr<const char**> glfwRequiredExtensions;
             std::unique_ptr<uint32_t> glfwRequiredExtensionsCount;
 
-            VulkanRenderer(common::ConfigFile* configFile, common::FileResourceManager<common::Shader>* shaderManager, common::FileResourceManager<common::Object>* objectManager, common::FileResourceManager<common::Texture>* textureManager, common::Camera* inCamera, std::vector<common::Handle>* objectHandleList);
+            VulkanRenderer(common::ConfigFile* configFile, common::FileResourceManager<common::Shader>* shaderManager, common::FileResourceManager<common::LogicalObject>* objectManager, common::FileResourceManager<common::Texture>* textureManager, common::Camera* inCamera, std::vector<common::Handle>* objectHandleList);
 
             ~VulkanRenderer();
 
@@ -76,7 +76,7 @@ namespace star {
             const bool enableValidationLayers = true;
 #endif    
 
-            std::vector<VulkanObject> vulkanObjects;
+            std::vector<std::unique_ptr<VulkanObject>> vulkanObjects;
 
             bool frameBufferResized = false; //explicit declaration of resize, used if driver does not trigger VK_ERROR_OUT_OF_DATE
 
@@ -106,6 +106,11 @@ namespace star {
             //storage for multiple buffers for each swap chain image 
             std::vector<vk::Buffer> uniformBuffers;
             std::vector<vk::DeviceMemory> uniformBuffersMemory;
+            std::vector<vk::Buffer> globalUniformBuffers; 
+            std::vector<vk::DeviceMemory> globalUniformBuffersMemory; 
+
+            std::vector<vk::DescriptorSet> globalDescriptorSets; 
+            //std::vector<std::vector<vk::DescriptorSet>> perObjectDescriptorSets; 
 
             //pipeline and dependency storage
             vk::RenderPass renderPass;
@@ -130,8 +135,10 @@ namespace star {
             std::vector<vk::Fence> imagesInFlight;
 
             std::unique_ptr<StarDescriptorPool> globalPool{};
+            std::unique_ptr<StarDescriptorPool> perObjectDynamicPool{}; 
+            std::unique_ptr<StarDescriptorPool> perObjectStaticPool{}; 
             std::unique_ptr<StarDescriptorSetLayout> globalSetLayout{}; 
-            std::vector<std::vector<vk::DescriptorSet>> globalDescriptorSets; 
+            std::unique_ptr<StarDescriptorSetLayout> perObjectStaticLayout{};
 
 
             //depth testing storage 

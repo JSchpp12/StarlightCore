@@ -64,6 +64,8 @@ SET(${PROJECT_NAME}_SOURCES
 	"src/VulkanObject.cpp"
 	#composite files 
 	"src/Star_Descriptors.cpp"
+	"src/Star_Texture.cpp"
+	"src/Star_RenderObject.cpp"
 )
   
 SET(${PROJECT_NAME}_HEADERS
@@ -82,6 +84,8 @@ SET(${PROJECT_NAME}_HEADERS
 	"include/MemoryDescriptor.h"
 	#composite files
 	"include/Star_Descriptors.hpp"
+	"include/Star_Texture.hpp"
+	"include/Star_RenderObject.hpp"
 	#header only files
 	"include/VulkanVertex.hpp"
 )

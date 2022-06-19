@@ -69,7 +69,9 @@ namespace star {
 			StarDescriptorPool(vk::Device& device, uint32_t maxSets, vk::DescriptorPoolCreateFlags poolFlags, const std::vector<vk::DescriptorPoolSize>& poolSizes);
 			~StarDescriptorPool(); 
 
-			bool allocateDescriptorSet(const vk::DescriptorSetLayout descriptorSetLayout, std::vector<vk::DescriptorSet>& descriptor);
+			vk::DescriptorPool getDescriptorPool(); 
+
+			bool allocateDescriptorSet(const vk::DescriptorSetLayout descriptorSetLayout, vk::DescriptorSet& descriptorSets);
 
 			void freeDescriptors(std::vector<vk::DescriptorSet>& descriptors) const;
 
@@ -90,11 +92,11 @@ namespace star {
 		public:
 			StarDescriptorWriter(vk::Device& device, StarDescriptorSetLayout& setLayout, StarDescriptorPool& pool); 
 
-			StarDescriptorWriter& writeBuffer(uint32_t binding, vk::DescriptorBufferInfo* bufferInfo); 
+			StarDescriptorWriter& writeBuffer(uint32_t binding, vk::DescriptorBufferInfo* bufferInfos); 
 
 			StarDescriptorWriter& writeImage(uint32_t binding, vk::DescriptorImageInfo* imageInfo); 
 
-			bool build(std::vector<vk::DescriptorSet>& set, bool callVulkanUpdate = false);
+			bool build(vk::DescriptorSet& set);
 
 			void overwrite(vk::DescriptorSet& set);
 

@@ -43,7 +43,7 @@ namespace core {
 	}
 
 	StarDescriptorSetLayout::~StarDescriptorSetLayout() {
-		this->device.destroyDescriptorSetLayout(this->descriptorSetLayout, nullptr); 
+		//this->device.destroyDescriptorSetLayout(this->descriptorSetLayout, nullptr); 
 	}
 
 
@@ -89,23 +89,25 @@ namespace core {
 	}
 
 	StarDescriptorPool::~StarDescriptorPool() {
-		this->device.destroyDescriptorPool(this->descriptorPool); 
+		//this->device.destroyDescriptorPool(this->descriptorPool); 
 	}
 
-	bool StarDescriptorPool::allocateDescriptorSet(const vk::DescriptorSetLayout descriptorSetLayout, std::vector<vk::DescriptorSet>& descriptorSet) {
+	vk::DescriptorPool StarDescriptorPool::getDescriptorPool() {
+		return this->descriptorPool; 
+	}
+
+	bool StarDescriptorPool::allocateDescriptorSet(const vk::DescriptorSetLayout descriptorSetLayout, vk::DescriptorSet& descriptorSet) {
 		vk::DescriptorSetAllocateInfo allocInfo{}; 
 		allocInfo.sType = vk::StructureType::eDescriptorSetAllocateInfo; 
 		allocInfo.descriptorPool = this->descriptorPool; 
 		allocInfo.pSetLayouts = &descriptorSetLayout;
-		allocInfo.descriptorSetCount = 1; 
+		allocInfo.descriptorSetCount = 1;
 
-		descriptorSet = this->device.allocateDescriptorSets(allocInfo); 
-		if (descriptorSet.size() == 0) {
+		if (this->device.allocateDescriptorSets(&allocInfo, &descriptorSet) != vk::Result::eSuccess) {
 			return false; 
 		}
-		else {
-			return true;
-		}
+
+		return true; 
 	}
 
 	void StarDescriptorPool::freeDescriptors(std::vector<vk::DescriptorSet>& descriptors) const {
@@ -125,18 +127,17 @@ namespace core {
 		setLayout{setLayout}, 
 		pool{ pool } {}
 
-	StarDescriptorWriter& StarDescriptorWriter::writeBuffer(uint32_t binding, vk::DescriptorBufferInfo* bufferInfo) {
+	StarDescriptorWriter& StarDescriptorWriter::writeBuffer(uint32_t binding, vk::DescriptorBufferInfo* bufferInfos) {
 		assert(this->setLayout.bindings.count(binding) == 1 && "Layout does not contain binding specified"); 
 
 		auto& bindingDescription = this->setLayout.bindings[binding]; 
-		assert(bindingDescription.descriptorCount == 1 && "Binding single descriptio info, but binding expects multiple"); 
-
 		vk::WriteDescriptorSet writeSet{}; 
 		writeSet.sType = vk::StructureType::eWriteDescriptorSet; 
 		writeSet.descriptorType = bindingDescription.descriptorType; 
 		writeSet.dstBinding = binding; 
-		writeSet.pBufferInfo = bufferInfo; 
-		writeSet.descriptorCount = 1; 
+		writeSet.pBufferInfo = bufferInfos;
+		//writeSet.descriptorCount = static_cast<uint32_t>(bufferInfos->size());
+		writeSet.descriptorCount = 1;
 
 		this->writeSets.push_back(writeSet); 
 		return *this;
@@ -159,17 +160,12 @@ namespace core {
 		return *this;
 	}
 
-	bool StarDescriptorWriter::build(std::vector<vk::DescriptorSet>& set, bool callVVulkanUpdate) {
+	bool StarDescriptorWriter::build(vk::DescriptorSet& set) {
 		bool success = this->pool.allocateDescriptorSet(setLayout.getDescriptorSetLayout(), set);
-		if (callVVulkanUpdate) {
-			assert(set.size() == this->writeSets.size() && "The same number of descriptor sets was not provided for the number of sets being created");
-			for (size_t i = 0; i < this->writeSets.size(); i++) {
-				vk::WriteDescriptorSet& currSet = this->writeSets.at(i);
-				currSet.dstSet = set[i];
-			}
-			
-			this->device.updateDescriptorSets(this->writeSets, nullptr);
+		if (!success) {
+			return false; 
 		}
+		overwrite(set);
 		return success; 
 	}
 
@@ -177,7 +173,7 @@ namespace core {
 		for (auto& write : this->writeSets) {
 			write.dstSet = set;
 		}
-		this->device.updateDescriptorSets(this->writeSets, nullptr); 
+		this->device.updateDescriptorSets(this->writeSets, nullptr);
 	}
 }
 }
