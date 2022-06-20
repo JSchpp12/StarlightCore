@@ -4,14 +4,14 @@ typedef std::chrono::high_resolution_clock Clock;
 
 star::core::VulkanRenderer::VulkanRenderer(common::ConfigFile* configFile,
     common::FileResourceManager<common::Shader>* shaderManager,
-    common::FileResourceManager<common::LogicalObject>* objectManager,
+    common::FileResourceManager<common::GameObject>* objectManager,
     common::FileResourceManager<common::Texture>* textureManager,
     common::Camera* inCamera,
     std::vector<common::Handle>* objectHandleList) :
     star::common::Renderer(configFile, shaderManager, objectManager, textureManager, inCamera, objectHandleList),
     glfwRequiredExtensionsCount(new uint32_t)
 {
-    common::LogicalObject* currentObject;
+    common::GameObject* currentObject;
 
     //TODO: check data before creating needed objects -- ensure all objects are valid  
     //find out how many unique vulkan objects will be needed 
@@ -44,7 +44,7 @@ void star::core::VulkanRenderer::updateUniformBuffer(uint32_t currentImage) {
     //update per object data
 
     VulkanObject* tmpVulkanObject = this->vulkanObjects.at(0).get();
-    common::LogicalObject* currObject = nullptr;
+    common::GameObject* currObject = nullptr;
 
     std::vector<UniformBufferObject> ubos; 
     ubos.resize(tmpVulkanObject->getNumRenderObjects());
@@ -155,7 +155,7 @@ void star::core::VulkanRenderer::prepare() {
     createImageViews();
     createRenderPass();
 
-    common::LogicalObject* currObject = nullptr; 
+    common::GameObject* currObject = nullptr; 
     vk::ShaderStageFlagBits stages{};
     this->vulkanObjects.push_back(std::make_unique<VulkanObject>(this->device, this->swapChainImages.size()));
     VulkanObject* tmpVulkanObject = this->vulkanObjects.at(0).get();
@@ -1847,7 +1847,7 @@ void star::core::VulkanRenderer::createVertexBuffers() {
     vk::DeviceMemory stagingBufferMemory;
 
     //TODO: ensure that more objects can be drawn 
-    common::LogicalObject* currObject = nullptr;
+    common::GameObject* currObject = nullptr;
 
     std::vector<common::Vertex>* currRenderObjectVerticies = nullptr;
 
@@ -1925,7 +1925,7 @@ void star::core::VulkanRenderer::createIndexBuffer() {
     //TODO: will only support one object at the moment
     std::unique_ptr<std::vector<uint32_t>> indiciesList;
     std::vector<uint32_t>* currRenderObjectIndicies = nullptr;
-    common::LogicalObject* currObject = nullptr;
+    common::GameObject* currObject = nullptr;
     size_t indexCounter = 0; //used to keep track of index offsets 
     bool firstObject = true;
 
@@ -2219,7 +2219,7 @@ void star::core::VulkanRenderer::createCommandBuffers() {
                 // pushConstant = std::make_unique<ObjectPushConstants>();
                 // auto tmp = ObjectPushConstants(); 
                 RenderObject* renderObj = tmpVulkanObject->getRenderObjectAt(j);
-                common::LogicalObject* tmpObject = this->objectManager->Get(renderObj->getHandle());
+                common::GameObject* tmpObject = this->objectManager->Get(renderObj->getHandle());
 
                 //this->graphicsCommandBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, tmpVulkanObject->getPipelineLayout(), 0, 1, &testSet, 0, nullptr);
                 auto test = renderObj->getDefaultDescriptorSets(); 

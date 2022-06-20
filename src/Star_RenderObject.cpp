@@ -2,7 +2,7 @@
 
 namespace star{
 namespace core {
-	RenderObject::Builder& RenderObject::Builder::setFromObject(common::Handle objectHandle, common::LogicalObject* object) {
+	RenderObject::Builder& RenderObject::Builder::setFromObject(common::Handle objectHandle, common::GameObject* object) {
 		this->numVerticies = object->getVerticies()->size(); 
 		this->numIndicies = object->getIndicies()->size(); 
 		this->objectHandle = objectHandle; 

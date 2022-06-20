@@ -14,7 +14,7 @@ void VulkanObject::registerShader(vk::ShaderStageFlagBits stage, common::Handle 
 	this->shaderContainer.insert(std::pair<vk::ShaderStageFlagBits, common::Handle>(stage, newShaderHandle));
 }
 
-void VulkanObject::addObject(common::Handle newObjectHandle, common::LogicalObject* newObject, size_t numSwapChainImages) {
+void VulkanObject::addObject(common::Handle newObjectHandle, common::GameObject* newObject, size_t numSwapChainImages) {
 	auto numIndicies = newObject->getIndicies()->size();
 	auto numVerticies = newObject->getVerticies()->size();
 

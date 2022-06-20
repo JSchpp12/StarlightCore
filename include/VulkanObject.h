@@ -1,6 +1,6 @@
 #pragma once 
 
-#include "SC/LogicalObject.hpp"
+#include "SC/GameObject.hpp"
 #include "SC/Handle.hpp"
 #include "SC/Enums.h"
 #include "SC/Shader.h"
@@ -56,7 +56,7 @@ namespace star {
 			/// Add a new rendering object which will be rendered with the pipeline contained in this vulkan object.
 			/// </summary>
 			/// <param name="newObjectHandle"></param>
-			void addObject(common::Handle newObjectHandle, common::LogicalObject* newObject, size_t numSwapChainImages);
+			void addObject(common::Handle newObjectHandle, common::GameObject* newObject, size_t numSwapChainImages);
 
 			/// <summary>
 			/// Get the handle for one of the base shaders of this object.

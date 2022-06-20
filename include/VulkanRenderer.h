@@ -32,7 +32,7 @@ namespace star {
             std::unique_ptr<const char**> glfwRequiredExtensions;
             std::unique_ptr<uint32_t> glfwRequiredExtensionsCount;
 
-            VulkanRenderer(common::ConfigFile* configFile, common::FileResourceManager<common::Shader>* shaderManager, common::FileResourceManager<common::LogicalObject>* objectManager, common::FileResourceManager<common::Texture>* textureManager, common::Camera* inCamera, std::vector<common::Handle>* objectHandleList);
+            VulkanRenderer(common::ConfigFile* configFile, common::FileResourceManager<common::Shader>* shaderManager, common::FileResourceManager<common::GameObject>* objectManager, common::FileResourceManager<common::Texture>* textureManager, common::Camera* inCamera, std::vector<common::Handle>* objectHandleList);
 
             ~VulkanRenderer();
 

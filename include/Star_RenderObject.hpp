@@ -1,7 +1,7 @@
 #pragma once 
 
 #include "SC/Handle.hpp"
-#include "SC/LogicalObject.hpp"
+#include "SC/GameObject.hpp"
 #include "SC/Vertex.hpp"
 
 #include <vulkan/vulkan.hpp>
@@ -17,7 +17,7 @@ namespace core {
 		//eventually use for adding new buffers and shader data to the object which will be queried before draw time
 		class Builder {
 		public:
-			Builder& setFromObject(common::Handle objectHandle, common::LogicalObject* object); 
+			Builder& setFromObject(common::Handle objectHandle, common::GameObject* object); 
 
 			/// <summary>
 			/// Record the number of images in the swapchain. This will be used to resize the descriptor bindings. 
