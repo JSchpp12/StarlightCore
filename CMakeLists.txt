@@ -61,8 +61,13 @@ SET(${PROJECT_NAME}_SOURCES
 	"src/Object.cpp"
 	"src/TextureManager.cpp"
 	"src/VulkanRenderer.cpp"
+	"src/VulkanObject.cpp"
+	#composite files 
+	"src/Star_Descriptors.cpp"
+	"src/Star_Texture.cpp"
+	"src/Star_RenderObject.cpp"
 )
-
+  
 SET(${PROJECT_NAME}_HEADERS
 	"include/Compiler.h"
 	"include/GLSLShader.h"
@@ -72,10 +77,17 @@ SET(${PROJECT_NAME}_HEADERS
 	"include/ObjectManager.h"
 	"include/Object.h"
 	"include/TextureManager.h"
-	"include/VulkanVertex.hpp"
 	"include/RenderEngine.h"
 	"include/Windowing.h"
 	"include/VulkanRenderer.h"
+	"include/VulkanObject.h"
+	"include/MemoryDescriptor.h"
+	#composite files
+	"include/Star_Descriptors.hpp"
+	"include/Star_Texture.hpp"
+	"include/Star_RenderObject.hpp"
+	#header only files
+	"include/VulkanVertex.hpp"
 )
 
 SET(${PROJECT_NAME}_INCLUDE "${PROJECT_SOURCE_DIR}/src")

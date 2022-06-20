@@ -14,16 +14,23 @@ star::common::Handle star::core::ShaderManager::Add(const std::string& pathToFil
     //create shader object for new thing 
     common::Shader_File_Type fileType = common::FileHelpers::GetFileType(pathToFile); 
 
-    common::Pipe_Stage stage = common::FileHelpers::GetStageOfShader(pathToFile); 
+    common::Shader_Stage stage = common::FileHelpers::GetStageOfShader(pathToFile); 
 
     //check if shader was previously requested
     bool hasBeenLoaded = this->fileContainer.FileLoaded(pathToFile); 
     if(!hasBeenLoaded && (fileType == common::Shader_File_Type::glsl)){
-        std::unique_ptr<common::Shader> newShader(GLSLShader::New(stage, pathToFile));
+        std::unique_ptr<common::Shader> newShader(GLSLShader::New(pathToFile));
         std::cout << "Completed compilation of: " << pathToFile << std::endl; 
-        return this->fileContainer.AddFileResource(pathToFile, newShader);  
-    }else{
-        throw std::runtime_error("This file type is not yet supported"); 
+        common::Handle handle = this->fileContainer.AddFileResource(pathToFile, newShader);  
+        handle.shaderStage = stage; 
+        return handle; 
+    }
+    else if (hasBeenLoaded) {
+        std::cout << "Shader has already been loaded. Returning shared object." << std::endl;
+        return this->fileContainer.GetResource(pathToFile); 
+    }
+    else {
+        throw std::runtime_error("This file type is not yet supported");
     }
 }
 

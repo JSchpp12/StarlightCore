@@ -7,7 +7,11 @@
 #include "SC/ConfigFile.hpp"
 #include "SC/Handle.hpp"
 #include "SC/Camera.hpp"
+#include "SC/Enums.h"
 #include "VulkanVertex.hpp"
+#include "VulkanObject.h"
+#include "Star_Descriptors.hpp"
+
 
 #include <stb_image.h>
 
@@ -18,37 +22,37 @@
 #include <set>
 #include <chrono>
 
-namespace star{
-    namespace core{
-        class VulkanRenderer : public common::Renderer{
+namespace star {
+    namespace core {
+        class VulkanRenderer : public common::Renderer {
         public:
             vk::Instance instance;
             vk::UniqueSurfaceKHR* surface;
 
-            std::unique_ptr<const char**> glfwRequiredExtensions; 
+            std::unique_ptr<const char**> glfwRequiredExtensions;
             std::unique_ptr<uint32_t> glfwRequiredExtensionsCount;
-            
-            VulkanRenderer(common::ConfigFile* configFile, common::FileResourceManager<common::Shader>* shaderManager, common::FileResourceManager<common::Object>* objectManager, common::FileResourceManager<common::Texture>* textureManager, common::Camera* inCamera, std::vector<common::Handle>* objectHandleList);
-            
-            ~VulkanRenderer(); 
+
+            VulkanRenderer(common::ConfigFile* configFile, common::FileResourceManager<common::Shader>* shaderManager, common::FileResourceManager<common::GameObject>* objectManager, common::FileResourceManager<common::Texture>* textureManager, common::Camera* inCamera, std::vector<common::Handle>* objectHandleList);
+
+            ~VulkanRenderer();
 
             //Create the vulkan instance machine 
             void createInstance();
 
             //attach vulkan to GLFW
-            void prepareGLFW(int width, int height, GLFWkeyfun keyboardCallbackFunction,GLFWmousebuttonfun mouseButtonCallback, GLFWcursorposfun cursorPositionCallback, GLFWscrollfun scrollCallback);
+            void prepareGLFW(int width, int height, GLFWkeyfun keyboardCallbackFunction, GLFWmousebuttonfun mouseButtonCallback, GLFWcursorposfun cursorPositionCallback, GLFWscrollfun scrollCallback);
 
-            bool shouldCloseWindow(); 
+            bool shouldCloseWindow();
 
-            void pollEvents(); 
+            void pollEvents();
 
             void prepare();
 
-            void draw();  
+            void draw();
 
-            void cleanup(); 
-        
-        protected: 
+            void cleanup();
+
+        protected:
             struct QueueFamilyIndices {
                 std::optional<uint32_t> graphicsFamily;
                 std::optional<uint32_t> presentFamily;
@@ -64,13 +68,15 @@ namespace star{
                 std::vector<vk::SurfaceFormatKHR> formats;
                 std::vector<vk::PresentModeKHR> presentModes;
             };
-            const bool enableValidationLayers = true;
 
-/*            #ifdef NDEBUG 
-                const bool enableValidationLayers = false;
-            #else
-                const bool enableValidationLayers = true;
-            #endif  */  
+
+#ifdef NDEBUG 
+            const bool enableValidationLayers = false;
+#else
+            const bool enableValidationLayers = true;
+#endif    
+
+            std::vector<std::unique_ptr<VulkanObject>> vulkanObjects;
 
             bool frameBufferResized = false; //explicit declaration of resize, used if driver does not trigger VK_ERROR_OUT_OF_DATE
 
@@ -82,19 +88,13 @@ namespace star{
 
             //texture information
             vk::ImageView textureImageView;
-            vk::Sampler textureSampler; 
-            vk::Image textureImage; 
-            vk::DeviceMemory textureImageMemory; 
+            vk::Sampler textureSampler;
+            vk::Image textureImage;
+            vk::DeviceMemory textureImageMemory;
 
             //Sync obj storage 
             std::vector<vk::Semaphore> imageAvailableSemaphores;
             std::vector<vk::Semaphore> renderFinishedSemaphores;
-
-            //buffer and memory information storage
-            vk::Buffer vertexBuffer;
-            vk::DeviceMemory vertexBufferMemory;
-            vk::Buffer indexBuffer; 
-            vk::DeviceMemory indexBufferMemory;
 
             //vulkan command storage
             vk::CommandPool graphicsCommandPool;
@@ -104,17 +104,16 @@ namespace star{
             vk::CommandPool tempCommandPool; //command pool for temporary use in small operations
 
             //storage for multiple buffers for each swap chain image 
-            std::vector<vk::Buffer> uniformBuffers; 
+            std::vector<vk::Buffer> uniformBuffers;
             std::vector<vk::DeviceMemory> uniformBuffersMemory;
+            std::vector<vk::Buffer> globalUniformBuffers; 
+            std::vector<vk::DeviceMemory> globalUniformBuffersMemory; 
+
+            std::vector<vk::DescriptorSet> globalDescriptorSets; 
+            //std::vector<std::vector<vk::DescriptorSet>> perObjectDescriptorSets; 
 
             //pipeline and dependency storage
-            vk::Pipeline graphicsPipeline;
             vk::RenderPass renderPass;
-            vk::DescriptorSetLayout descriptorSetLayout;
-            vk::PipelineLayout pipelineLayout;
-
-            vk::DescriptorPool descriptorPool;
-            std::vector<vk::DescriptorSet> descriptorSets; 
 
             //queue family
             vk::Queue graphicsQueue;
@@ -135,10 +134,17 @@ namespace star{
             std::vector<vk::Fence> inFlightFences;
             std::vector<vk::Fence> imagesInFlight;
 
+            std::unique_ptr<StarDescriptorPool> globalPool{};
+            std::unique_ptr<StarDescriptorPool> perObjectDynamicPool{}; 
+            std::unique_ptr<StarDescriptorPool> perObjectStaticPool{}; 
+            std::unique_ptr<StarDescriptorSetLayout> globalSetLayout{}; 
+            std::unique_ptr<StarDescriptorSetLayout> perObjectStaticLayout{};
+
+
             //depth testing storage 
-            vk::Image depthImage; 
-            vk::DeviceMemory depthImageMemory; 
-            vk::ImageView depthImageView; 
+            vk::Image depthImage;
+            vk::DeviceMemory depthImageMemory;
+            vk::ImageView depthImageView;
 
             const std::vector<const char*> validationLayers = {
                 "VK_LAYER_KHRONOS_validation"
@@ -150,7 +156,7 @@ namespace star{
 
             void updateUniformBuffer(uint32_t currentImage);
 
-            void cleanupSwapChain(); 
+            void cleanupSwapChain();
 
             /// <summary>
             /// Check if validation layers are supported and create the layers if needed. Will create layers for debugging builds only.
@@ -181,7 +187,7 @@ namespace star{
             SwapChainSupportDetails querySwapChainSupport(vk::PhysicalDevice device);
 
             //Create a logical device to communicate with the physical device 
-            void createLogicalDevice();     
+            void createLogicalDevice();
 
             /// <summary>
             /// Create a swap chain that will be used in rendering images
@@ -193,12 +199,12 @@ namespace star{
             /// </summary>
             void recreateSwapChain();
 
-            vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats); 
+            vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats);
 
             //Look through givent present modes and pick the "best" one
             vk::PresentModeKHR chooseSwapPresentMode(const std::vector<vk::PresentModeKHR>& availablePresentModes);
 
-            vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR & capabilities);
+            vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities);
 
             /// <summary>
             /// Create an image view object for use in the rendering pipeline
@@ -232,7 +238,7 @@ namespace star{
             /// <summary>
             /// Create the descriptors for the buffers that will be passed to the GPU with additional information regarding verticies. (model-view-projection matricies)
             /// </summary>
-            void createDescriptorSetLayout();
+            //void createDescriptorSetLayout();
 
             /// <summary>
             /// Create a graphics pipeline to handle the needs for the application with the vertex and fragment shaders. The pipeline is immutable so it must be created if any changes are needed.
@@ -323,9 +329,9 @@ namespace star{
             void createTextureSampler();
 
             /// <summary>
-            /// Create a vertex buffer to hold the vertex information that will be passed to the GPU. 
+            /// Create needed vertex buffers for each vulkan object. 
             /// </summary>
-            void createVertexBuffer();
+            void createVertexBuffers();
 
             /// <summary>
             /// Create a buffer to contain vertex indicies information before being passed to the GPU. 
@@ -337,7 +343,7 @@ namespace star{
             /// </summary>
             void createRenderingBuffers();
 
-            /// <summary>
+   /*         /// <summary>
             /// Create descriptor pools to bind the uniform buffer descriptor to each VkBuffer. 
             /// </summary>
             void createDescriptorPool();
@@ -345,7 +351,7 @@ namespace star{
             /// <summary>
             /// Allocate memory for the descriptor sets. 
             /// </summary>
-            void createDescriptorSets();
+            void createDescriptorSets();*/
 
             /// <summary>
             /// Allocate and record the commands for each swapchain image
@@ -385,15 +391,15 @@ namespace star{
             void copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size);
 
 #pragma endregion
-        private:  
-            GLFWwindow* glfwWindow; 
-            std::vector<common::Handle>* objectHandles; 
+        private:
+            GLFWwindow* glfwWindow;
+            std::vector<common::Handle>* objectHandles;
 
 #pragma region DebugVars
             size_t numVerticies = 0;
             size_t numIndicies = 0;
 #pragma endregion
-            
-        }; 
+
+        };
     }
 }
