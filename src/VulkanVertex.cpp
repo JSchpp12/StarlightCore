@@ -1,4 +1,1 @@
 #include "VulkanVertex.hpp"
-
-
-

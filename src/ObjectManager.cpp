@@ -70,12 +70,29 @@ void star::core::ObjectManager::load(const std::string& pathToFile, std::vector<
 		for (const auto& index : shape.mesh.indices) {
 			common::Vertex vertex{};
 
-			vertex.pos = {
-				//must multiply index by 3 due to object being type float rather than glm::vec3 
-				attrib.vertices[3 * index.vertex_index + 0],
-				attrib.vertices[3 * index.vertex_index + 1],
-				attrib.vertices[3 * index.vertex_index + 2]
-			};
+			if (index.vertex_index >= 0) {
+				vertex.pos = {
+					//must multiply index by 3 due to object being type float rather than glm::vec3 
+					attrib.vertices[3 * index.vertex_index + 0],
+					attrib.vertices[3 * index.vertex_index + 1],
+					attrib.vertices[3 * index.vertex_index + 2]
+				};
+
+				vertex.color = {
+					attrib.colors[3 * index.vertex_index + 0],
+					attrib.colors[3 * index.vertex_index + 1],
+					attrib.colors[3 * index.vertex_index + 2],
+				};
+			}
+
+			if (index.normal_index >= 0) {
+				vertex.normal = {
+					attrib.normals[3 * index.normal_index + 0],
+					attrib.normals[3 * index.normal_index + 1],
+					attrib.normals[3 * index.normal_index + 2],
+				};
+			}
+
 
 			//TODO: scaling very bad...switch to method of moving camera 
 			if (vertex.pos.x > maxVal) {
@@ -97,20 +114,13 @@ void star::core::ObjectManager::load(const std::string& pathToFile, std::vector<
 			indiciesList->push_back(indiciesList->size());
 		}
 	}
-
-	//scale up factor 
-	//maxVal *= 0.5;
-
-	//SAME AS ABOVE 
 	common::Vertex* currVertex;
 	for (size_t i = 0; i < vertexList->size(); i++) {
 		currVertex = &vertexList->at(i);
 		currVertex->pos.x /= maxVal;
 		currVertex->pos.y /= maxVal;
 		currVertex->pos.z /= maxVal;
-		currVertex->pos.z -= 0.7;
 	}
-
 	std::cout << "Loaded: " << pathToFile << std::endl; 
 }
 
