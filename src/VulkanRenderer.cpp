@@ -18,7 +18,7 @@ star::core::VulkanRenderer::VulkanRenderer(common::ConfigFile* configFile,
 }
 
 star::core::VulkanRenderer::~VulkanRenderer() {
-    this->device.waitIdle();
+    this->starDevice->getDevice().waitIdle();
     cleanup();
 
 }
@@ -37,9 +37,9 @@ void star::core::VulkanRenderer::updateUniformBuffer(uint32_t currentImage) {
     globalUbo.view = this->camera->getDisplayMatrix();
     //globalUbo.view = glm::lookAt(glm::vec3(3.0f, 3.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 
-    void* globalData = this->device.mapMemory(this->globalUniformBuffersMemory[currentImage], 0, sizeof(GlobalUniformBufferObject));
+    void* globalData = this->starDevice->getDevice().mapMemory(this->globalUniformBuffersMemory[currentImage], 0, sizeof(GlobalUniformBufferObject));
     memcpy(globalData, &globalUbo, sizeof(globalUbo)); 
-    this->device.unmapMemory(globalUniformBuffersMemory[currentImage]);
+    this->starDevice->getDevice().unmapMemory(globalUniformBuffersMemory[currentImage]);
 
     //update per object data
 
@@ -56,9 +56,9 @@ void star::core::VulkanRenderer::updateUniformBuffer(uint32_t currentImage) {
     //obj.model = currObject->getDisplayMatrix(); 
     ////obj.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 
-    //void* data = this->device.mapMemory(this->uniformBuffersMemory[currentImage], 0, sizeof(UniformBufferObject));
+    //void* data = this->starDevice->getDevice().mapMemory(this->uniformBuffersMemory[currentImage], 0, sizeof(UniformBufferObject));
     //memcpy(data, &obj, sizeof(obj));
-    //this->device.unmapMemory(uniformBuffersMemory[currentImage]); 
+    //this->starDevice->getDevice().unmapMemory(uniformBuffersMemory[currentImage]); 
 
     std::unique_ptr<UniformBufferObject> newBufferObject; 
     auto test = tmpVulkanObject->getNumRenderObjects();
@@ -97,9 +97,9 @@ void star::core::VulkanRenderer::updateUniformBuffer(uint32_t currentImage) {
 
     auto tmp1 = sizeof(UniformBufferObject);
     auto tmp = sizeof(ubos) * ubos.size();
-    void* data = this->device.mapMemory(this->uniformBuffersMemory[currentImage], 0, sizeof(UniformBufferObject) * tmpVulkanObject->getNumRenderObjects());
+    void* data = this->starDevice->getDevice().mapMemory(this->uniformBuffersMemory[currentImage], 0, sizeof(UniformBufferObject) * tmpVulkanObject->getNumRenderObjects());
     memcpy(data, ubos.data(), sizeof(UniformBufferObject) * ubos.size());
-    this->device.unmapMemory(uniformBuffersMemory[currentImage]);
+    this->starDevice->getDevice().unmapMemory(uniformBuffersMemory[currentImage]);
 }
 
 void star::core::VulkanRenderer::prepareGLFW(int width, int height, GLFWkeyfun keyboardCallbackFunction, GLFWmousebuttonfun mouseButtonCallback, GLFWcursorposfun cursorPositionCallback, GLFWscrollfun scrollCallback) {
@@ -111,36 +111,28 @@ void star::core::VulkanRenderer::prepareGLFW(int width, int height, GLFWkeyfun k
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
     //create a window, 3rd argument allows selection of monitor, 4th argument only applies to openGL
-    this->glfwWindow = glfwCreateWindow(width, height, "Vulkan", nullptr, nullptr);
+    this->window = glfwCreateWindow(width, height, "Vulkan", nullptr, nullptr);
 
     //need to give GLFW a pointer to current instance of this class
-    glfwSetWindowUserPointer(this->glfwWindow, this);
+    glfwSetWindowUserPointer(this->window, this);
 
     // glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 
     //set keyboard callbacks
-    auto callback = glfwSetKeyCallback(this->glfwWindow, keyboardCallbackFunction);
+    auto callback = glfwSetKeyCallback(this->window, keyboardCallbackFunction);
 
-    auto cursorCallback = glfwSetCursorPosCallback(this->glfwWindow, cursorPositionCallback);
+    auto cursorCallback = glfwSetCursorPosCallback(this->window, cursorPositionCallback);
 
-    auto mouseBtnCallback = glfwSetMouseButtonCallback(this->glfwWindow, mouseButtonCallback);
+    auto mouseBtnCallback = glfwSetMouseButtonCallback(this->window, mouseButtonCallback);
 
-    auto mouseScrollCallback = glfwSetScrollCallback(this->glfwWindow, scrollCallback);
+    auto mouseScrollCallback = glfwSetScrollCallback(this->window, scrollCallback);
 
     // this->glfwRequiredExtensions = std::make_unique<std::vector<vk::ExtensionProperties>>(new std::vector<vk::ExtensionProperties>(**requiredExtensions)); 
     this->glfwRequiredExtensions = std::make_unique<const char**>(glfwGetRequiredInstanceExtensions(this->glfwRequiredExtensionsCount.get()));
-
-    createInstance();
-
-    VkSurfaceKHR surfaceTmp;
-    if (glfwCreateWindowSurface(this->instance, this->glfwWindow, nullptr, &surfaceTmp) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create window surface");
-    }
-    this->surface = new vk::UniqueSurfaceKHR(surfaceTmp, this->instance);
 }
 
 bool star::core::VulkanRenderer::shouldCloseWindow() {
-    return glfwWindowShouldClose(this->glfwWindow);
+    return glfwWindowShouldClose(this->window);
 }
 
 void star::core::VulkanRenderer::pollEvents() {
@@ -148,9 +140,8 @@ void star::core::VulkanRenderer::pollEvents() {
 }
 
 void star::core::VulkanRenderer::prepare() {
-    //init vulkan 
-    pickPhysicalDevice();
-    createLogicalDevice();
+    this->starDevice = std::make_unique<StarDevice>(this->window); 
+
     createSwapChain();
 
     createImageViews();
@@ -158,14 +149,15 @@ void star::core::VulkanRenderer::prepare() {
 
     common::GameObject* currObject = nullptr; 
     vk::ShaderStageFlagBits stages{};
-    this->vulkanObjects.push_back(std::make_unique<VulkanObject>(this->device, this->swapChainImages.size()));
+    vk::Device device = this->starDevice->getDevice();
+    this->vulkanObjects.push_back(std::make_unique<VulkanObject>(device, this->swapChainImages.size()));
     VulkanObject* tmpVulkanObject = this->vulkanObjects.at(0).get();
 
     for (size_t i = 0; i < this->objectList->size(); i++) {
         currObject = this->objectManager->Get(this->objectList->at(i));
 
-        this->numVerticies += currObject->getVerticies()->size();
-        this->numIndicies += currObject->getIndicies()->size();
+        //this->numVerticies += currObject->getVerticies()->size();
+        //this->numIndicies += currObject->getIndicies()->size();
 
         //check if the vulkan object has a shader registered for the desired stage that is different than the one needed for the current object
         for (size_t j = 0; j < this->vulkanObjects.size(); j++) {
@@ -180,7 +172,7 @@ void star::core::VulkanRenderer::prepare() {
             else if ((object->getBaseShader(vk::ShaderStageFlagBits::eVertex).containerIndex != currObject->getVertShader().containerIndex) ||
                 (object->getBaseShader(vk::ShaderStageFlagBits::eFragment).containerIndex != currObject->getFragShader().containerIndex)) {
                 //vulkan object has shaders but they are not the same as the shaders needed for current render object
-                this->vulkanObjects.push_back(std::make_unique<VulkanObject>(this->device, this->swapChainImages.size()));
+                this->vulkanObjects.push_back(std::make_unique<VulkanObject>(device, this->swapChainImages.size()));
                 VulkanObject* newObject = this->vulkanObjects.at(this->vulkanObjects.size()).get();
                 newObject->registerShader(vk::ShaderStageFlagBits::eVertex, currObject->getVertShader());
                 newObject->registerShader(vk::ShaderStageFlagBits::eFragment, currObject->getFragShader());
@@ -196,22 +188,22 @@ void star::core::VulkanRenderer::prepare() {
 
         //set up pool
     //one uniform buffer per frame
-    this->globalPool = StarDescriptorPool::Builder(this->device)
+    this->globalPool = StarDescriptorPool::Builder(device)
         .setMaxSets((this->swapChainImages.size()))
         .addPoolSize(vk::DescriptorType::eUniformBuffer, this->swapChainImages.size())
         .build();
     //need object information for each frame 
-    this->perObjectStaticPool = StarDescriptorPool::Builder(this->device)
+    this->perObjectStaticPool = StarDescriptorPool::Builder(device)
         .setMaxSets((this->swapChainImages.size() * tmpVulkanObject->getNumRenderObjects()))
         .addPoolSize(vk::DescriptorType::eUniformBuffer, this->swapChainImages.size() * tmpVulkanObject->getNumRenderObjects())
         //.addPoolSize(vk::DescriptorType::eCombinedImageSampler, this->swapChainImages.size() * tmpVulkanObject->getNumRenderObjects())
         .build();
 
-    this->globalSetLayout = StarDescriptorSetLayout::Builder(this->device)
+    this->globalSetLayout = StarDescriptorSetLayout::Builder(device)
         .addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
         .build();
 
-    this->perObjectStaticLayout = StarDescriptorSetLayout::Builder(this->device)
+    this->perObjectStaticLayout = StarDescriptorSetLayout::Builder(device)
         .addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex, 1)
         .build(); 
 
@@ -222,7 +214,6 @@ void star::core::VulkanRenderer::prepare() {
     createGraphicsPipeline();
     createDepthResources();
     createFramebuffers();
-    createCommandPools();
     createTextureImage();
     createTextureImageView();
     createTextureSampler();
@@ -248,7 +239,7 @@ void star::core::VulkanRenderer::prepare() {
             0,
             sizeof(GlobalUniformBufferObject) });
 
-        StarDescriptorWriter(this->device, *this->globalSetLayout, *this->globalPool)
+        StarDescriptorWriter(device, *this->globalSetLayout, *this->globalPool)
             .writeBuffer(0, &bufferInfos.get()->at(0))
             .build(this->globalDescriptorSets.at(i));
 
@@ -269,7 +260,7 @@ void star::core::VulkanRenderer::prepare() {
                 sizeof(UniformBufferObject) };
 
             //bufferInfos = std::make_unique<std::vector<vk::DescriptorBufferInfo>>();
-            StarDescriptorWriter(this->device, *this->perObjectStaticLayout, *this->perObjectStaticPool)
+            StarDescriptorWriter(device, *this->perObjectStaticLayout, *this->perObjectStaticPool)
                 .writeBuffer(0, &bufferInfo)
                 .build(tmpVulkanObject->getRenderObjectAt(j)->getDefaultDescriptorSets()->at(i));
         }
@@ -282,7 +273,7 @@ void star::core::VulkanRenderer::prepare() {
     //        0,
     //        sizeof(UniformBufferObject) });
 
-    //StarDescriptorWriter(this->device, *this->perObjectStaticLayout, *this->perObjectStaticPool)
+    //StarDescriptorWriter(this->starDevice->getDevice(), *this->perObjectStaticLayout, *this->perObjectStaticPool)
     //    .writeBuffer(0, bufferInfos.get())
     //    .build(testSet, true);
 
@@ -294,7 +285,7 @@ void star::core::VulkanRenderer::prepare() {
     //    bufferInfo.range = sizeof(UniformBufferObject); 
 
     //    std::vector<vk::DescriptorSet> newSets;
-    //    StarDescriptorWriter(this->device, *this->globalSetLayout, *this->globalPool)
+    //    StarDescriptorWriter(this->starDevice->getDevice(), *this->globalSetLayout, *this->globalPool)
     //        .writeBuffer(0, &bufferInfo)
     //        .build(newSets, true);
 
@@ -314,7 +305,7 @@ void star::core::VulkanRenderer::prepare() {
 
     //    //WARNING: only using the first set created 
     //    std::vector<vk::DescriptorSet> newSetsN;
-    //    StarDescriptorWriter(this->device, *this->globalSetLayout, *this->globalPool)
+    //    StarDescriptorWriter(this->starDevice->getDevice(), *this->globalSetLayout, *this->globalPool)
     //        .writeBuffer(0, &bufferInfo2)
     //        .build(newSetsN, true);
 
@@ -347,7 +338,7 @@ void star::core::VulkanRenderer::draw() {
    //wait for fence to be ready 
    // 3. 'VK_TRUE' -> waiting for all fences
    // 4. timeout 
-    this->device.waitForFences(inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+    this->starDevice->getDevice().waitForFences(inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
     /* Get Image From Swapchain */
 
@@ -358,7 +349,7 @@ void star::core::VulkanRenderer::draw() {
         //vulkan can return two different flags 
         // 1. VK_ERROR_OUT_OF_DATE_KHR: swap chain has become incompatible with the surface and cant be used for rendering. (Window resize)
         // 2. VK_SUBOPTIMAL_KHR: swap chain can still be used to present to the surface, but the surface properties no longer match
-    auto result = this->device.acquireNextImageKHR(swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame]);
+    auto result = this->starDevice->getDevice().acquireNextImageKHR(swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame]);
 
     if (result.result == vk::Result::eErrorOutOfDateKHR) {
         //the swapchain is no longer optimal according to vulkan. Must recreate a more efficient swap chain
@@ -373,7 +364,7 @@ void star::core::VulkanRenderer::draw() {
 
     //check if a previous frame is using the current image
     if (imagesInFlight[imageIndex]) {
-        this->device.waitForFences(1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
+        this->starDevice->getDevice().waitForFences(1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
     }
     //mark image as now being in use by this frame by assigning the fence to it 
     imagesInFlight[imageIndex] = inFlightFences[currentFrame];
@@ -396,7 +387,8 @@ void star::core::VulkanRenderer::draw() {
 
     //which command buffers to submit for execution -- should submit command buffer that binds the swap chain image that was just acquired as color attachment
     submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &graphicsCommandBuffers[imageIndex];
+    //submitInfo.pCommandBuffers = &graphicsCommandBuffers[imageIndex];
+    submitInfo.pCommandBuffers = &this->starDevice->getGraphicsCommandBuffers()->at(imageIndex); 
 
     //what semaphores to signal when command buffers have finished
     vk::Semaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
@@ -405,9 +397,8 @@ void star::core::VulkanRenderer::draw() {
     submitInfo.pSignalSemaphores = signalSemaphores;
 
     //set fence to unsignaled state
-    this->device.resetFences(1, &inFlightFences[currentFrame]);
-
-    auto submitResult = this->graphicsQueue.submit(1, &submitInfo, inFlightFences[currentFrame]);
+    this->starDevice->getDevice().resetFences(1, &inFlightFences[currentFrame]);
+    auto submitResult = this->starDevice->getGraphicsQueue().submit(1, &submitInfo, inFlightFences[currentFrame]);
     if (submitResult != vk::Result::eSuccess) {
         throw std::runtime_error("failed to submit draw command buffer");
     }
@@ -431,7 +422,7 @@ void star::core::VulkanRenderer::draw() {
     presentInfo.pResults = nullptr; // Optional
 
     //make call to present image
-    auto presentResult = presentQueue.presentKHR(presentInfo);
+    auto presentResult = this->starDevice->getPresentQueue().presentKHR(presentInfo);
 
     //if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || frameBufferResized) {
     if (presentResult == vk::Result::eErrorOutOfDateKHR || presentResult == vk::Result::eSuboptimalKHR || frameBufferResized) {
@@ -449,349 +440,85 @@ void star::core::VulkanRenderer::draw() {
 void star::core::VulkanRenderer::cleanup() {
     cleanupSwapChain();
 
-    this->device.destroySampler(this->textureSampler);
-    this->device.destroyImageView(this->textureImageView);
-    this->device.destroyImage(this->textureImage);
-    this->device.freeMemory(this->textureImageMemory);
+    this->starDevice->getDevice().destroySampler(this->textureSampler);
+    this->starDevice->getDevice().destroyImageView(this->textureImageView);
+    this->starDevice->getDevice().destroyImage(this->textureImage);
+    this->starDevice->getDevice().freeMemory(this->textureImageMemory);
 
-    //this->device.destroyDescriptorSetLayout(this->descriptorSetLayout);
+    //this->starDevice->getDevice().destroyDescriptorSetLayout(this->descriptorSetLayout);
 
     VulkanObject* currVulkanObject = this->vulkanObjects.at(0).get();
 
-    this->device.destroyBuffer(currVulkanObject->indexBuffer);
-    this->device.freeMemory(currVulkanObject->indexBufferMemory);
-    this->device.destroyBuffer(currVulkanObject->vertexBuffer);
-    this->device.freeMemory(currVulkanObject->vertexBufferMemory);
+    this->starDevice->getDevice().destroyBuffer(currVulkanObject->indexBuffer);
+    this->starDevice->getDevice().freeMemory(currVulkanObject->indexBufferMemory);
+    this->starDevice->getDevice().destroyBuffer(currVulkanObject->vertexBuffer);
+    this->starDevice->getDevice().freeMemory(currVulkanObject->vertexBufferMemory);
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        this->device.destroySemaphore(renderFinishedSemaphores[i]);
-        this->device.destroySemaphore(imageAvailableSemaphores[i]);
-        this->device.destroyFence(inFlightFences[i]);
+        this->starDevice->getDevice().destroySemaphore(renderFinishedSemaphores[i]);
+        this->starDevice->getDevice().destroySemaphore(imageAvailableSemaphores[i]);
+        this->starDevice->getDevice().destroyFence(inFlightFences[i]);
     }
 
 
     currVulkanObject->cleanup(); 
-    this->device.destroyDescriptorSetLayout(this->globalSetLayout->getDescriptorSetLayout());
-    this->device.destroyDescriptorPool(this->globalPool->getDescriptorPool()); 
-    this->device.destroyDescriptorSetLayout(this->perObjectStaticLayout->getDescriptorSetLayout()); 
-    this->device.destroyDescriptorPool(this->perObjectStaticPool->getDescriptorPool()); 
+    this->starDevice->getDevice().destroyDescriptorSetLayout(this->globalSetLayout->getDescriptorSetLayout());
+    this->starDevice->getDevice().destroyDescriptorPool(this->globalPool->getDescriptorPool()); 
+    this->starDevice->getDevice().destroyDescriptorSetLayout(this->perObjectStaticLayout->getDescriptorSetLayout()); 
+    this->starDevice->getDevice().destroyDescriptorPool(this->perObjectStaticPool->getDescriptorPool()); 
 
-    //this->device.destroyDescriptorSetLayout(this->globalSetLayout->getDescriptorSetLayout()); 
-    //this->device.destroyDescriptorSetLayout(this->perObjectStaticLayout->getDescriptorSetLayout()); 
+    //this->starDevice->getDevice().destroyDescriptorSetLayout(this->globalSetLayout->getDescriptorSetLayout()); 
+    //this->starDevice->getDevice().destroyDescriptorSetLayout(this->perObjectStaticLayout->getDescriptorSetLayout()); 
     //for (size_t i = 0; i < currVulkanObject->getNumRenderObjects(); i++) {
     //    currRenderObject = currVulkanObject->getRenderObjectAt(i); 
     //    std::vector<vk::DescriptorSetcurrRenderObject->getDefaultDescriptorSets()
     //}
-    //this->device.destroyDescriptorPool(*this->globalPool.get());
+    //this->starDevice->getDevice().destroyDescriptorPool(*this->globalPool.get());
 
-    //this->device.destroyDescriptorSetLayout(*this->globalSetLayout.get()); 
+    //this->starDevice->getDevice().destroyDescriptorSetLayout(*this->globalSetLayout.get()); 
 
-    this->device.destroyCommandPool(this->transferCommandPool);
-    this->device.destroyCommandPool(this->graphicsCommandPool);
-
-    this->device.destroy();
-
-    this->instance.destroySurfaceKHR(this->surface->get());
-    this->instance.destroy();
-
-    glfwDestroyWindow(this->glfwWindow);
+    glfwDestroyWindow(this->window);
     glfwTerminate();
 }
 
 void star::core::VulkanRenderer::cleanupSwapChain() {
     auto& tmpVulkanObject = this->vulkanObjects.at(0);
-    this->device.destroyImageView(this->depthImageView);
-    this->device.destroyImage(this->depthImage);
-    this->device.freeMemory(this->depthImageMemory);
+    this->starDevice->getDevice().destroyImageView(this->depthImageView);
+    this->starDevice->getDevice().destroyImage(this->depthImage);
+    this->starDevice->getDevice().freeMemory(this->depthImageMemory);
 
     for (auto framebuffer : this->swapChainFramebuffers) {
-        this->device.destroyFramebuffer(framebuffer);
+        this->starDevice->getDevice().destroyFramebuffer(framebuffer);
     }
 
-    this->device.freeCommandBuffers(this->graphicsCommandPool, this->graphicsCommandBuffers);
+    //this->starDevice->getDevice().freeCommandBuffers(this->graphicsCommandPool, this->graphicsCommandBuffers);
 
 
-    this->device.destroyPipeline(tmpVulkanObject->pipelines.at(0));
-    this->device.destroyPipelineLayout(tmpVulkanObject->getPipelineLayout());
-    this->device.destroyRenderPass(this->renderPass);
+    this->starDevice->getDevice().destroyPipeline(tmpVulkanObject->pipelines.at(0));
+    this->starDevice->getDevice().destroyPipelineLayout(tmpVulkanObject->getPipelineLayout());
+    this->starDevice->getDevice().destroyRenderPass(this->renderPass);
 
     for (auto imageView : this->swapChainImageViews) {
-        this->device.destroyImageView(imageView);
+        this->starDevice->getDevice().destroyImageView(imageView);
     }
 
-    this->device.destroySwapchainKHR(this->swapChain);
+    this->starDevice->getDevice().destroySwapchainKHR(this->swapChain);
 
     for (size_t i = 0; i < swapChainImages.size(); i++) {
-        this->device.destroyBuffer(uniformBuffers[i]);
-        this->device.freeMemory(uniformBuffersMemory[i]);
+        this->starDevice->getDevice().destroyBuffer(uniformBuffers[i]);
+        this->starDevice->getDevice().freeMemory(uniformBuffersMemory[i]);
 
-        this->device.destroyBuffer(this->globalUniformBuffers[i]); 
-        this->device.freeMemory(this->globalUniformBuffersMemory[i]);
+        this->starDevice->getDevice().destroyBuffer(this->globalUniformBuffers[i]); 
+        this->starDevice->getDevice().freeMemory(this->globalUniformBuffersMemory[i]);
     }
 
-    //this->device.destroyDescriptorPool(this->descriptorPool);
-}
-
-bool star::core::VulkanRenderer::checkValidationLayerSupport() {
-    uint32_t layerCount;
-    vk::enumerateInstanceLayerProperties(&layerCount, nullptr);
-
-    std::vector<vk::LayerProperties> availableLayers(layerCount);
-    vk::enumerateInstanceLayerProperties(&layerCount, availableLayers.data());
-
-    for (const char* layerName : validationLayers) {
-        bool layerFound = false;
-
-        for (const auto& layerProperties : availableLayers) {
-            if (strcmp(layerName, layerProperties.layerName) == 0) {
-                layerFound = true;
-                break;
-            }
-        }
-
-        if (!layerFound) {
-            return false;
-        }
-    }
-    return true;
-}
-
-void star::core::VulkanRenderer::createInstance() {
-    uint32_t extensionCount = 0;
-
-    if (enableValidationLayers && !checkValidationLayerSupport()) {
-        throw std::runtime_error("validation layers requested, but not available");
-    }
-
-    //enumerate required extensions
-    std::vector<vk::ExtensionProperties> requiredExtensions(***this->glfwRequiredExtensions);
-    vk::enumerateInstanceExtensionProperties(nullptr, this->glfwRequiredExtensionsCount.get(), requiredExtensions.data());
-
-    //get a count of the number of supported extensions on the system
-    //first argument is a filter for type -- leaving null to get all 
-    vk::enumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-    std::vector<vk::ExtensionProperties> extensions(extensionCount);
-    //query the extension details
-    vk::enumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data());
-
-    int foundExtensions = 0;
-    for (const auto& extension : requiredExtensions) {
-        bool found = false;
-
-        for (const auto& availableExtension : extensions) {
-            if (found) {
-                foundExtensions++;
-                break;
-            }
-
-            found = ((*extension.extensionName == *availableExtension.extensionName) && (extension.specVersion == availableExtension.specVersion));
-        }
-
-    }
-
-    if (foundExtensions != *this->glfwRequiredExtensionsCount.get()) {
-        throw std::runtime_error("Not all required extensions found for glfw");
-    }
-
-    vk::ApplicationInfo appInfo{};
-    appInfo.sType = vk::StructureType::eApplicationInfo;
-    // appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-    appInfo.pApplicationName = "Hello Triangle";
-    appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-    appInfo.pEngineName = "Starlight";
-    appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-    appInfo.apiVersion = VK_API_VERSION_1_0;
-
-    vk::InstanceCreateInfo createInfo{};
-    createInfo.sType = vk::StructureType::eInstanceCreateInfo;
-    createInfo.pApplicationInfo = &appInfo;
-    createInfo.enabledExtensionCount = *this->glfwRequiredExtensionsCount.get();
-    createInfo.ppEnabledExtensionNames = *this->glfwRequiredExtensions.get();
-    createInfo.enabledLayerCount = 0;
-    if (enableValidationLayers) {
-        createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
-        createInfo.ppEnabledLayerNames = validationLayers.data();
-    }
-    else {
-        createInfo.enabledLayerCount = 0;
-    }
-
-    /*
-    All vulkan objects follow this pattern of creation :
-    1.pointer to a struct with creation info
-        2.pointer to custom allocator callbacks, (nullptr) here
-        3.pointer to the variable that stores the handle to the new object
-    */
-    //TODO: PUT A TRY HERE
-    this->instance = vk::createInstance(createInfo);
-}
-
-void star::core::VulkanRenderer::pickPhysicalDevice() {
-    std::vector<vk::PhysicalDevice> devices = this->instance.enumeratePhysicalDevices();
-
-    //check devices and see if they are suitable for use
-    for (const auto& device : devices) {
-        if (isDeviceSuitable(device)) {
-            physicalDevice = device;
-            break;
-        }
-    }
-
-    if (devices.size() == 0) {
-        throw std::runtime_error("failed to find suitable GPU!");
-    }
-
-    if (!physicalDevice) {
-        throw std::runtime_error("failed to find suitable GPU!");
-    }
-}
-
-bool star::core::VulkanRenderer::isDeviceSuitable(vk::PhysicalDevice device) {
-    /*
-    Method of querying specific information about a device and checking if that device features support for a geometryShader
-    VkPhysicalDeviceProperties deviceProperties;
-    VkPhysicalDeviceFeatures deviceFeatures;
-
-    vkGetPhysicalDeviceProperties(device, &deviceProperties);
-    vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
-
-    return deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && deviceFeatures.geometryShader;
-*/
-    bool swapChainAdequate = false;
-    QueueFamilyIndices indicies = findQueueFamilies(device);
-    bool extensionsSupported = checkDeviceExtensionSupport(device);
-    if (extensionsSupported) {
-        SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device);
-        swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
-    }
-
-    vk::PhysicalDeviceFeatures supportedFeatures = device.getFeatures();
-
-    return indicies.isComplete() && extensionsSupported && swapChainAdequate && supportedFeatures.samplerAnisotropy;
-}
-
-star::core::VulkanRenderer::QueueFamilyIndices star::core::VulkanRenderer::findQueueFamilies(vk::PhysicalDevice device) {
-    QueueFamilyIndices indicies;
-
-    // device.getQueueFamilyProperties(queueFamilyCount, queueFamilies.data()); 
-    std::vector<vk::QueueFamilyProperties> queueFamilies = device.getQueueFamilyProperties();
-
-    //need to find a graphicsQueue that supports VK_QUEUE_GRAPHICS_BIT 
-    int i = 0;
-    for (const auto& queueFamily : queueFamilies) {
-        vk::Bool32 presentSupport = device.getSurfaceSupportKHR(i, this->surface->get());
-
-        //pick the family that supports presenting to the display 
-        if (presentSupport) {
-            indicies.presentFamily = i;
-        }
-        //pick family that has graphics support
-        if (queueFamily.queueFlags & vk::QueueFlagBits::eGraphics) {
-            indicies.graphicsFamily = i;
-        }
-        else if (queueFamily.queueFlags & vk::QueueFlagBits::eTransfer) {
-            //for transfer family, pick family that does not support graphics but does support transfer queue
-            indicies.transferFamily = i;
-        }
-
-        //--COULD DO :: pick a device that supports both of these in the same queue for increased performance--
-        i++;
-    }
-
-    return indicies;
-}
-
-bool star::core::VulkanRenderer::checkDeviceExtensionSupport(vk::PhysicalDevice device) {
-    uint32_t extensionCount;
-    device.enumerateDeviceExtensionProperties(nullptr, &extensionCount, nullptr);
-    std::vector<vk::ExtensionProperties> availableExtensions(extensionCount);
-    device.enumerateDeviceExtensionProperties(nullptr, &extensionCount, availableExtensions.data());
-
-    std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
-
-    //iterate through extensions looking for those that are required
-    for (const auto& extension : availableExtensions) {
-        requiredExtensions.erase(extension.extensionName);
-    }
-
-    return requiredExtensions.empty();
-}
-
-star::core::VulkanRenderer::SwapChainSupportDetails star::core::VulkanRenderer::querySwapChainSupport(vk::PhysicalDevice device) {
-    SwapChainSupportDetails details;
-    uint32_t formatCount, presentModeCount;
-
-    //get surface capabilities 
-    details.capabilities = device.getSurfaceCapabilitiesKHR(this->surface->get());
-
-    device.getSurfaceFormatsKHR(this->surface->get(), &formatCount, nullptr);
-
-    device.getSurfacePresentModesKHR(this->surface->get(), &presentModeCount, nullptr);
-
-    if (formatCount != 0) {
-        //resize vector in order to hold all available formats
-        details.formats.resize(formatCount);
-        device.getSurfaceFormatsKHR(this->surface->get(), &formatCount, details.formats.data());
-    }
-
-    if (presentModeCount != 0) {
-        //resize for same reasons as format 
-        details.presentModes.resize(presentModeCount);
-        device.getSurfacePresentModesKHR(this->surface->get(), &presentModeCount, details.presentModes.data());
-    }
-
-    return details;
-}
-
-void star::core::VulkanRenderer::createLogicalDevice() {
-    float queuePrioriy = 1.0f;
-    QueueFamilyIndices indicies = findQueueFamilies(this->physicalDevice);
-
-    //need multiple structs since we now have a seperate family for presenting and graphics 
-    std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
-    std::set<uint32_t> uniqueQueueFamilies = { indicies.graphicsFamily.value(), indicies.presentFamily.value(), indicies.transferFamily.value() };
-
-    for (uint32_t queueFamily : uniqueQueueFamilies) {
-        //create a struct to contain the information required 
-        //create a queue with graphics capabilities
-        vk::DeviceQueueCreateInfo  queueCreateInfo{};
-        vk::StructureType::eApplicationInfo;
-        queueCreateInfo.sType = vk::StructureType::eDeviceQueueCreateInfo;
-        queueCreateInfo.queueFamilyIndex = queueFamily;
-        //most drivers support only a few queue per queueFamily 
-        queueCreateInfo.queueCount = 1;
-        queueCreateInfo.pQueuePriorities = &queuePrioriy;
-        queueCreateInfos.push_back(queueCreateInfo);
-    }
-
-    //specifying device features that we want to use -- can pull any of the device features that was queried before...for now use nothing
-    const vk::PhysicalDeviceFeatures deviceFeatures{};
-    // deviceFeatures.samplerAnisotropy = VK_TRUE;  
-
-    //Create actual logical device
-    const vk::DeviceCreateInfo createInfo{
-        vk::DeviceCreateFlags(),                                                        //device creation flags
-        static_cast<uint32_t>(queueCreateInfos.size()),                                 //queue create info count 
-        queueCreateInfos.data(),                                                        //device queue create info
-        enableValidationLayers ? static_cast<uint32_t>(deviceExtensions.size()) : 0,    //enabled layer count 
-        enableValidationLayers ? deviceExtensions.data() : VK_NULL_HANDLE,              //enables layer names
-        static_cast<uint32_t>(deviceExtensions.size()),                                 //enabled extension coun 
-        deviceExtensions.data(),                                                        //enabled extension names 
-        &deviceFeatures                                                                 //enabled features
-    };
-
-    //call to create the logical device 
-    device = physicalDevice.createDevice(createInfo);
-
-    this->graphicsQueue = device.getQueue(indicies.graphicsFamily.value(), 0);
-    this->presentQueue = device.getQueue(indicies.presentFamily.value(), 0);
-    this->transferQueue = device.getQueue(indicies.transferFamily.value(), 0);
+    //this->starDevice->getDevice().destroyDescriptorPool(this->descriptorPool);
 }
 
 void star::core::VulkanRenderer::createSwapChain() {
     //TODO: current implementation requires halting to all rendering when recreating swapchain. Can place old swap chain in oldSwapChain field 
     //  in order to prevent this and allow rendering to continue
-    SwapChainSupportDetails swapChainSupport = querySwapChainSupport(physicalDevice);
+    SwapChainSupportDetails swapChainSupport = this->starDevice->getSwapChainSupportDetails();
 
     vk::SurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
     vk::PresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
@@ -809,7 +536,7 @@ void star::core::VulkanRenderer::createSwapChain() {
     vk::SwapchainCreateInfoKHR createInfo{};
     createInfo.sType = vk::StructureType::eSwapchainCreateInfoKHR;
     //createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;     
-    createInfo.surface = this->surface->get();
+    createInfo.surface = this->starDevice->getSurface(); 
 
     //specify image information for the surface 
     createInfo.minImageCount = imageCount;
@@ -820,7 +547,7 @@ void star::core::VulkanRenderer::createSwapChain() {
     //createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; //how are these images going to be used? Color attachment since we are rendering to them (can change for postprocessing effects)
     createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment; //how are these images going to be used? Color attachment since we are rendering to them (can change for postprocessing effects)
 
-    QueueFamilyIndices indicies = findQueueFamilies(physicalDevice);
+    QueueFamilyIndicies indicies = this->starDevice->findPhysicalQueueFamilies();
     uint32_t queueFamilyIndicies[] = { indicies.graphicsFamily.value(), indicies.transferFamily.value(), indicies.presentFamily.value() };
 
     if (indicies.graphicsFamily != indicies.presentFamily && indicies.presentFamily != indicies.transferFamily) {
@@ -860,14 +587,14 @@ void star::core::VulkanRenderer::createSwapChain() {
     //for now, only assume we are making one swapchain
     createInfo.oldSwapchain = VK_NULL_HANDLE;
 
-    this->swapChain = this->device.createSwapchainKHR(createInfo);
+    this->swapChain = this->starDevice->getDevice().createSwapchainKHR(createInfo);
 
     //if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain) != VK_SUCCESS) {
     //    throw std::runtime_error("failed to create swap chain");
     //}
 
     //get images in the newly created swapchain 
-    this->swapChainImages = this->device.getSwapchainImagesKHR(this->swapChain);
+    this->swapChainImages = this->starDevice->getDevice().getSwapchainImagesKHR(this->swapChain);
 
     //save swapChain information for later use
     swapChainImageFormat = surfaceFormat.format;
@@ -877,13 +604,13 @@ void star::core::VulkanRenderer::createSwapChain() {
 void star::core::VulkanRenderer::recreateSwapChain() {
     int width = 0, height = 0;
     //check for window minimization and wait for window size to no longer be 0
-    glfwGetFramebufferSize(this->glfwWindow, &width, &height);
+    glfwGetFramebufferSize(this->window, &width, &height);
     while (width == 0 || height == 0) {
-        glfwGetFramebufferSize(this->glfwWindow, &width, &height);
+        glfwGetFramebufferSize(this->window, &width, &height);
         glfwWaitEvents();
     }
     //wait for device to finish any current actions
-    vkDeviceWaitIdle(device);
+    vkDeviceWaitIdle(this->starDevice->getDevice());
 
     cleanupSwapChain();
 
@@ -963,7 +690,7 @@ vk::Extent2D star::core::VulkanRenderer::chooseSwapExtent(const vk::SurfaceCapab
     else {
         //vulkan requires that resultion be defined in pixels -- if a high DPI display is used, screen coordinates do not match with pixels
         int width, height;
-        glfwGetFramebufferSize(this->glfwWindow, &width, &height);
+        glfwGetFramebufferSize(this->window, &width, &height);
 
         vk::Extent2D actualExtent = {
             static_cast<uint32_t>(width),
@@ -1025,7 +752,7 @@ vk::ImageView star::core::VulkanRenderer::createImageView(vk::Image image, vk::F
     viewInfo.subresourceRange.baseArrayLayer = 0;
     viewInfo.subresourceRange.layerCount = 1;
 
-    vk::ImageView imageView = device.createImageView(viewInfo);
+    vk::ImageView imageView = this->starDevice->getDevice().createImageView(viewInfo);
 
     if (!imageView) {
         throw std::runtime_error("failed to create texture image view!");
@@ -1122,7 +849,7 @@ void star::core::VulkanRenderer::createRenderPass() {
     renderPassInfo.dependencyCount = 1;
     renderPassInfo.pDependencies = &dependency;
 
-    this->renderPass = device.createRenderPass(renderPassInfo);
+    this->renderPass = this->starDevice->getDevice().createRenderPass(renderPassInfo);
     if (!renderPass) {
         throw std::runtime_error("failed to create render pass");
     }
@@ -1130,30 +857,10 @@ void star::core::VulkanRenderer::createRenderPass() {
 
 vk::Format star::core::VulkanRenderer::findDepthFormat() {
     //utilizing the VK_FORMAT_FEATURE_ flag to check for candidates that have a depth component.
-    return findSupportedFormat(
+    return this->starDevice->findSupportedFormat(
         { vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint },
         vk::ImageTiling::eOptimal,
         vk::FormatFeatureFlagBits::eDepthStencilAttachment);
-}
-
-vk::Format star::core::VulkanRenderer::findSupportedFormat(const std::vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlagBits features) {
-    for (vk::Format format : candidates) {
-        //VkFormatProperties: 
-            //linearTilingFeatures
-            //optimalTilingFeatures
-            //bufferFeatures
-        vk::FormatProperties props = physicalDevice.getFormatProperties(format);
-
-        //check if the properties matches the requirenments for tiling
-        if (tiling == vk::ImageTiling::eLinear && (props.linearTilingFeatures & features) == features) {
-            return format;
-        }
-        else if ((tiling == vk::ImageTiling::eOptimal) && (props.optimalTilingFeatures & features) == features) {
-            return format;
-        }
-    }
-
-    throw std::runtime_error("failed to find supported format!");
 }
 
 //void star::core::VulkanRenderer::createDescriptorSetLayout() {
@@ -1404,7 +1111,7 @@ void star::core::VulkanRenderer::createGraphicsPipeline() {
         pipelineLayoutInfo.pushConstantRangeCount = 0; 
         pipelineLayoutInfo.pPushConstantRanges = nullptr; 
 
-        vk::PipelineLayout newLayout = this->device.createPipelineLayout(pipelineLayoutInfo);
+        vk::PipelineLayout newLayout = this->starDevice->getDevice().createPipelineLayout(pipelineLayoutInfo);
         if (!newLayout) {
             throw std::runtime_error("failed to create pipeline layout");
         }
@@ -1435,8 +1142,8 @@ void star::core::VulkanRenderer::createGraphicsPipeline() {
         //finally creating the pipeline -- this call has the capability of creating multiple pipelines in one call
         //2nd arg is set to null -> normally for graphics pipeline cache (can be used to store and reuse data relevant to pipeline creation across multiple calls to vkCreateGraphicsPipeline)
 
-        //this->graphicsPipeline = this->device.get().createGraphicsPipeline(VK_NULL_HANDLE, pipelineInfo); 
-        auto result = this->device.createGraphicsPipelines(VK_NULL_HANDLE, pipelineInfo);
+        //this->graphicsPipeline = this->starDevice->getDevice().get().createGraphicsPipeline(VK_NULL_HANDLE, pipelineInfo); 
+        auto result = this->starDevice->getDevice().createGraphicsPipelines(VK_NULL_HANDLE, pipelineInfo);
         if (result.result != vk::Result::eSuccess) {
             throw std::runtime_error("failed to create graphics pipeline");
         }
@@ -1446,8 +1153,8 @@ void star::core::VulkanRenderer::createGraphicsPipeline() {
         vulkanObject->addPipelines(result.value);
 
         //destroy the shader modules that were created 
-        this->device.destroyShaderModule(vulkanObject->getShaderModule(vk::ShaderStageFlagBits::eVertex));
-        this->device.destroyShaderModule(vulkanObject->getShaderModule(vk::ShaderStageFlagBits::eFragment));
+        this->starDevice->getDevice().destroyShaderModule(vulkanObject->getShaderModule(vk::ShaderStageFlagBits::eVertex));
+        this->starDevice->getDevice().destroyShaderModule(vulkanObject->getShaderModule(vk::ShaderStageFlagBits::eFragment));
     }
 }
 
@@ -1457,7 +1164,7 @@ vk::ShaderModule star::core::VulkanRenderer::createShaderModule(const std::vecto
     createInfo.codeSize = 4 * code.size();
     createInfo.pCode = code.data();
 
-    VkShaderModule shaderModule = this->device.createShaderModule(createInfo);
+    VkShaderModule shaderModule = this->starDevice->getDevice().createShaderModule(createInfo);
     if (!shaderModule) {
         throw std::runtime_error("failed to create shader module");
     }
@@ -1501,47 +1208,25 @@ void star::core::VulkanRenderer::createImage(uint32_t width, uint32_t height, vk
     imageInfo.samples = vk::SampleCountFlagBits::e1;
     imageInfo.sharingMode = vk::SharingMode::eExclusive;
 
-    image = this->device.createImage(imageInfo);
+    image = this->starDevice->getDevice().createImage(imageInfo);
     if (!image) {
         throw std::runtime_error("failed to create image");
     }
 
     /* Allocate the memory for the imag*/
-    vk::MemoryRequirements memRequirements = this->device.getImageMemoryRequirements(image);
+    vk::MemoryRequirements memRequirements = this->starDevice->getDevice().getImageMemoryRequirements(image);
 
     vk::MemoryAllocateInfo allocInfo{};
     allocInfo.sType = vk::StructureType::eMemoryAllocateInfo;
     allocInfo.allocationSize = memRequirements.size;
-    allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
+    allocInfo.memoryTypeIndex = this->starDevice->findMemoryType(memRequirements.memoryTypeBits, properties);
 
-    imageMemory = this->device.allocateMemory(allocInfo);
+    imageMemory = this->starDevice->getDevice().allocateMemory(allocInfo);
     if (!imageMemory) {
         throw std::runtime_error("failed to allocate image memory!");
     }
 
-    this->device.bindImageMemory(image, imageMemory, 0);
-}
-
-uint32_t star::core::VulkanRenderer::findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties) {
-    //query available memory -- right now only concerned with memory type, not the heap that it comes from
-    /*VkPhysicalDeviceMemoryProperties contains:
-    1. memoryTypes
-    2. memoryHeaps - distinct memory resources (dedicated VRAM or swap space)
-    */
-    vk::PhysicalDeviceMemoryProperties memProperties = this->physicalDevice.getMemoryProperties();
-
-    for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
-        //use binary AND to test each bit (Left Shift)
-        //check memory types array for more detailed information on memory capabilities
-            //we need to be able to write to memory, so speficially looking to be able to MAP to the memory to write to it from the CPU -- VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-        //also need VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-
-        if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
-            return i;
-        }
-    }
-
-    throw std::runtime_error("failed to find suitable memory type");
+    this->starDevice->getDevice().bindImageMemory(image, imageMemory, 0);
 }
 
 void star::core::VulkanRenderer::createFramebuffers() {
@@ -1565,49 +1250,10 @@ void star::core::VulkanRenderer::createFramebuffers() {
         framebufferInfo.height = swapChainExtent.height;
         framebufferInfo.layers = 1; //# of layers in image arrays
 
-        swapChainFramebuffers[i] = this->device.createFramebuffer(framebufferInfo);
+        swapChainFramebuffers[i] = this->starDevice->getDevice().createFramebuffer(framebufferInfo);
         if (!swapChainFramebuffers[i]) {
             throw std::runtime_error("failed to create framebuffer");
         }
-    }
-}
-
-void star::core::VulkanRenderer::createCommandPools() {
-    QueueFamilyIndices queueFamilyIndicies = findQueueFamilies(physicalDevice);
-
-    /* Command Buffers */
-    //command buffers must be submitted on one of the device queues (graphics or presentation queues in this case)
-    //must only be submitted on a single type of queue
-    //creating commands for drawing, as such these are submitted on the graphics family 
-    /* Two possible flags for command pools:
-        1.VK_COMMAND_POOL_CREATE_TRANSIENT_BIT: warn vulkan that the command pool is changed often
-        2.VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT: allow command buffers to be rerecorded individually, without this all command buffers are reset at the same time
-    */
-    //commandPoolInfo.flags = 0; //optional -- will not be changing or resetting any command buffers 
-
-    //graphics command buffer
-    createPool(queueFamilyIndicies.graphicsFamily.value(), vk::CommandPoolCreateFlagBits{}, graphicsCommandPool);
-
-    //command buffer for transfer queue 
-    createPool(queueFamilyIndicies.transferFamily.value(), vk::CommandPoolCreateFlagBits{}, transferCommandPool);
-
-    //temporary command pool --unused at this time
-    //createPool(queueFamilyIndicies.graphicsFamily.value(), VK_COMMAND_POOL_CREATE_TRANSIENT_BIT, tempCommandPool); 
-
-}
-
-void star::core::VulkanRenderer::createPool(uint32_t queueFamilyIndex, vk::CommandPoolCreateFlagBits flags, vk::CommandPool& pool) {
-    QueueFamilyIndices queueFamilyIndicies = findQueueFamilies(physicalDevice);
-
-    vk::CommandPoolCreateInfo commandPoolInfo{};
-    commandPoolInfo.sType = vk::StructureType::eCommandPoolCreateInfo;
-    commandPoolInfo.queueFamilyIndex = queueFamilyIndex;
-    commandPoolInfo.flags = flags;
-
-    pool = this->device.createCommandPool(commandPoolInfo);
-
-    if (!pool) {
-        throw std::runtime_error("unable to create pool");
     }
 }
 
@@ -1628,13 +1274,13 @@ void star::core::VulkanRenderer::createTextureImage() {
     vk::DeviceMemory stagingBufferMemory;
 
     //buffer needs to be in host visible memory
-    createBuffer(imageSize, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, stagingBuffer, stagingBufferMemory);
+    this->starDevice->createBuffer(imageSize, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, stagingBuffer, stagingBufferMemory);
 
     //copy over to staging buffer
     void* data;
-    data = this->device.mapMemory(stagingBufferMemory, 0, imageSize);
+    data = this->starDevice->getDevice().mapMemory(stagingBufferMemory, 0, imageSize);
     memcpy(data, texture->data(), static_cast<size_t>(imageSize));
-    this->device.unmapMemory(stagingBufferMemory);
+    this->starDevice->getDevice().unmapMemory(stagingBufferMemory);
 
     //stbi_image_free(pixels);
 
@@ -1643,99 +1289,17 @@ void star::core::VulkanRenderer::createTextureImage() {
     //copy staging buffer to texture image 
     transitionImageLayout(textureImage, vk::Format::eR8G8B8A8Srgb, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
 
-    copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texture->width()), static_cast<uint32_t>(texture->height()));
+    this->starDevice->copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texture->width()), static_cast<uint32_t>(texture->height()));
 
     //prepare final image for texture mapping in shaders 
     transitionImageLayout(textureImage, vk::Format::eR8G8B8A8Srgb, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
 
-    this->device.destroyBuffer(stagingBuffer);
-    this->device.freeMemory(stagingBufferMemory);
-}
-
-
-void star::core::VulkanRenderer::copyBufferToImage(vk::Buffer buffer, vk::Image image, uint32_t width, uint32_t height) {
-    bool useTransferPool = true;
-
-    vk::CommandBuffer commandBuffer = beginSingleTimeCommands(useTransferPool);
-
-    //specify which region of the buffer will be copied to the image 
-    vk::BufferImageCopy region{};
-    region.bufferOffset = 0;                                            //specifies byte offset in the buffer at which the pixel values start
-    //the following specify the layout of pixel information in memory
-    region.bufferRowLength = 0;
-    region.bufferImageHeight = 0;
-
-    //the following indicate what part of the image we want to copy to 
-    //region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    region.imageSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
-    region.imageSubresource.mipLevel = 0;
-    region.imageSubresource.baseArrayLayer = 0;
-    region.imageSubresource.layerCount = 1;
-    //region.imageOffset = { 0, 0, 0 };
-    region.imageOffset = vk::Offset3D{};
-    region.imageOffset = vk::Offset3D{};
-    region.imageExtent = vk::Extent3D{
-        width,
-        height,
-        1
-    };
-
-    //enque copy operation 
-    commandBuffer.copyBufferToImage(
-        buffer,
-        image,
-        vk::ImageLayout::eTransferDstOptimal,       //assuming image is already in optimal format for copy operations
-        region
-    );
-
-    endSingleTimeCommands(commandBuffer, useTransferPool);
-}
-
-void star::core::VulkanRenderer::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, vk::Buffer& buffer, vk::DeviceMemory& bufferMemory) {
-    vk::BufferCreateInfo bufferInfo{};
-
-    //bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bufferInfo.sType = vk::StructureType::eBufferCreateInfo;
-    bufferInfo.size = size;
-    bufferInfo.usage = usage;                           //purpose of data in buffer
-    bufferInfo.sharingMode = vk::SharingMode::eExclusive; //buffers can be owned by specific queue family or shared between them at the same time. This only used for graphics queue
-
-    buffer = this->device.createBuffer(bufferInfo);
-
-    if (!buffer) {
-        throw std::runtime_error("failed to create buffer");
-    }
-
-    //need to allocate memory for the buffer object
-    /* VkMemoryRequirements:
-        1. size - number of required bytes in memory
-        2. alignments - offset in bytes where the buffer begins in the allocated region of memory (depends on bufferInfo.useage and bufferInfo.flags)
-        3. memoryTypeBits - bit fied of the memory types that are suitable for the buffer
-    */
-    vk::MemoryRequirements memRequirenments = this->device.getBufferMemoryRequirements(buffer);
-
-    assert(size <= memRequirenments.size);
-
-    vk::MemoryAllocateInfo allocInfo{};
-    //allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    allocInfo.sType = vk::StructureType::eMemoryAllocateInfo;
-    allocInfo.allocationSize = memRequirenments.size;
-    allocInfo.memoryTypeIndex = findMemoryType(memRequirenments.memoryTypeBits, properties);
-
-    bufferMemory = this->device.allocateMemory(allocInfo);
-
-    //should not call vkAllocateMemory for every object. Bundle objects into one call and use offsets 
-    if (!bufferMemory) {
-        throw std::runtime_error("failed to allocate buffer memory");
-    }
-
-    //4th argument: offset within the region of memory. Since memory is allocated specifically for this vertex buffer, the offset is 0
-    //if not 0, required to be divisible by memRequirenments.alignment
-    this->device.bindBufferMemory(buffer, bufferMemory, 0);
+    this->starDevice->getDevice().destroyBuffer(stagingBuffer);
+    this->starDevice->getDevice().freeMemory(stagingBufferMemory);
 }
 
 void star::core::VulkanRenderer::transitionImageLayout(vk::Image image, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout) {
-    vk::CommandBuffer commandBuffer = beginSingleTimeCommands();
+    vk::CommandBuffer commandBuffer = this->starDevice->beginSingleTimeCommands();
 
     //create a barrier to prevent pipeline from moving forward until image transition is complete
     vk::ImageMemoryBarrier barrier{};
@@ -1793,7 +1357,7 @@ void star::core::VulkanRenderer::transitionImageLayout(vk::Image image, vk::Form
         barrier
     );
 
-    endSingleTimeCommands(commandBuffer);
+    this->starDevice->endSingleTimeCommands(commandBuffer);
 }
 
 void star::core::VulkanRenderer::createTextureImageView() {
@@ -1803,7 +1367,7 @@ void star::core::VulkanRenderer::createTextureImageView() {
 
 void star::core::VulkanRenderer::createTextureSampler() {
     //get device properties for amount of anisotropy permitted
-    vk::PhysicalDeviceProperties deviceProperties = this->physicalDevice.getProperties();
+    vk::PhysicalDeviceProperties deviceProperties = this->starDevice->getPhysicalDevice().getProperties();
 
     vk::SamplerCreateInfo samplerInfo{};
     samplerInfo.sType = vk::StructureType::eSamplerCreateInfo;
@@ -1836,7 +1400,7 @@ void star::core::VulkanRenderer::createTextureSampler() {
     samplerInfo.maxLod = 0.0f;
     samplerInfo.anisotropyEnable = VK_FALSE;
 
-    this->textureSampler = this->device.createSampler(samplerInfo);
+    this->textureSampler = this->starDevice->getDevice().createSampler(samplerInfo);
     if (!this->textureSampler) {
         throw std::runtime_error("failed to create texture sampler!");
     }
@@ -1880,7 +1444,7 @@ void star::core::VulkanRenderer::createVertexBuffers() {
 
         bufferSize = sizeof(vertexList->at(0)) * vertexList->size();
 
-        createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, stagingBuffer, stagingBufferMemory);
+        this->starDevice->createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, stagingBuffer, stagingBufferMemory);
 
         /* Filling the vertex buffer */
         void* data;
@@ -1888,23 +1452,23 @@ void star::core::VulkanRenderer::createVertexBuffers() {
         //access a region of the specified memory resource defined by an offset and size 
         //can also specify VK_WHOLE_SIZE to map all memory 
         //currrently no memory flags available in API (time of writing) so must be set to 0
-        data = this->device.mapMemory(stagingBufferMemory, 0, bufferSize);
+        data = this->starDevice->getDevice().mapMemory(stagingBufferMemory, 0, bufferSize);
         memcpy(data, vertexList->data(), (size_t)bufferSize); //simply copy data into mapped memory
-        this->device.unmapMemory(stagingBufferMemory);
+        this->starDevice->getDevice().unmapMemory(stagingBufferMemory);
 
         /* Staging Buffer */
         //New flags 
         //VK_BUFFER_USAGE_TRANSFER_SRC_BIT: buffer can be used as source in a memory transfer 
         //VK_BUFFER_USAGE_TRANSFER_DST_BIT: buffer can be used as destination in a memory transfer 
         //createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
-        createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal, vulkanObject->vertexBuffer, vulkanObject->vertexBufferMemory);
+        this->starDevice->createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal, vulkanObject->vertexBuffer, vulkanObject->vertexBufferMemory);
 
-        copyBuffer(stagingBuffer, vulkanObject->vertexBuffer, bufferSize); //actually call to copy memory
+        this->starDevice->copyBuffer(stagingBuffer, vulkanObject->vertexBuffer, bufferSize); //actually call to copy memory
 
 
         //cleanup 
-        this->device.destroyBuffer(stagingBuffer);
-        vkFreeMemory(device, stagingBufferMemory, nullptr);
+        this->starDevice->getDevice().destroyBuffer(stagingBuffer);
+        vkFreeMemory(this->starDevice->getDevice(), stagingBufferMemory, nullptr);
     }
 
     /* Memory Copy Note */
@@ -1959,20 +1523,20 @@ void star::core::VulkanRenderer::createIndexBuffer() {
         bufferSize = sizeof(indiciesList->at(0)) * indiciesList->size();
 
         //createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-        createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, stagingBuffer, stagingBufferMemory);
+        this->starDevice->createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, stagingBuffer, stagingBufferMemory);
 
-        void* data = this->device.mapMemory(stagingBufferMemory, 0, bufferSize);
+        void* data = this->starDevice->getDevice().mapMemory(stagingBufferMemory, 0, bufferSize);
         memcpy(data, indiciesList->data(), (size_t)bufferSize);
-        this->device.unmapMemory(stagingBufferMemory);
+        this->starDevice->getDevice().unmapMemory(stagingBufferMemory);
 
         //note the use of VK_BUFFER_USAGE_INDEX_BUFFER_BIT due to the use of the indicies
         //createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
-        createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal, vulkanObject->indexBuffer, vulkanObject->indexBufferMemory);
+        this->starDevice->createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal, vulkanObject->indexBuffer, vulkanObject->indexBufferMemory);
 
-        copyBuffer(stagingBuffer, vulkanObject->indexBuffer, bufferSize);
+        this->starDevice->copyBuffer(stagingBuffer, vulkanObject->indexBuffer, bufferSize);
 
-        this->device.destroyBuffer(stagingBuffer);
-        this->device.freeMemory(stagingBufferMemory);
+        this->starDevice->getDevice().destroyBuffer(stagingBuffer);
+        this->starDevice->getDevice().freeMemory(stagingBufferMemory);
     };
 }
 
@@ -1987,7 +1551,7 @@ void star::core::VulkanRenderer::createRenderingBuffers() {
     uniformBuffersMemory.resize(swapChainImages.size());
 
     for (size_t i = 0; i < swapChainImages.size(); i++) {
-        createBuffer(uboBufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, uniformBuffers[i], uniformBuffersMemory[i]);
+        this->starDevice->createBuffer(uboBufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, uniformBuffers[i], uniformBuffersMemory[i]);
     }
 
     vk::DeviceSize globalBufferSize = sizeof(GlobalUniformBufferObject); 
@@ -1996,7 +1560,7 @@ void star::core::VulkanRenderer::createRenderingBuffers() {
     this->globalUniformBuffersMemory.resize(swapChainImages.size()); 
 
     for (size_t i = 0; i < swapChainImages.size(); i++) {
-        createBuffer(globalBufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, globalUniformBuffers[i], globalUniformBuffersMemory[i]); 
+        this->starDevice->createBuffer(globalBufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, globalUniformBuffers[i], globalUniformBuffersMemory[i]); 
     }
 
 }
@@ -2005,19 +1569,20 @@ void star::core::VulkanRenderer::createCommandBuffers() {
 
     for (auto& vulkanObject : this->vulkanObjects) {
         /* Graphics Command Buffer */
-        graphicsCommandBuffers.resize(swapChainFramebuffers.size());
+        this->starDevice->getGraphicsCommandBuffers()->resize(swapChainFramebuffers.size());
 
         vk::CommandBufferAllocateInfo allocInfo{};
         allocInfo.sType = vk::StructureType::eCommandBufferAllocateInfo;
-        allocInfo.commandPool = graphicsCommandPool;
+        allocInfo.commandPool = this->starDevice->getGraphicsCommandPool();
         // .level - specifies if the allocated command buffers are primay or secondary
         // ..._PRIMARY : can be submitted to a queue for execution, but cannot be called from other command buffers
         // ..._SECONDARY : cannot be submitted directly, but can be called from primary command buffers (good for reuse of common operations)
         allocInfo.level = vk::CommandBufferLevel::ePrimary;
-        allocInfo.commandBufferCount = (uint32_t)graphicsCommandBuffers.size();
+        allocInfo.commandBufferCount = (uint32_t)starDevice->getGraphicsCommandBuffers()->size();
 
-        this->graphicsCommandBuffers = this->device.allocateCommandBuffers(allocInfo);
-        if (this->graphicsCommandBuffers.size() == 0) {
+        std::vector<vk::CommandBuffer> newBuffers = this->starDevice->getDevice().allocateCommandBuffers(allocInfo); 
+        newBuffers = this->starDevice->getDevice().allocateCommandBuffers(allocInfo);
+        if (newBuffers.size() == 0) {
             throw std::runtime_error("failed to allocate command buffers");
         }
 
@@ -2028,7 +1593,7 @@ void star::core::VulkanRenderer::createCommandBuffers() {
         VulkanObject* tmpVulkanObject = this->vulkanObjects.at(0).get();
 
         /* Begin command buffer recording */
-        for (size_t i = 0; i < graphicsCommandBuffers.size(); i++) {
+        for (size_t i = 0; i < newBuffers.size(); i++) {
             vk::CommandBufferBeginInfo beginInfo{};
             //beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
             beginInfo.sType = vk::StructureType::eCommandBufferBeginInfo;
@@ -2047,8 +1612,8 @@ void star::core::VulkanRenderer::createCommandBuffers() {
                 commands cannot be added after creation
             */
 
-            this->graphicsCommandBuffers[i].begin(beginInfo);
-            if (!this->graphicsCommandBuffers[i]) {
+            newBuffers[i].begin(beginInfo);
+            if (!newBuffers[i]) {
                 throw std::runtime_error("failed to begin recording command buffer");
             }
 
@@ -2088,23 +1653,23 @@ void star::core::VulkanRenderer::createCommandBuffers() {
                     //OPTIONS: 
                         //VK_SUBPASS_CONTENTS_INLINE: render pass commands will be embedded in the primary command buffer. No secondary command buffers executed 
                         //VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS: render pass commands will be executed from the secondary command buffers
-            this->graphicsCommandBuffers[i].beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
+            newBuffers[i].beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
 
             /* Drawing Commands */
             //Args: 
                 //2. compute or graphics pipeline
                 //3. pipeline object
             //vkCmdBindPipeline(graphicsCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-            this->graphicsCommandBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, vulkanObject->pipelines.at(0));
+            newBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, vulkanObject->pipelines.at(0));
 
             vk::Buffer vertexBuffers[] = { vulkanObject->vertexBuffer };
             //TODO: need to allow for an offset for each buffer
             vk::DeviceSize offsets = {};
 
             //bind vertex buffers -> how to pass information to the vertex shader once it is uploaded to the GPU
-            this->graphicsCommandBuffers[i].bindVertexBuffers(0, vulkanObject->vertexBuffer, offsets);
+            newBuffers[i].bindVertexBuffers(0, vulkanObject->vertexBuffer, offsets);
 
-            this->graphicsCommandBuffers[i].bindIndexBuffer(vulkanObject->indexBuffer, 0, vk::IndexType::eUint32);
+            newBuffers[i].bindIndexBuffer(vulkanObject->indexBuffer, 0, vk::IndexType::eUint32);
 
             /* vkCmdBindDescriptorSets:
             *   1.
@@ -2119,7 +1684,7 @@ void star::core::VulkanRenderer::createCommandBuffers() {
             //this->graphicsCommandBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, vulkanObject.getPipelineLayout(), 0, 1, , 0, nullptr);
 
             //bind global descriptor
-            this->graphicsCommandBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, tmpVulkanObject->getPipelineLayout(), 0, 1, &this->globalDescriptorSets.at(i), 0, nullptr);
+            newBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, tmpVulkanObject->getPipelineLayout(), 0, 1, &this->globalDescriptorSets.at(i), 0, nullptr);
 
             uint32_t vertexCount = 0;
             //for (size_t j = 0; j < tmpVulkanObject->getNumRenderObjects(); j++) {
@@ -2131,7 +1696,7 @@ void star::core::VulkanRenderer::createCommandBuffers() {
 
                 //this->graphicsCommandBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, tmpVulkanObject->getPipelineLayout(), 0, 1, &testSet, 0, nullptr);
                 auto test = renderObj->getDefaultDescriptorSets(); 
-                this->graphicsCommandBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, tmpVulkanObject->getPipelineLayout(), 1, 1, &renderObj->getDefaultDescriptorSets()->at(i), 0, nullptr);
+                newBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, tmpVulkanObject->getPipelineLayout(), 1, 1, &renderObj->getDefaultDescriptorSets()->at(i), 0, nullptr);
                 //this->graphicsCommandBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, tmpVulkanObject->getPipelineLayout(), 1, 1, &this->testSets.at((i * 2) + j), 0, nullptr);
                 //this->graphicsCommandBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, tmpVulkanObject->getPipelineLayout(), 1, 1, &this->perObjectDescriptorSets.at(i).at(j), 0, nullptr);
                 //now create call to draw
@@ -2144,7 +1709,7 @@ void star::core::VulkanRenderer::createCommandBuffers() {
                 // pushConstant->modelIndex = j; 
                 // this->graphicsCommandBuffers[i].pushConstants(tmpVulkanObject->getPipelineLayout(), vk::ShaderStageFlagBits::eVertex, 0, sizeof(ObjectPushConstants), pushConstant.get());
                 auto numToDraw = renderObj->getNumVerticies(); 
-                this->graphicsCommandBuffers[i].drawIndexed(numToDraw, 1, 0, vertexCount, 0);
+                newBuffers[i].drawIndexed(numToDraw, 1, 0, vertexCount, 0);
                 //vkCmdDrawIndexed(graphicsCommandBuffers[i], numToDraw, 1, 0, vertexCount, 0);
                 vertexCount += renderObj->getNumIndicies(); 
             }
@@ -2153,13 +1718,13 @@ void star::core::VulkanRenderer::createCommandBuffers() {
 
             //can now finish render pass
             //vkCmdEndRenderPass(graphicsCommandBuffers[i]);
-            this->graphicsCommandBuffers[i].endRenderPass(); 
+            newBuffers[i].endRenderPass(); 
 
             //record command buffer
-            if (vkEndCommandBuffer(graphicsCommandBuffers[i]) != VK_SUCCESS) {
-                throw std::runtime_error("failed to record command buffer");
-            }
+            newBuffers[i].end(); 
         }
+
+        this->starDevice->setGraphicsCommandBuffers(newBuffers); 
     }
 }
 
@@ -2171,8 +1736,8 @@ void star::core::VulkanRenderer::createSemaphores() {
     semaphoreInfo.sType = vk::StructureType::eSemaphoreCreateInfo;
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        this->imageAvailableSemaphores[i] = this->device.createSemaphore(semaphoreInfo);
-        this->renderFinishedSemaphores[i] = this->device.createSemaphore(semaphoreInfo);
+        this->imageAvailableSemaphores[i] = this->starDevice->getDevice().createSemaphore(semaphoreInfo);
+        this->renderFinishedSemaphores[i] = this->starDevice->getDevice().createSemaphore(semaphoreInfo);
 
         if (!this->imageAvailableSemaphores[i]) {
             throw std::runtime_error("failed to create semaphores for a frame");
@@ -2192,7 +1757,7 @@ void star::core::VulkanRenderer::createFences() {
     fenceInfo.flags = vk::FenceCreateFlagBits::eSignaled;
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        this->inFlightFences[i] = this->device.createFence(fenceInfo);
+        this->inFlightFences[i] = this->starDevice->getDevice().createFence(fenceInfo);
         if (!this->inFlightFences[i]) {
             throw std::runtime_error("failed to create fence object for a frame");
         }
@@ -2208,61 +1773,3 @@ void star::core::VulkanRenderer::createFenceImageTracking() {
 
     //initially, no frame is using any image so this is going to be created without an explicit link
 }
-
-vk::CommandBuffer star::core::VulkanRenderer::beginSingleTimeCommands(bool useTransferPool) {
-    //allocate using temporary command pool
-    vk::CommandBufferAllocateInfo allocInfo{};
-    allocInfo.sType = vk::StructureType::eCommandBufferAllocateInfo;
-    allocInfo.level = vk::CommandBufferLevel::ePrimary;
-    allocInfo.commandPool = useTransferPool ? transferCommandPool : graphicsCommandPool;
-    allocInfo.commandBufferCount = 1;
-
-    //TODO: this returns a vector -- need to make only return one 
-    vk::CommandBuffer tmpCommandBuffer = this->device.allocateCommandBuffers(allocInfo).at(0);
-
-    vk::CommandBufferBeginInfo beginInfo{};
-    //beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    beginInfo.sType = vk::StructureType::eCommandBufferBeginInfo;
-    beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit; //only planning on using this command buffer once 
-
-    tmpCommandBuffer.begin(beginInfo);
-
-    return tmpCommandBuffer;
-}
-
-void star::core::VulkanRenderer::endSingleTimeCommands(vk::CommandBuffer commandBuff, bool useTransferPool) {
-    commandBuff.end();
-    //submit the buffer for execution
-    vk::SubmitInfo submitInfo{};
-    submitInfo.sType = vk::StructureType::eSubmitInfo;
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &commandBuff;
-
-    if (useTransferPool) {
-        this->transferQueue.submit(submitInfo);
-        this->transferQueue.waitIdle();
-        this->device.freeCommandBuffers(this->transferCommandPool, 1, &commandBuff);
-    }
-    else {
-        //use graphics pool
-        this->graphicsQueue.submit(submitInfo);
-        this->graphicsQueue.waitIdle();
-        this->device.freeCommandBuffers(this->graphicsCommandPool, 1, &commandBuff);
-    }
-}
-
-void star::core::VulkanRenderer::copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size) {
-    bool useTransferPool = true;
-    vk::CommandBuffer commandBuffer = beginSingleTimeCommands(useTransferPool);
-
-    vk::BufferCopy copyRegion{};
-    copyRegion.srcOffset = 0;
-    copyRegion.dstOffset = 0;
-    copyRegion.size = size;
-
-    //note: cannot specify VK_WHOLE_SIZE as before 
-    commandBuffer.copyBuffer(srcBuffer, dstBuffer, copyRegion);
-
-    endSingleTimeCommands(commandBuffer, useTransferPool);
-}
-
