@@ -68,8 +68,8 @@ star::common::Handle star::core::ObjectManager::Add(const std::string& pathToFil
 //}
 
 star::common::Handle star::core::ObjectManager::Add(const std::string& pathToFile, glm::vec3 position, glm::vec3 scaleAmt, common::Handle texture, common::Handle vertShader, common::Handle fragShader) {
-	bool hasBeenLoaded = this->fileContainer.FileLoaded(pathToFile); 
-
+	//bool hasBeenLoaded = this->fileContainer.FileLoaded(pathToFile); 
+	bool hasBeenLoaded = false; 
 	if (!hasBeenLoaded) {
 		std::unique_ptr<std::vector<common::Vertex>> readVertexList(new std::vector<common::Vertex>);
 		std::unique_ptr<std::vector<uint32_t>> readIndiciesList(new std::vector<uint32_t>);
