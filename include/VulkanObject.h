@@ -6,6 +6,8 @@
 #include "SC/Shader.h"
 #include "VulkanVertex.hpp"
 #include "Star_RenderObject.hpp"
+#include "Star_Descriptors.hpp"
+#include "Star_Device.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -44,8 +46,8 @@ namespace star {
 			//no copy
 			VulkanObject(const VulkanObject&) = delete; 
 
-			VulkanObject(vk::Device& device, size_t numSwapChainImages) :
-				device(device),
+			VulkanObject(StarDevice* device, size_t numSwapChainImages) :
+				starDevice(device),
 				renderObjects() {};
 
 			void cleanup(); 
@@ -99,7 +101,7 @@ namespace star {
 
 
 		private:
-			vk::Device& device; 
+			StarDevice* starDevice; 
 
 			//only 10 of these are permitted in general 
 			vk::DescriptorPool descriptorPool; 

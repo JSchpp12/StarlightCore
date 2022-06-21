@@ -12,6 +12,7 @@
 #include "VulkanObject.h"
 #include "Star_Descriptors.hpp"
 #include "Star_Device.hpp"
+#include "Star_Buffer.hpp"
 
 #include <stb_image.h>
 
@@ -47,6 +48,7 @@ namespace star {
             void cleanup();
 
         protected:
+            std::unique_ptr<StarDevice> starDevice;
 
             std::vector<std::unique_ptr<VulkanObject>> vulkanObjects;
 
@@ -70,10 +72,8 @@ namespace star {
 
 
             //storage for multiple buffers for each swap chain image 
-            std::vector<vk::Buffer> uniformBuffers;
-            std::vector<vk::DeviceMemory> uniformBuffersMemory;
-            std::vector<vk::Buffer> globalUniformBuffers; 
-            std::vector<vk::DeviceMemory> globalUniformBuffersMemory; 
+            std::vector<std::unique_ptr<StarBuffer>> uniformBuffers; 
+            std::vector<std::unique_ptr<StarBuffer>> globalUniformBuffers; 
 
             std::vector<vk::DescriptorSet> globalDescriptorSets; 
             //std::vector<std::vector<vk::DescriptorSet>> perObjectDescriptorSets; 
@@ -224,16 +224,6 @@ namespace star {
             /// </summary>
             void createRenderingBuffers();
 
-   /*         /// <summary>
-            /// Create descriptor pools to bind the uniform buffer descriptor to each VkBuffer. 
-            /// </summary>
-            void createDescriptorPool();
-
-            /// <summary>
-            /// Allocate memory for the descriptor sets. 
-            /// </summary>
-            void createDescriptorSets();*/
-
             /// <summary>
             /// Allocate and record the commands for each swapchain image
             /// </summary>
@@ -257,7 +247,6 @@ namespace star {
 #pragma region HelperFunctions 
 #pragma endregion
         private:
-            std::unique_ptr<StarDevice> starDevice;
             GLFWwindow* window = nullptr; 
             std::vector<common::Handle>* objectHandles;
 

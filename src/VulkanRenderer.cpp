@@ -35,14 +35,9 @@ void star::core::VulkanRenderer::updateUniformBuffer(uint32_t currentImage) {
     //glm designed for openGL where the Y coordinate of the flip coordinates is inverted. Fix this by flipping the sign on the scaling factor of the Y axis in the projection matrix.
     globalUbo.proj[1][1] *= -1;
     globalUbo.view = this->camera->getDisplayMatrix();
-    //globalUbo.view = glm::lookAt(glm::vec3(3.0f, 3.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-
-    void* globalData = this->starDevice->getDevice().mapMemory(this->globalUniformBuffersMemory[currentImage], 0, sizeof(GlobalUniformBufferObject));
-    memcpy(globalData, &globalUbo, sizeof(globalUbo)); 
-    this->starDevice->getDevice().unmapMemory(globalUniformBuffersMemory[currentImage]);
+    this->globalUniformBuffers[currentImage]->writeToBuffer(&globalUbo, sizeof(globalUbo)); 
 
     //update per object data
-
     VulkanObject* tmpVulkanObject = this->vulkanObjects.at(0).get();
     common::GameObject* currObject = nullptr;
 
@@ -92,14 +87,9 @@ void star::core::VulkanRenderer::updateUniformBuffer(uint32_t currentImage) {
         //copy data to the current uniform buffer 
 
         ubos.at(i) = *newBufferObject;
-
     }
 
-    auto tmp1 = sizeof(UniformBufferObject);
-    auto tmp = sizeof(ubos) * ubos.size();
-    void* data = this->starDevice->getDevice().mapMemory(this->uniformBuffersMemory[currentImage], 0, sizeof(UniformBufferObject) * tmpVulkanObject->getNumRenderObjects());
-    memcpy(data, ubos.data(), sizeof(UniformBufferObject) * ubos.size());
-    this->starDevice->getDevice().unmapMemory(uniformBuffersMemory[currentImage]);
+    this->uniformBuffers[currentImage]->writeToBuffer(ubos.data(), sizeof(UniformBufferObject) * ubos.size()); 
 }
 
 void star::core::VulkanRenderer::prepareGLFW(int width, int height, GLFWkeyfun keyboardCallbackFunction, GLFWmousebuttonfun mouseButtonCallback, GLFWcursorposfun cursorPositionCallback, GLFWscrollfun scrollCallback) {
@@ -149,8 +139,8 @@ void star::core::VulkanRenderer::prepare() {
 
     common::GameObject* currObject = nullptr; 
     vk::ShaderStageFlagBits stages{};
-    vk::Device device = this->starDevice->getDevice();
-    this->vulkanObjects.push_back(std::make_unique<VulkanObject>(device, this->swapChainImages.size()));
+    vk::Device device = this->starDevice->getDevice(); 
+    this->vulkanObjects.push_back(std::make_unique<VulkanObject>(this->starDevice.get(), this->swapChainImages.size()));
     VulkanObject* tmpVulkanObject = this->vulkanObjects.at(0).get();
 
     for (size_t i = 0; i < this->objectList->size(); i++) {
@@ -172,7 +162,7 @@ void star::core::VulkanRenderer::prepare() {
             else if ((object->getBaseShader(vk::ShaderStageFlagBits::eVertex).containerIndex != currObject->getVertShader().containerIndex) ||
                 (object->getBaseShader(vk::ShaderStageFlagBits::eFragment).containerIndex != currObject->getFragShader().containerIndex)) {
                 //vulkan object has shaders but they are not the same as the shaders needed for current render object
-                this->vulkanObjects.push_back(std::make_unique<VulkanObject>(device, this->swapChainImages.size()));
+                this->vulkanObjects.push_back(std::make_unique<VulkanObject>(this->starDevice.get(), this->swapChainImages.size()));
                 VulkanObject* newObject = this->vulkanObjects.at(this->vulkanObjects.size()).get();
                 newObject->registerShader(vk::ShaderStageFlagBits::eVertex, currObject->getVertShader());
                 newObject->registerShader(vk::ShaderStageFlagBits::eFragment, currObject->getFragShader());
@@ -188,22 +178,22 @@ void star::core::VulkanRenderer::prepare() {
 
         //set up pool
     //one uniform buffer per frame
-    this->globalPool = StarDescriptorPool::Builder(device)
+    this->globalPool = StarDescriptorPool::Builder(this->starDevice.get())
         .setMaxSets((this->swapChainImages.size()))
         .addPoolSize(vk::DescriptorType::eUniformBuffer, this->swapChainImages.size())
         .build();
     //need object information for each frame 
-    this->perObjectStaticPool = StarDescriptorPool::Builder(device)
+    this->perObjectStaticPool = StarDescriptorPool::Builder(this->starDevice.get())
         .setMaxSets((this->swapChainImages.size() * tmpVulkanObject->getNumRenderObjects()))
         .addPoolSize(vk::DescriptorType::eUniformBuffer, this->swapChainImages.size() * tmpVulkanObject->getNumRenderObjects())
         //.addPoolSize(vk::DescriptorType::eCombinedImageSampler, this->swapChainImages.size() * tmpVulkanObject->getNumRenderObjects())
         .build();
 
-    this->globalSetLayout = StarDescriptorSetLayout::Builder(device)
+    this->globalSetLayout = StarDescriptorSetLayout::Builder(this->starDevice.get())
         .addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
         .build();
 
-    this->perObjectStaticLayout = StarDescriptorSetLayout::Builder(device)
+    this->perObjectStaticLayout = StarDescriptorSetLayout::Builder(this->starDevice.get())
         .addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex, 1)
         .build(); 
 
@@ -235,11 +225,11 @@ void star::core::VulkanRenderer::prepare() {
         bufferInfos = std::make_unique<std::vector<vk::DescriptorBufferInfo>>(); 
 
         bufferInfos->push_back(vk::DescriptorBufferInfo{
-            this->globalUniformBuffers[i],
+            this->globalUniformBuffers[i]->getBuffer(),
             0,
             sizeof(GlobalUniformBufferObject) });
 
-        StarDescriptorWriter(device, *this->globalSetLayout, *this->globalPool)
+        StarDescriptorWriter(this->starDevice.get(), *this->globalSetLayout, *this->globalPool)
             .writeBuffer(0, &bufferInfos.get()->at(0))
             .build(this->globalDescriptorSets.at(i));
 
@@ -255,12 +245,12 @@ void star::core::VulkanRenderer::prepare() {
         for (size_t j = 0; j < tmpVulkanObject->getNumRenderObjects(); j++) {
             //per object data -- updated every frame
             auto bufferInfo = vk::DescriptorBufferInfo{
-                this->uniformBuffers[i],
+                this->uniformBuffers[i]->getBuffer(),
                 sizeof(UniformBufferObject) * j,
                 sizeof(UniformBufferObject) };
 
             //bufferInfos = std::make_unique<std::vector<vk::DescriptorBufferInfo>>();
-            StarDescriptorWriter(device, *this->perObjectStaticLayout, *this->perObjectStaticPool)
+            StarDescriptorWriter(this->starDevice.get(), *this->perObjectStaticLayout, *this->perObjectStaticPool)
                 .writeBuffer(0, &bufferInfo)
                 .build(tmpVulkanObject->getRenderObjectAt(j)->getDefaultDescriptorSets()->at(i));
         }
@@ -460,22 +450,10 @@ void star::core::VulkanRenderer::cleanup() {
         this->starDevice->getDevice().destroyFence(inFlightFences[i]);
     }
 
-
-    currVulkanObject->cleanup(); 
     this->starDevice->getDevice().destroyDescriptorSetLayout(this->globalSetLayout->getDescriptorSetLayout());
     this->starDevice->getDevice().destroyDescriptorPool(this->globalPool->getDescriptorPool()); 
     this->starDevice->getDevice().destroyDescriptorSetLayout(this->perObjectStaticLayout->getDescriptorSetLayout()); 
     this->starDevice->getDevice().destroyDescriptorPool(this->perObjectStaticPool->getDescriptorPool()); 
-
-    //this->starDevice->getDevice().destroyDescriptorSetLayout(this->globalSetLayout->getDescriptorSetLayout()); 
-    //this->starDevice->getDevice().destroyDescriptorSetLayout(this->perObjectStaticLayout->getDescriptorSetLayout()); 
-    //for (size_t i = 0; i < currVulkanObject->getNumRenderObjects(); i++) {
-    //    currRenderObject = currVulkanObject->getRenderObjectAt(i); 
-    //    std::vector<vk::DescriptorSetcurrRenderObject->getDefaultDescriptorSets()
-    //}
-    //this->starDevice->getDevice().destroyDescriptorPool(*this->globalPool.get());
-
-    //this->starDevice->getDevice().destroyDescriptorSetLayout(*this->globalSetLayout.get()); 
 
     glfwDestroyWindow(this->window);
     glfwTerminate();
@@ -503,16 +481,6 @@ void star::core::VulkanRenderer::cleanupSwapChain() {
     }
 
     this->starDevice->getDevice().destroySwapchainKHR(this->swapChain);
-
-    for (size_t i = 0; i < swapChainImages.size(); i++) {
-        this->starDevice->getDevice().destroyBuffer(uniformBuffers[i]);
-        this->starDevice->getDevice().freeMemory(uniformBuffersMemory[i]);
-
-        this->starDevice->getDevice().destroyBuffer(this->globalUniformBuffers[i]); 
-        this->starDevice->getDevice().freeMemory(this->globalUniformBuffersMemory[i]);
-    }
-
-    //this->starDevice->getDevice().destroyDescriptorPool(this->descriptorPool);
 }
 
 void star::core::VulkanRenderer::createSwapChain() {
@@ -710,33 +678,8 @@ void star::core::VulkanRenderer::createImageViews() {
 
     //need to create an imageView for each of the images available
     for (size_t i = 0; i < swapChainImages.size(); i++) {
-        //VkImageViewCreateInfo createInfo{};
-        //createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        //createInfo.image = swapChainImages[i];
-
-        ////specify how the image will be interpreted
-        //createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        //createInfo.format = swapChainImageFormat;
-
-        ////the next fields allows to swizzle RGB values -- leaving as defaults for now 
-        //createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-        //createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-        //createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-        //createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-
-        ////subresourceRange describes image purpose -- this use is color targets without any mipmapping levels or multiple layers
-        //createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        //createInfo.subresourceRange.baseMipLevel = 0;
-        //createInfo.subresourceRange.levelCount = 1;
-        //createInfo.subresourceRange.baseArrayLayer = 0;
-        //createInfo.subresourceRange.layerCount = 1;
-
         //swapChainImageViews[i] = createImageView(swapChainImages[i], swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
         swapChainImageViews[i] = createImageView(swapChainImages[i], swapChainImageFormat, vk::ImageAspectFlagBits::eColor);
-        //if (vkCreateImageView(device, &createInfo, nullptr, &swapChainImageViews[i]) != VK_SUCCESS) {
-        //    throw std::runtime_error("failed to create image views");
-        //}
-
     }
 }
 
@@ -1541,26 +1484,21 @@ void star::core::VulkanRenderer::createIndexBuffer() {
 }
 
 void star::core::VulkanRenderer::createRenderingBuffers() {
-    /*Create Uniform Buffer */
-    //just set up the buffers, we are not going to be updating the buffers here since they need updated every frame
     VulkanObject* tmpVulkanObject = this->vulkanObjects.at(0).get();
-
     vk::DeviceSize uboBufferSize = sizeof(UniformBufferObject) * tmpVulkanObject->getNumRenderObjects();
-
-    uniformBuffers.resize(swapChainImages.size());
-    uniformBuffersMemory.resize(swapChainImages.size());
-
-    for (size_t i = 0; i < swapChainImages.size(); i++) {
-        this->starDevice->createBuffer(uboBufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, uniformBuffers[i], uniformBuffersMemory[i]);
-    }
-
-    vk::DeviceSize globalBufferSize = sizeof(GlobalUniformBufferObject); 
-
-    this->globalUniformBuffers.resize(swapChainImages.size());
-    this->globalUniformBuffersMemory.resize(swapChainImages.size()); 
+    vk::DeviceSize globalBufferSize = sizeof(GlobalUniformBufferObject) * tmpVulkanObject->getNumRenderObjects(); 
+    
+    this->uniformBuffers.resize(this->swapChainImages.size()); 
+    this->globalUniformBuffers.resize(this->swapChainImages.size());
 
     for (size_t i = 0; i < swapChainImages.size(); i++) {
-        this->starDevice->createBuffer(globalBufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, globalUniformBuffers[i], globalUniformBuffersMemory[i]); 
+        this->globalUniformBuffers[i] = std::make_unique<StarBuffer>(this->starDevice.get(), tmpVulkanObject->getNumRenderObjects(), sizeof(GlobalUniformBufferObject),
+            vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+        this->globalUniformBuffers[i]->map(); 
+
+        this->uniformBuffers[i] = std::make_unique<StarBuffer>(this->starDevice.get(),tmpVulkanObject->getNumRenderObjects(), sizeof(UniformBufferObject),
+            vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+        this->uniformBuffers[i]->map(); 
     }
 
 }

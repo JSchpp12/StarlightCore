@@ -76,7 +76,7 @@ SET(${PROJECT_NAME}_HEADERS
 	"include/ShaderManager.h"
 	"include/EntityManager.h"
 	"include/Entity.h"
-	"include/ObjectManager.h"
+	"include/ObjectManager.hpp"
 	"include/Object.h"
 	"include/TextureManager.h"
 	"include/RenderEngine.h"
