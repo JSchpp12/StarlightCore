@@ -11,9 +11,8 @@
 namespace star {
 namespace core {
 	struct PipelineConfigSettings {
-		//no copy 
 		PipelineConfigSettings() = default; 
-
+		//no copy 
 		PipelineConfigSettings(const PipelineConfigSettings&) = delete;
 		PipelineConfigSettings& operator=(const PipelineConfigSettings&) = delete;
 
