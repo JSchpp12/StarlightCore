@@ -67,6 +67,8 @@ SET(${PROJECT_NAME}_SOURCES
 	"src/Star_RenderObject.cpp"
 	"src/Star_Buffer.cpp"
 	"src/Star_Device.cpp"
+	"src/Star_Pipeline.cpp"
+	"src/Star_Window.cpp"
 	#rendering sytems
 	"src/Systems/BasicVulkanRenderer.cpp"
 )
@@ -90,6 +92,8 @@ SET(${PROJECT_NAME}_HEADERS
 	"include/Star_RenderObject.hpp"
 	"include/Star_Buffer.hpp"
 	"include/Star_Device.hpp"
+	"include/Star_Pipeline.hpp"
+	"include/Star_Window.hpp"
 	#rendering systems 
 	"include/Systems/BasicVulkanRenderer.h"
 	#header only files

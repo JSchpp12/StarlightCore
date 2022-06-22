@@ -7,9 +7,11 @@ star::core::VulkanRenderer::VulkanRenderer(common::ConfigFile* configFile,
     common::FileResourceManager<common::GameObject>* objectManager,
     common::FileResourceManager<common::Texture>* textureManager,
     common::Camera* inCamera,
-    std::vector<common::Handle>* objectHandleList) :
+    std::vector<common::Handle>* objectHandleList, 
+    StarWindow& window) :
     star::common::Renderer(configFile, shaderManager, objectManager, textureManager, inCamera, objectHandleList),
-    glfwRequiredExtensionsCount(new uint32_t)
+    glfwRequiredExtensionsCount(new uint32_t), 
+    starWindow(window)
 {
     common::GameObject* currentObject;
 
@@ -93,44 +95,17 @@ void star::core::VulkanRenderer::updateUniformBuffer(uint32_t currentImage) {
 }
 
 void star::core::VulkanRenderer::prepareGLFW(int width, int height, GLFWkeyfun keyboardCallbackFunction, GLFWmousebuttonfun mouseButtonCallback, GLFWcursorposfun cursorPositionCallback, GLFWscrollfun scrollCallback) {
-    //actually make sure to init glfw
-    glfwInit();
-    //tell GLFW to create a window but to not include a openGL instance as this is a default behavior
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    //disable resizing functionality in glfw as this will not be handled in the first tutorial
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
-    //create a window, 3rd argument allows selection of monitor, 4th argument only applies to openGL
-    this->window = glfwCreateWindow(width, height, "Vulkan", nullptr, nullptr);
-
-    //need to give GLFW a pointer to current instance of this class
-    glfwSetWindowUserPointer(this->window, this);
-
-    // glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
-
-    //set keyboard callbacks
-    auto callback = glfwSetKeyCallback(this->window, keyboardCallbackFunction);
-
-    auto cursorCallback = glfwSetCursorPosCallback(this->window, cursorPositionCallback);
-
-    auto mouseBtnCallback = glfwSetMouseButtonCallback(this->window, mouseButtonCallback);
-
-    auto mouseScrollCallback = glfwSetScrollCallback(this->window, scrollCallback);
-
-    // this->glfwRequiredExtensions = std::make_unique<std::vector<vk::ExtensionProperties>>(new std::vector<vk::ExtensionProperties>(**requiredExtensions)); 
-    this->glfwRequiredExtensions = std::make_unique<const char**>(glfwGetRequiredInstanceExtensions(this->glfwRequiredExtensionsCount.get()));
 }
 
-bool star::core::VulkanRenderer::shouldCloseWindow() {
-    return glfwWindowShouldClose(this->window);
-}
 
 void star::core::VulkanRenderer::pollEvents() {
     glfwPollEvents();
 }
 
 void star::core::VulkanRenderer::prepare() {
-    this->starDevice = std::make_unique<StarDevice>(this->window); 
+
+    this->starDevice = std::make_unique<StarDevice>(this->starWindow); 
 
     createSwapChain();
 
@@ -256,54 +231,6 @@ void star::core::VulkanRenderer::prepare() {
         }
     }
 
-    //bufferInfos = std::make_unique<std::vector<vk::DescriptorBufferInfo>>();
-    //bufferInfos->push_back(
-    //    vk::DescriptorBufferInfo{
-    //        this->uniformBuffers[0],
-    //        0,
-    //        sizeof(UniformBufferObject) });
-
-    //StarDescriptorWriter(this->starDevice->getDevice(), *this->perObjectStaticLayout, *this->perObjectStaticPool)
-    //    .writeBuffer(0, bufferInfos.get())
-    //    .build(testSet, true);
-
-    //for (size_t i = 0; i < this->swapChainImages.size(); i++) {
-    //    //for (size_t j = 0; j < tmpVulkanObject->getNumRenderObjects(); j++) {
-    //    auto bufferInfo = vk::DescriptorBufferInfo{};
-    //    bufferInfo.buffer = uniformBuffers[i];
-    //    bufferInfo.offset = 0;
-    //    bufferInfo.range = sizeof(UniformBufferObject); 
-
-    //    std::vector<vk::DescriptorSet> newSets;
-    //    StarDescriptorWriter(this->starDevice->getDevice(), *this->globalSetLayout, *this->globalPool)
-    //        .writeBuffer(0, &bufferInfo)
-    //        .build(newSets, true);
-
-    //    this->globalDescriptorSets[i].push_back(newSets.at(0));
-
-    //    auto bufferInfo2 = vk::DescriptorBufferInfo{}; 
-    //    bufferInfo2.buffer = uniformBuffers[i];
-    //    bufferInfo2.offset = sizeof(UniformBufferObject); 
-    //    bufferInfo2.range = sizeof(UniformBufferObject);
-
-
-    //    //create pool for texture and texture sampler
-    //    vk::DescriptorImageInfo imageInfo{};
-    //    imageInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-    //    imageInfo.imageView = textureImageView;
-    //    imageInfo.sampler = textureSampler;
-
-    //    //WARNING: only using the first set created 
-    //    std::vector<vk::DescriptorSet> newSetsN;
-    //    StarDescriptorWriter(this->starDevice->getDevice(), *this->globalSetLayout, *this->globalPool)
-    //        .writeBuffer(0, &bufferInfo2)
-    //        .build(newSetsN, true);
-
-    //    this->globalDescriptorSets[i].push_back(newSetsN.at(0));
-    //}
-
-    //createDescriptorPool();
-    //createDescriptorSets();
     createCommandBuffers();
     createSemaphores();
     createFences();
@@ -454,9 +381,6 @@ void star::core::VulkanRenderer::cleanup() {
     this->starDevice->getDevice().destroyDescriptorPool(this->globalPool->getDescriptorPool()); 
     this->starDevice->getDevice().destroyDescriptorSetLayout(this->perObjectStaticLayout->getDescriptorSetLayout()); 
     this->starDevice->getDevice().destroyDescriptorPool(this->perObjectStaticPool->getDescriptorPool()); 
-
-    glfwDestroyWindow(this->window);
-    glfwTerminate();
 }
 
 void star::core::VulkanRenderer::cleanupSwapChain() {
@@ -572,9 +496,9 @@ void star::core::VulkanRenderer::createSwapChain() {
 void star::core::VulkanRenderer::recreateSwapChain() {
     int width = 0, height = 0;
     //check for window minimization and wait for window size to no longer be 0
-    glfwGetFramebufferSize(this->window, &width, &height);
+    glfwGetFramebufferSize(this->starWindow.getGLFWwindow(), &width, &height);
     while (width == 0 || height == 0) {
-        glfwGetFramebufferSize(this->window, &width, &height);
+        glfwGetFramebufferSize(this->starWindow.getGLFWwindow(), &width, &height);
         glfwWaitEvents();
     }
     //wait for device to finish any current actions
@@ -658,7 +582,7 @@ vk::Extent2D star::core::VulkanRenderer::chooseSwapExtent(const vk::SurfaceCapab
     else {
         //vulkan requires that resultion be defined in pixels -- if a high DPI display is used, screen coordinates do not match with pixels
         int width, height;
-        glfwGetFramebufferSize(this->window, &width, &height);
+        glfwGetFramebufferSize(this->starWindow.getGLFWwindow(), &width, &height);
 
         vk::Extent2D actualExtent = {
             static_cast<uint32_t>(width),
@@ -806,44 +730,9 @@ vk::Format star::core::VulkanRenderer::findDepthFormat() {
         vk::FormatFeatureFlagBits::eDepthStencilAttachment);
 }
 
-//void star::core::VulkanRenderer::createDescriptorSetLayout() {
-//    vk::DescriptorSetLayoutBinding setLayoutBindings;
-//
-//    /* Binding 0 : Uniform buffers (MVP matricies) */
-//    setLayoutBindings.binding = 0;
-//    setLayoutBindings.descriptorType = vk::DescriptorType::eUniformBuffer;    //for this, we are using a uniform buffer object (UBO)
-//    setLayoutBindings.descriptorCount = 1;                                   //can pass an array of uniform buffer objects, for this we are only using one 
-//
-//    //which shader stages are going to use the descriptor 
-//    setLayoutBindings.stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment;
-//
-//    //only needed for image sampling related descriptors -- not used now
-//    setLayoutBindings.pImmutableSamplers = nullptr;
-//
-//    //binding for combined image sampler descriptor
-//    vk::DescriptorSetLayoutBinding samplerLayoutBinding{};
-//    samplerLayoutBinding.binding = 1;
-//    samplerLayoutBinding.descriptorCount = 1;
-//    samplerLayoutBinding.descriptorType = vk::DescriptorType::eCombinedImageSampler;
-//    samplerLayoutBinding.pImmutableSamplers = nullptr;
-//    samplerLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eFragment;                     //use in the fragment shader
-//
-//    std::array<vk::DescriptorSetLayoutBinding, 2> bindings = { setLayoutBindings, samplerLayoutBinding };
-//    vk::DescriptorSetLayoutCreateInfo layoutInfo{};
-//    layoutInfo.sType = vk::StructureType::eDescriptorSetLayoutCreateInfo;
-//    layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
-//    layoutInfo.pBindings = bindings.data();
-//
-//    this->descriptorSetLayout = device.createDescriptorSetLayout(layoutInfo);
-//    if (!this->descriptorSetLayout) {
-//        throw std::runtime_error("failed to create descriptor set layout!");
-//    }
-//}
-
 void star::core::VulkanRenderer::createGraphicsPipeline() {
     auto bindingDescriptions = VulkanVertex::getBindingDescription();
     auto attributeDescriptions = VulkanVertex::getAttributeDescriptions();
-
 
     //common::Object* currObject = this->objectManager->Get(objectHandle); 
 

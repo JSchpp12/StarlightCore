@@ -4,6 +4,7 @@
 */
 
 #pragma once 
+#include "Star_Window.hpp"
 
 #include <vulkan/vulkan.hpp>
 #define GLFW_INCLUDE_VULKAN
@@ -42,7 +43,7 @@ namespace core {
 #else
 		const bool enableValidationLayers = true;
 #endif    
-		StarDevice(GLFWwindow* window); 
+		StarDevice(StarWindow& window); 
 		~StarDevice(); 
 
 		// Not copyable or movable
@@ -55,7 +56,7 @@ namespace core {
 		vk::CommandPool getGraphicsCommandPool() { return this->graphicsCommandPool; }
 		vk::PhysicalDevice getPhysicalDevice() { return this->physicalDevice; }
 		vk::Device getDevice() { return this->vulkanDevice; }
-		vk::SurfaceKHR getSurface() { return this->surface->get(); }
+		vk::SurfaceKHR getSurface() { return this->surface.get(); }
 		vk::Queue getGraphicsQueue() { return this->graphicsQueue; }
 		vk::Queue getPresentQueue() { return this->presentQueue; }
 		vk::Queue getTransferQueue() { return this->transferQueue; }
@@ -128,8 +129,8 @@ namespace core {
 		vk::Instance instance; 
 		vk::Device vulkanDevice;
 		vk::PhysicalDevice physicalDevice = VK_NULL_HANDLE; 
-		vk::UniqueSurfaceKHR* surface = nullptr; 
-		GLFWwindow* glfwWindow;
+		vk::UniqueSurfaceKHR surface; 
+		StarWindow& starWindow;
 
 		//vulkan command storage
 		vk::CommandPool graphicsCommandPool;
