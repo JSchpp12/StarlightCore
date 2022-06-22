@@ -46,7 +46,7 @@ namespace star {
             void cleanup();
 
         protected:
-            std::unique_ptr<StarDevice> starDevice;
+            std::unique_ptr<StarDevice> starDevice{};
 
             std::vector<std::unique_ptr<VulkanObject>> vulkanObjects;
 

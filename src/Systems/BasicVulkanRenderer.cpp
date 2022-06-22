@@ -14,7 +14,7 @@ star::core::VulkanRenderer::VulkanRenderer(common::ConfigFile* configFile,
     starWindow(window)
 {
     common::GameObject* currentObject;
-
+    this->starDevice = std::unique_ptr<StarDevice>(new StarDevice(this->starWindow));
     //TODO: check data before creating needed objects -- ensure all objects are valid  
     //find out how many unique vulkan objects will be needed 
 }
@@ -104,11 +104,7 @@ void star::core::VulkanRenderer::pollEvents() {
 }
 
 void star::core::VulkanRenderer::prepare() {
-
-    this->starDevice = std::make_unique<StarDevice>(this->starWindow); 
-
     createSwapChain();
-
     createImageViews();
     createRenderPass();
 
@@ -121,17 +117,14 @@ void star::core::VulkanRenderer::prepare() {
     for (size_t i = 0; i < this->objectList->size(); i++) {
         currObject = this->objectManager->Get(this->objectList->at(i));
 
-        //this->numVerticies += currObject->getVerticies()->size();
-        //this->numIndicies += currObject->getIndicies()->size();
-
         //check if the vulkan object has a shader registered for the desired stage that is different than the one needed for the current object
         for (size_t j = 0; j < this->vulkanObjects.size(); j++) {
             //check if object shaders are in vulkan object
             VulkanObject* object = this->vulkanObjects.at(j).get(); 
             if (!object->hasShader(vk::ShaderStageFlagBits::eVertex) && (!object->hasShader(vk::ShaderStageFlagBits::eFragment))) {
                 //vulkan object does not have either a vertex or a fragment shader 
-                object->registerShader(vk::ShaderStageFlagBits::eVertex, currObject->getVertShader());
-                object->registerShader(vk::ShaderStageFlagBits::eFragment, currObject->getFragShader());
+                object->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager->Get(currObject->getVertShader()), currObject->getVertShader());
+                object->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager->Get(currObject->getFragShader()), currObject->getFragShader());
                 object->addObject(this->objectList->at(i), currObject, this->swapChainImages.size());
             }
             else if ((object->getBaseShader(vk::ShaderStageFlagBits::eVertex).containerIndex != currObject->getVertShader().containerIndex) ||
@@ -139,10 +132,9 @@ void star::core::VulkanRenderer::prepare() {
                 //vulkan object has shaders but they are not the same as the shaders needed for current render object
                 this->vulkanObjects.push_back(std::make_unique<VulkanObject>(this->starDevice.get(), this->swapChainImages.size()));
                 VulkanObject* newObject = this->vulkanObjects.at(this->vulkanObjects.size()).get();
-                newObject->registerShader(vk::ShaderStageFlagBits::eVertex, currObject->getVertShader());
-                newObject->registerShader(vk::ShaderStageFlagBits::eFragment, currObject->getFragShader());
+                newObject->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager->Get(currObject->getVertShader()), currObject->getVertShader());
+                newObject->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager->Get(currObject->getFragShader()), currObject->getFragShader());
                 newObject->addObject(this->objectList->at(i), currObject, this->swapChainImages.size());
-
             }
             else {
                 //vulkan object has the same shaders as the render object 
@@ -174,6 +166,11 @@ void star::core::VulkanRenderer::prepare() {
 
     this->globalDescriptorSets.resize(this->swapChainImages.size());
 
+    //create the two pipelines
+    //1. normal 
+    
+    
+    //2. point lights
 
 
     createGraphicsPipeline();
@@ -396,7 +393,6 @@ void star::core::VulkanRenderer::cleanupSwapChain() {
     //this->starDevice->getDevice().freeCommandBuffers(this->graphicsCommandPool, this->graphicsCommandBuffers);
 
 
-    this->starDevice->getDevice().destroyPipeline(tmpVulkanObject->pipelines.at(0));
     this->starDevice->getDevice().destroyPipelineLayout(tmpVulkanObject->getPipelineLayout());
     this->starDevice->getDevice().destroyRenderPass(this->renderPass);
 
@@ -731,88 +727,20 @@ vk::Format star::core::VulkanRenderer::findDepthFormat() {
 }
 
 void star::core::VulkanRenderer::createGraphicsPipeline() {
-    auto bindingDescriptions = VulkanVertex::getBindingDescription();
-    auto attributeDescriptions = VulkanVertex::getAttributeDescriptions();
+    //auto bindingDescriptions = VulkanVertex::getBindingDescription();
+    //auto attributeDescriptions = VulkanVertex::getAttributeDescriptions();
 
-    //common::Object* currObject = this->objectManager->Get(objectHandle); 
+    ////common::Object* currObject = this->objectManager->Get(objectHandle); 
 
-    //auto fragShaderCode = readFile("media/shaders/fragShader.frag.spv");
-    //auto vertShaderCode = readFile("media/shaders/vertShader.vert.spv");
-    if (vulkanObjects.size() > 1) {
-        throw std::runtime_error("The creation of more than one pipeline is not yet supported");
-    }
+    ////auto fragShaderCode = readFile("media/shaders/fragShader.frag.spv");
+    ////auto vertShaderCode = readFile("media/shaders/vertShader.vert.spv");
+    //if (vulkanObjects.size() > 1) {
+    //    throw std::runtime_error("The creation of more than one pipeline is not yet supported");
+    //}
 
     for (size_t i = 0; i < this->vulkanObjects.size(); i++) {
         VulkanObject* vulkanObject = this->vulkanObjects.at(i).get(); 
-        auto vertShaderCode = this->shaderManager->Get(vulkanObject->getBaseShader(vk::ShaderStageFlagBits::eVertex))->GetSpirV();
-        auto fragShaderCode = this->shaderManager->Get(vulkanObject->getBaseShader(vk::ShaderStageFlagBits::eFragment))->GetSpirV();
-        vulkanObject->registerShaderModule(vk::ShaderStageFlagBits::eVertex, createShaderModule(vertShaderCode));
-        vulkanObject->registerShaderModule(vk::ShaderStageFlagBits::eFragment, createShaderModule(fragShaderCode));
 
-        //assign each shader module to a specific stage of the graphics pipeline
-        //vert shader first
-        vk::PipelineShaderStageCreateInfo vertShaderStageInfo{};
-        vertShaderStageInfo.sType = vk::StructureType::ePipelineShaderStageCreateInfo;
-        vertShaderStageInfo.stage = vk::ShaderStageFlagBits::eVertex;
-        vertShaderStageInfo.module = vulkanObject->getShaderModule(vk::ShaderStageFlagBits::eVertex);
-        vertShaderStageInfo.pName = "main"; //the function to invoke in the shader module
-        //optional member -> pSpecializationInfo: 
-        //  allows specification for values to shader constants. Use a single single shader module whos function could be customized through this optional value. 
-        //  if not useing, set to nullptr which is done automatically in this case with the constructor of the struct. 
-        //  Additionally: it is a good choice to use this value instead of variables so that graphics driver can remove if statements if needed for optimization
-
-        //create pipeline info for fragment shader 
-        vk::PipelineShaderStageCreateInfo fragShaderStageInfo{};
-        fragShaderStageInfo.sType = vk::StructureType::ePipelineShaderStageCreateInfo;
-        fragShaderStageInfo.stage = vk::ShaderStageFlagBits::eFragment;
-        fragShaderStageInfo.module = vulkanObject->getShaderModule(vk::ShaderStageFlagBits::eFragment);
-        fragShaderStageInfo.pName = "main";
-
-        //store these creation infos for later use 
-        vk::PipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
-
-        vk::PipelineVertexInputStateCreateInfo vertexInputInfo{};
-        vertexInputInfo.sType = vk::StructureType::ePipelineVertexInputStateCreateInfo;
-
-        //pVertexBindingDescriptions and pVertexAttributeDescription -> point to arrays of structs to load vertex data
-        //for now: leaving blank as the verticies are hard coded in the shaders
-        vertexInputInfo.vertexBindingDescriptionCount = 1;
-        vertexInputInfo.pVertexBindingDescriptions = &bindingDescriptions;
-        vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
-        vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
-
-        /*
-        VkPipelineInputAssemblyStateCreateInfo -> Describes 2 things:
-            1.what kind of geometry will be drawn
-                described in topology member:
-                    -VK_PRIMITIVE_TOPOLOGY_POINT_LIST: points from verticies
-                    -VK_PRIMITIVE_TOPOLOGY_LINE_LIST: line from every 2 verticies without reuse
-                    -VK_PRIMITIVE_TOPOLOGY_LINE_STRIP: line strip
-                    -VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST: triangle from every 3 verticies without reuse
-                    -VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP: 2nd and 3rd vertex of every triangle are used as first two verticies of the next triangle
-            2.if primitive restart should be enabled
-        */
-        //Verticies are normally loaded from vertex buffer in sequential order 
-        //element buffer can be used to specify this information manually
-        //this allows the reuse of verticies!
-        vk::PipelineInputAssemblyStateCreateInfo inputAssembly{};
-        //inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-        inputAssembly.sType = vk::StructureType::ePipelineInputAssemblyStateCreateInfo;
-        //inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-        inputAssembly.topology = vk::PrimitiveTopology::eTriangleList;
-        inputAssembly.primitiveRestartEnable = VK_FALSE;
-
-        /* Viewport */
-        //Viewport describes the region of the framebuffer where the output will be rendered to
-        vk::Viewport viewport{};
-        viewport.x = 0.0f;
-        viewport.y = 0.0f;
-
-        viewport.width = (float)swapChainExtent.width;
-        viewport.height = (float)swapChainExtent.height;
-        //Specify values range of depth values to use for the framebuffer. If not doing anything special, leave at default
-        viewport.minDepth = 0.0f;
-        viewport.maxDepth = 1.0f;
 
         /* Scissor */
         //this defines in which regions pixels will actually be stored. 
@@ -823,6 +751,18 @@ void star::core::VulkanRenderer::createGraphicsPipeline() {
         //scissor.offset = { 0, 0 };
         scissor.extent = swapChainExtent;
 
+        /* Viewport */
+        //Viewport describes the region of the framebuffer where the output will be rendered to
+        vk::Viewport viewport{};
+        viewport.x = 0.0f;
+        viewport.y = 0.0f;
+
+        viewport.width = (float)800;
+        viewport.height = (float)600;
+        //Specify values range of depth values to use for the framebuffer. If not doing anything special, leave at default
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+
         //put scissor and viewport together into struct for creation 
         vk::PipelineViewportStateCreateInfo viewportState{};
         viewportState.sType = vk::StructureType::ePipelineViewportStateCreateInfo;
@@ -832,8 +772,8 @@ void star::core::VulkanRenderer::createGraphicsPipeline() {
         viewportState.pScissors = &scissor;
 
         /* Rasterizer */
-        //takes the geometry and creates fragments which are then passed onto the fragment shader 
-        //also does: depth testing, face culling, and the scissor test
+     //takes the geometry and creates fragments which are then passed onto the fragment shader 
+     //also does: depth testing, face culling, and the scissor test
         vk::PipelineRasterizationStateCreateInfo rasterizer{};
         rasterizer.sType = vk::StructureType::ePipelineRasterizationStateCreateInfo;
         //if set to true -> fragments that are beyond near and far planes are set to those distances rather than being removed
@@ -912,25 +852,7 @@ void star::core::VulkanRenderer::createGraphicsPipeline() {
         colorBlending.blendConstants[2] = 0.0f;
         colorBlending.blendConstants[3] = 0.0f;
 
-        /* Dynamic State */
-        //some parts of the pipeline can be changed without recreating the entire pipeline
-        //if this is defined, the data for the dynamic structures will have to be provided at draw time
-        vk::DynamicState dynamicStates[] = {
-            vk::DynamicState::eViewport,
-            vk::DynamicState::eLineWidth
-        };
-
-        vk::PipelineDynamicStateCreateInfo dynamicStateInfo{};
-        dynamicStateInfo.sType = vk::StructureType::ePipelineDynamicStateCreateInfo;
-        dynamicStateInfo.dynamicStateCount = 2;
-        dynamicStateInfo.pDynamicStates = dynamicStates;
-
-        // vk::PushConstantRange pushConstant; 
-        // pushConstant.offset = 0; 
-        // pushConstant.size = sizeof(ObjectPushConstants); 
-        // pushConstant.stageFlags = vk::ShaderStageFlagBits::eVertex; 
-
-        std::vector<vk::DescriptorSetLayout> descriptorSetLayouts{this->globalSetLayout->getDescriptorSetLayout(), this->perObjectStaticLayout->getDescriptorSetLayout()};
+        std::vector<vk::DescriptorSetLayout> descriptorSetLayouts{ this->globalSetLayout->getDescriptorSetLayout(), this->perObjectStaticLayout->getDescriptorSetLayout() };
         /* Pipeline Layout */
         //uniform values in shaders need to be defined here 
         vk::PipelineLayoutCreateInfo pipelineLayoutInfo{};
@@ -940,8 +862,8 @@ void star::core::VulkanRenderer::createGraphicsPipeline() {
         pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
         // pipelineLayoutInfo.pushConstantRangeCount = 1;
         // pipelineLayoutInfo.pPushConstantRanges = &pushConstant;
-        pipelineLayoutInfo.pushConstantRangeCount = 0; 
-        pipelineLayoutInfo.pPushConstantRanges = nullptr; 
+        pipelineLayoutInfo.pushConstantRangeCount = 0;
+        pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
         vk::PipelineLayout newLayout = this->starDevice->getDevice().createPipelineLayout(pipelineLayoutInfo);
         if (!newLayout) {
@@ -949,44 +871,17 @@ void star::core::VulkanRenderer::createGraphicsPipeline() {
         }
         vulkanObject->setPipelineLayout(newLayout);
 
-        /* Pipeline */
-        vk::GraphicsPipelineCreateInfo pipelineInfo{};
-        pipelineInfo.sType = vk::StructureType::eGraphicsPipelineCreateInfo;
-        pipelineInfo.stageCount = 2;
-        pipelineInfo.pStages = shaderStages;
-        //ref all previously created structs
-        pipelineInfo.pVertexInputState = &vertexInputInfo;
-        pipelineInfo.pInputAssemblyState = &inputAssembly;
-        pipelineInfo.pViewportState = &viewportState;
-        pipelineInfo.pRasterizationState = &rasterizer;
-        pipelineInfo.pMultisampleState = &multisampling;
-        pipelineInfo.pDepthStencilState = &depthStencil;
-        pipelineInfo.pColorBlendState = &colorBlending;
-        pipelineInfo.pDynamicState = nullptr; // Optional
-        pipelineInfo.layout = vulkanObject->getPipelineLayout();
-        //render pass info - ensure renderpass is compatible with pipeline --check khronos docs
-        pipelineInfo.renderPass = renderPass;
-        pipelineInfo.subpass = 0; //index where the graphics pipeline will be used 
-        //allow switching to new pipeline (inheritance) 
-        pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional -- handle to existing pipeline that is being switched to
-        pipelineInfo.basePipelineIndex = -1; // Optional
+        PipelineConfigSettings config{};
+        config.viewportInfo = viewportState;
+        config.rasterizationInfo = rasterizer;
+        config.multisampleInfo = multisampling;
+        config.depthStencilInfo = depthStencil;
+        config.colorBlendInfo = colorBlending;
+        config.colorBlendAttachment = colorBlendAttachment;
+        config.pipelineLayout = newLayout; 
+        config.renderPass = renderPass; 
 
-        //finally creating the pipeline -- this call has the capability of creating multiple pipelines in one call
-        //2nd arg is set to null -> normally for graphics pipeline cache (can be used to store and reuse data relevant to pipeline creation across multiple calls to vkCreateGraphicsPipeline)
-
-        //this->graphicsPipeline = this->starDevice->getDevice().get().createGraphicsPipeline(VK_NULL_HANDLE, pipelineInfo); 
-        auto result = this->starDevice->getDevice().createGraphicsPipelines(VK_NULL_HANDLE, pipelineInfo);
-        if (result.result != vk::Result::eSuccess) {
-            throw std::runtime_error("failed to create graphics pipeline");
-        }
-        if (result.value.size() > 1) {
-            throw std::runtime_error("unknown error has occurred, more than one pipeline was created ");
-        }
-        vulkanObject->addPipelines(result.value);
-
-        //destroy the shader modules that were created 
-        this->starDevice->getDevice().destroyShaderModule(vulkanObject->getShaderModule(vk::ShaderStageFlagBits::eVertex));
-        this->starDevice->getDevice().destroyShaderModule(vulkanObject->getShaderModule(vk::ShaderStageFlagBits::eFragment));
+        vulkanObject->createPipeline(config); 
     }
 }
 
@@ -1487,7 +1382,7 @@ void star::core::VulkanRenderer::createCommandBuffers() {
                 //2. compute or graphics pipeline
                 //3. pipeline object
             //vkCmdBindPipeline(graphicsCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-            newBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, vulkanObject->pipelines.at(0));
+            newBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, vulkanObject->getPipeline());
 
             vk::Buffer vertexBuffers[] = { vulkanObject->vertexBuffer };
             //TODO: need to allow for an offset for each buffer

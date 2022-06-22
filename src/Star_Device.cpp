@@ -18,7 +18,7 @@ namespace core {
 		this->vulkanDevice.destroyCommandPool(this->transferCommandPool); 
 		this->vulkanDevice.destroyCommandPool(this->graphicsCommandPool);  
 		this->vulkanDevice.destroy();
-		this->instance.destroySurfaceKHR(this->surface.get()); 
+		this->surface.reset();
 		this->instance.destroy(); 
 	}
 

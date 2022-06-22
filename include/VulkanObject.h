@@ -8,6 +8,7 @@
 #include "Star_RenderObject.hpp"
 #include "Star_Descriptors.hpp"
 #include "Star_Device.hpp"
+#include "Star_Pipeline.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -30,8 +31,6 @@ namespace star {
 			private: 
 
 			};
-			std::vector<vk::Pipeline> pipelines;
-
 			//vertex buffer
 			vk::Buffer vertexBuffer;
 			vk::DeviceMemory vertexBufferMemory;
@@ -47,12 +46,11 @@ namespace star {
 			VulkanObject(const VulkanObject&) = delete; 
 
 			VulkanObject(StarDevice* device, size_t numSwapChainImages) :
-				starDevice(device),
-				renderObjects() {};
+				starDevice(device) {};
 
 			void cleanup(); 
 
-			void registerShader(vk::ShaderStageFlagBits stage, common::Handle newShaderHandle); 
+			void registerShader(vk::ShaderStageFlagBits stage, common::Shader* newShader, common::Handle newShaderHandle);
 
 			/// <summary>
 			/// Add a new rendering object which will be rendered with the pipeline contained in this vulkan object.
@@ -61,41 +59,28 @@ namespace star {
 			void addObject(common::Handle newObjectHandle, common::GameObject* newObject, size_t numSwapChainImages);
 
 			/// <summary>
-			/// Get the handle for one of the base shaders of this object.
-			/// </summary>
-			/// <param name="stage"></param>
-			/// <returns></returns>
-			common::Handle getBaseShader(vk::ShaderStageFlagBits stage); 
-
-			/// <summary>
-			/// Add a prepared vulkan shader module with this object
-			/// </summary>
-			/// <param name="stage"></param>
-			/// <param name="newShaderModule"></param>
-			void registerShaderModule(vk::ShaderStageFlagBits stage, vk::ShaderModule newShaderModule);
-
-			/// <summary>
-			/// Get the associated vk::ShaderModule for the provided stage.
-			/// </summary>
-			/// <param name="stage"></param>
-			vk::ShaderModule getShaderModule(vk::ShaderStageFlagBits stage); 
-
-			/// <summary>
 			/// Check if the object has a shader for the requestd stage
 			/// </summary>
 			/// <param name="stage"></param>
 			/// <returns></returns>
 			bool hasShader(vk::ShaderStageFlagBits stage); 
 
+			common::Handle getBaseShader(vk::ShaderStageFlags stage);
+
+
 			void setPipelineLayout(vk::PipelineLayout newPipelineLayout);
 
 			vk::PipelineLayout getPipelineLayout(); 
 
-			void addPipelines(std::vector<vk::Pipeline> newPipelines);
+			void addPipeline(std::unique_ptr<StarPipeline> newPipeline);
 
 			size_t getNumRenderObjects(); 
 
 			RenderObject* getRenderObjectAt(size_t index);
+
+			void createPipeline(PipelineConfigSettings& configs);
+
+			vk::Pipeline getPipeline() { return this->starPipeline->getPipeline(); }
 
 		protected:
 
@@ -104,14 +89,17 @@ namespace star {
 			StarDevice* starDevice; 
 
 			//only 10 of these are permitted in general 
-			vk::DescriptorPool descriptorPool; 
+			vk::DescriptorPool descriptorPool;
 
-			std::map<vk::ShaderStageFlagBits, common::Handle> shaderContainer; 
-			std::map<vk::ShaderStageFlagBits, vk::ShaderModule> shaderModuleContainer; 
+			common::Handle vertShaderHandle; 
+			common::Shader* vertShader = nullptr; 
+			common::Handle fragShaderHandle; 
+			common::Shader* fragShader = nullptr; 
 
 			std::vector<std::unique_ptr<RenderObject>> renderObjects; 
-
+			std::unique_ptr<StarPipeline> starPipeline;
 			vk::PipelineLayout pipelineLayout;
+
 		};
 	}
 }
