@@ -8,6 +8,7 @@
 #include "SC/Handle.hpp"
 #include "SC/Camera.hpp"
 #include "SC/Enums.h"
+#include "SC/Light.hpp"
 #include "VulkanVertex.hpp"
 #include "VulkanObject.h"
 #include "Star_Descriptors.hpp"
@@ -30,7 +31,10 @@ namespace star {
             std::unique_ptr<const char**> glfwRequiredExtensions;
             std::unique_ptr<uint32_t> glfwRequiredExtensionsCount;
 
-            VulkanRenderer(common::ConfigFile* configFile, common::FileResourceManager<common::Shader>* shaderManager, common::FileResourceManager<common::GameObject>* objectManager, common::FileResourceManager<common::Texture>* textureManager, common::Camera* inCamera, std::vector<common::Handle>* objectHandleList, StarWindow& window);
+            VulkanRenderer(common::ConfigFile* configFile, common::FileResourceManager<common::Shader>* shaderManager, common::FileResourceManager<common::GameObject>* objectManager, 
+                common::FileResourceManager<common::Texture>* textureManager, common::Camera* inCamera, 
+                std::vector<common::Handle>* objectHandleList, std::vector<common::Light*>& listHandleList, 
+                StarWindow& window);
 
             ~VulkanRenderer();
 
@@ -46,6 +50,10 @@ namespace star {
             void cleanup();
 
         protected:
+            std::vector<common::Light*>& lightList; 
+            common::Light* ambientLight = nullptr;
+            common::Light* pointLight = nullptr;
+
             std::unique_ptr<StarDevice> starDevice{};
 
             std::vector<std::unique_ptr<VulkanObject>> vulkanObjects;

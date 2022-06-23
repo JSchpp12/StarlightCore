@@ -3,20 +3,28 @@
 typedef std::chrono::high_resolution_clock Clock;
 
 star::core::VulkanRenderer::VulkanRenderer(common::ConfigFile* configFile,
-    common::FileResourceManager<common::Shader>* shaderManager,
-    common::FileResourceManager<common::GameObject>* objectManager,
-    common::FileResourceManager<common::Texture>* textureManager,
-    common::Camera* inCamera,
-    std::vector<common::Handle>* objectHandleList, 
+    common::FileResourceManager<common::Shader>* shaderManager, common::FileResourceManager<common::GameObject>* objectManager,
+    common::FileResourceManager<common::Texture>* textureManager, common::Camera* inCamera,
+    std::vector<common::Handle>* objectHandleList, std::vector<common::Light*>& lightHandleList, 
     StarWindow& window) :
     star::common::Renderer(configFile, shaderManager, objectManager, textureManager, inCamera, objectHandleList),
-    glfwRequiredExtensionsCount(new uint32_t), 
-    starWindow(window)
+    glfwRequiredExtensionsCount(new uint32_t), starWindow(window), lightList(lightHandleList)
 {
-    common::GameObject* currentObject;
+    common::GameObject* currentObject = nullptr;
+    common::Light* currLight = nullptr; 
     this->starDevice = std::unique_ptr<StarDevice>(new StarDevice(this->starWindow));
-    //TODO: check data before creating needed objects -- ensure all objects are valid  
-    //find out how many unique vulkan objects will be needed 
+    for (size_t i = 0; i < this->lightList.size(); i++) {
+        currLight = this->lightList.at(i);
+        if (currLight->getType() == common::Type::Light::point && this->pointLight == nullptr) {
+            this->pointLight = this->lightList.at(i);;
+        }
+        else if (currLight->getType() == common::Type::Light::directional && this->ambientLight == nullptr) {
+            this->ambientLight = this->lightList.at(i);
+        }
+        else {
+            throw std::runtime_error("More than one light source of each type is not yet supported");
+        }
+    }
 }
 
 star::core::VulkanRenderer::~VulkanRenderer() {
@@ -37,6 +45,9 @@ void star::core::VulkanRenderer::updateUniformBuffer(uint32_t currentImage) {
     //glm designed for openGL where the Y coordinate of the flip coordinates is inverted. Fix this by flipping the sign on the scaling factor of the Y axis in the projection matrix.
     globalUbo.proj[1][1] *= -1;
     globalUbo.view = this->camera->getDisplayMatrix();
+    globalUbo.ambientLightColor = this->ambientLight->getColor(); 
+    globalUbo.lightPosition = this->pointLight->getPosition(); 
+    globalUbo.lightColor = this->pointLight->getColor(); 
     this->globalUniformBuffers[currentImage]->writeToBuffer(&globalUbo, sizeof(globalUbo)); 
 
     //update per object data
@@ -727,17 +738,6 @@ vk::Format star::core::VulkanRenderer::findDepthFormat() {
 }
 
 void star::core::VulkanRenderer::createGraphicsPipeline() {
-    //auto bindingDescriptions = VulkanVertex::getBindingDescription();
-    //auto attributeDescriptions = VulkanVertex::getAttributeDescriptions();
-
-    ////common::Object* currObject = this->objectManager->Get(objectHandle); 
-
-    ////auto fragShaderCode = readFile("media/shaders/fragShader.frag.spv");
-    ////auto vertShaderCode = readFile("media/shaders/vertShader.vert.spv");
-    //if (vulkanObjects.size() > 1) {
-    //    throw std::runtime_error("The creation of more than one pipeline is not yet supported");
-    //}
-
     for (size_t i = 0; i < this->vulkanObjects.size(); i++) {
         VulkanObject* vulkanObject = this->vulkanObjects.at(i).get(); 
 
