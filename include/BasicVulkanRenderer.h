@@ -10,7 +10,7 @@
 #include "SC/Enums.h"
 #include "SC/Light.hpp"
 #include "VulkanVertex.hpp"
-#include "VulkanObject.h"
+#include "StarSystem_RenderObj.hpp"
 #include "Star_Descriptors.hpp"
 #include "Star_Device.hpp"
 #include "Star_Buffer.hpp"
@@ -57,8 +57,8 @@ namespace star {
             std::unique_ptr<StarDevice> starDevice{};
             std::vector<std::unique_ptr<StarBuffer>> uniformBuffers;
 
-            std::vector<std::unique_ptr<VulkanObject>> vulkanObjects;
-            std::unique_ptr<VulkanObject> lightVulkanObject; 
+            std::vector<std::unique_ptr<RenderSysObj>> RenderSysObjs;
+            std::unique_ptr<RenderSysObj> lightRenderSysObj; 
 
             bool frameBufferResized = false; //explicit declaration of resize, used if driver does not trigger VK_ERROR_OUT_OF_DATE
 

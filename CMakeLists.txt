@@ -61,7 +61,7 @@ SET(${PROJECT_NAME}_SOURCES
 	"src/ObjectManager.cpp"
 	"src/Object.cpp"
 	"src/TextureManager.cpp"
-	"src/VulkanObject.cpp"
+	"src/BasicVulkanRenderer.cpp"
 	#composite files 
 	"src/Star_Descriptors.cpp"
 	"src/Star_Texture.cpp"
@@ -70,8 +70,10 @@ SET(${PROJECT_NAME}_SOURCES
 	"src/Star_Device.cpp"
 	"src/Star_Pipeline.cpp"
 	"src/Star_Window.cpp"
+	"src/Star_Swapchain.cpp"
 	#rendering sytems
-	"src/Systems/BasicVulkanRenderer.cpp"
+	"src/Systems/StarSystem_RenderObj.cpp"
+
 )
   
 SET(${PROJECT_NAME}_HEADERS
@@ -86,8 +88,8 @@ SET(${PROJECT_NAME}_HEADERS
 	"include/TextureManager.h"
 	"include/RenderEngine.h"
 	"include/Windowing.h"
-	"include/VulkanObject.h"
 	"include/MemoryDescriptor.h"
+	"include/BasicVulkanRenderer.h"
 	#composite files
 	"include/Star_Descriptors.hpp"
 	"include/Star_Texture.hpp"
@@ -96,8 +98,9 @@ SET(${PROJECT_NAME}_HEADERS
 	"include/Star_Device.hpp"
 	"include/Star_Pipeline.hpp"
 	"include/Star_Window.hpp"
+	"include/Star_Swapchain.hpp"
 	#rendering systems 
-	"include/Systems/BasicVulkanRenderer.h"
+	"include/Systems/StarSystem_RenderObj.hpp"
 	#header only files
 	"include/VulkanVertex.hpp"
 )

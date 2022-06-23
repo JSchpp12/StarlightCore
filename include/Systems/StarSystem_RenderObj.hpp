@@ -23,7 +23,7 @@ namespace star {
 		/// <summary>
 		/// Base object which contains the per shader object data for vulkan. 
 		/// </summary>
-		class VulkanObject {
+		class RenderSysObj {
 		public:
 			class Builder {
 			public:
@@ -41,11 +41,11 @@ namespace star {
 			uint32_t totalNumIndicies = 0;
 
 			//no copy
-			VulkanObject(const VulkanObject&) = delete; 
+			RenderSysObj(const RenderSysObj&) = delete; 
 
-			VulkanObject(StarDevice* device, size_t numSwapChainImages) :
+			RenderSysObj(StarDevice* device, size_t numSwapChainImages) :
 				starDevice(device), numSwapChainImages(numSwapChainImages) {};
-			~VulkanObject(); 
+			~RenderSysObj(); 
 
 			void registerShader(vk::ShaderStageFlagBits stage, common::Shader* newShader, common::Handle newShaderHandle);
 

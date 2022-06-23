@@ -1,13 +1,13 @@
-#include "VulkanObject.h"
+#include "StarSystem_RenderObj.hpp"
 
 namespace star {
 namespace core {
 
-VulkanObject::~VulkanObject() {
+RenderSysObj::~RenderSysObj() {
     this->starDevice->getDevice().destroyPipelineLayout(this->pipelineLayout);
 }
 
-void VulkanObject::registerShader(vk::ShaderStageFlagBits stage, common::Shader* newShader, common::Handle newShaderHandle) {
+void RenderSysObj::registerShader(vk::ShaderStageFlagBits stage, common::Shader* newShader, common::Handle newShaderHandle) {
 	if (stage & vk::ShaderStageFlagBits::eVertex) {
 		this->vertShader = newShader; 
 		this->vertShaderHandle = newShaderHandle; 
@@ -18,7 +18,7 @@ void VulkanObject::registerShader(vk::ShaderStageFlagBits stage, common::Shader*
 	}
 }
 
-void VulkanObject::addObject(common::Handle newObjectHandle, common::GameObject* newObject, size_t numSwapChainImages) {
+void RenderSysObj::addObject(common::Handle newObjectHandle, common::GameObject* newObject, size_t numSwapChainImages) {
 	auto numIndicies = newObject->getIndicies()->size();
 	auto numVerticies = newObject->getVerticies()->size();
 
@@ -28,7 +28,7 @@ void VulkanObject::addObject(common::Handle newObjectHandle, common::GameObject*
 	this->renderObjects.push_back(std::move(RenderObject::Builder().setFromObject(newObjectHandle, newObject).setNumFrames(numSwapChainImages).build())); 
 }
 
-bool VulkanObject::hasShader(vk::ShaderStageFlagBits stage) {
+bool RenderSysObj::hasShader(vk::ShaderStageFlagBits stage) {
 	if (stage & vk::ShaderStageFlagBits::eVertex && this->vertShader != nullptr) {
 		return true; 
 	}
@@ -38,7 +38,7 @@ bool VulkanObject::hasShader(vk::ShaderStageFlagBits stage) {
 	return false; 
 }
 
-common::Handle VulkanObject::getBaseShader(vk::ShaderStageFlags stage) {
+common::Handle RenderSysObj::getBaseShader(vk::ShaderStageFlags stage) {
 	if (stage & vk::ShaderStageFlagBits::eVertex) {
 		return this->vertShaderHandle; 
 	}
@@ -47,28 +47,28 @@ common::Handle VulkanObject::getBaseShader(vk::ShaderStageFlags stage) {
 	}
 }
 
-void VulkanObject::setPipelineLayout(vk::PipelineLayout newPipelineLayout) {
+void RenderSysObj::setPipelineLayout(vk::PipelineLayout newPipelineLayout) {
 	this->pipelineLayout = newPipelineLayout;
 }
 
-vk::PipelineLayout VulkanObject::getPipelineLayout() {
+vk::PipelineLayout RenderSysObj::getPipelineLayout() {
 	return this->pipelineLayout;
 }
 
-size_t VulkanObject::getNumRenderObjects()
+size_t RenderSysObj::getNumRenderObjects()
 {
 	return this->renderObjects.size(); 
 }
 
-RenderObject* star::core::VulkanObject::getRenderObjectAt(size_t index) {
+RenderObject* star::core::RenderSysObj::getRenderObjectAt(size_t index) {
 	return this->renderObjects.at(index).get();
 }
 
-void star::core::VulkanObject::createPipeline(PipelineConfigSettings& configs) {
+void star::core::RenderSysObj::createPipeline(PipelineConfigSettings& configs) {
 	this->starPipeline = std::make_unique<StarPipeline>(this->starDevice, this->vertShader, this->fragShader, configs); 
 }
 
-void star::core::VulkanObject::render(vk::CommandBuffer& commandBuffer) {
+void star::core::RenderSysObj::render(vk::CommandBuffer& commandBuffer) {
     this->starPipeline->bind(commandBuffer); 
 
     vk::DeviceSize offsets{}; 
@@ -77,7 +77,7 @@ void star::core::VulkanObject::render(vk::CommandBuffer& commandBuffer) {
     commandBuffer.bindIndexBuffer(this->indexBuffer->getBuffer(), 0, vk::IndexType::eUint32);
 }
 
-void star::core::VulkanObject::init() {
+void star::core::RenderSysObj::init() {
 	//create needed buffers 
     createVertexBuffer(); 
     createIndexBuffer();
@@ -85,7 +85,7 @@ void star::core::VulkanObject::init() {
 
 }
 
-void VulkanObject::createVertexBuffer() {
+void RenderSysObj::createVertexBuffer() {
     vk::DeviceSize bufferSize;
 
     //TODO: ensure that more objects can be drawn 
@@ -129,7 +129,7 @@ void VulkanObject::createVertexBuffer() {
 	this->starDevice->copyBuffer(stagingBuffer.getBuffer(), this->vertexBuffer->getBuffer(), bufferSize); 
 }
 
-void VulkanObject::createIndexBuffer() {
+void RenderSysObj::createIndexBuffer() {
     vk::DeviceSize bufferSize;
 
     //TODO: will only support one object at the moment
