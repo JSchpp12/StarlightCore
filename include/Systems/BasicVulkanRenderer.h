@@ -55,8 +55,10 @@ namespace star {
             common::Light* pointLight = nullptr;
 
             std::unique_ptr<StarDevice> starDevice{};
+            std::vector<std::unique_ptr<StarBuffer>> uniformBuffers;
 
             std::vector<std::unique_ptr<VulkanObject>> vulkanObjects;
+            std::unique_ptr<VulkanObject> lightVulkanObject; 
 
             bool frameBufferResized = false; //explicit declaration of resize, used if driver does not trigger VK_ERROR_OUT_OF_DATE
 
@@ -77,8 +79,7 @@ namespace star {
             std::vector<vk::Semaphore> renderFinishedSemaphores;
 
 
-            //storage for multiple buffers for each swap chain image 
-            std::vector<std::unique_ptr<StarBuffer>> uniformBuffers; 
+            //storage for multiple buffers for each swap chain image  
             std::vector<std::unique_ptr<StarBuffer>> globalUniformBuffers; 
 
             std::vector<vk::DescriptorSet> globalDescriptorSets; 
@@ -214,16 +215,6 @@ namespace star {
             /// Create a sampler for the texture image that will be used by the shader to address the colors in the texture.
             /// </summary>
             void createTextureSampler();
-
-            /// <summary>
-            /// Create needed vertex buffers for each vulkan object. 
-            /// </summary>
-            void createVertexBuffers();
-
-            /// <summary>
-            /// Create a buffer to contain vertex indicies information before being passed to the GPU. 
-            /// </summary>
-            void createIndexBuffer();
 
             /// <summary>
             /// Create a buffer to hold the UBO data for each shader. Create a buffer for each swap chain image

@@ -39,11 +39,9 @@ namespace core {
 		StarPipeline(const StarPipeline&) = delete; 
 		StarPipeline& operator=(const StarPipeline&) = delete;
 
-		//void bind(vk::CommandBuffer commandBuffer); 
+		void bind(vk::CommandBuffer commandBuffer); 
 
-		static void defaultPipelineConfigInfo(PipelineConfigSettings& configInfo);
-
-		vk::Pipeline getPipeline() { return this->graphicsPipeline; }
+		//static void defaultPipelineConfigInfo(PipelineConfigSettings& configInfo);
 	protected:
 
 

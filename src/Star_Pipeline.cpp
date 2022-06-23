@@ -11,6 +11,10 @@ namespace core {
 		this->starDevice->getDevice().destroyPipeline(this->graphicsPipeline); 
 	}
 
+    void StarPipeline::bind(vk::CommandBuffer commandBuffer) {
+        commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, this->graphicsPipeline);
+    }
+
 	void StarPipeline::createGraphicsPipeline(common::Shader* vertShader, common::Shader* fragShader, PipelineConfigSettings& configSettings) {
 		//std::vector<uint32_t> vertShaderCode = vertShader->GetSpirV();
 		this->vertShaderModule = createShaderModule(vertShader->GetSpirV());

@@ -4,11 +4,13 @@
 #include "SC/Handle.hpp"
 #include "SC/Enums.h"
 #include "SC/Shader.h"
+#include "SC/Light.hpp"
 #include "VulkanVertex.hpp"
 #include "Star_RenderObject.hpp"
 #include "Star_Descriptors.hpp"
 #include "Star_Device.hpp"
 #include "Star_Pipeline.hpp"
+#include "Star_Buffer.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -32,23 +34,18 @@ namespace star {
 
 			};
 			//vertex buffer
-			vk::Buffer vertexBuffer;
-			vk::DeviceMemory vertexBufferMemory;
 
-			//index buffer 
-			vk::Buffer indexBuffer;
-			vk::DeviceMemory indexBufferMemory;
+			void init();
 
-			uint64_t totalNumVerticies = 0; 
-			uint64_t totalNumIndicies = 0; 
+			uint32_t totalNumVerticies = 0; 
+			uint32_t totalNumIndicies = 0;
 
 			//no copy
 			VulkanObject(const VulkanObject&) = delete; 
 
 			VulkanObject(StarDevice* device, size_t numSwapChainImages) :
-				starDevice(device) {};
-
-			void cleanup(); 
+				starDevice(device), numSwapChainImages(numSwapChainImages) {};
+			~VulkanObject(); 
 
 			void registerShader(vk::ShaderStageFlagBits stage, common::Shader* newShader, common::Handle newShaderHandle);
 
@@ -67,12 +64,9 @@ namespace star {
 
 			common::Handle getBaseShader(vk::ShaderStageFlags stage);
 
-
 			void setPipelineLayout(vk::PipelineLayout newPipelineLayout);
 
 			vk::PipelineLayout getPipelineLayout(); 
-
-			void addPipeline(std::unique_ptr<StarPipeline> newPipeline);
 
 			size_t getNumRenderObjects(); 
 
@@ -80,13 +74,23 @@ namespace star {
 
 			void createPipeline(PipelineConfigSettings& configs);
 
-			vk::Pipeline getPipeline() { return this->starPipeline->getPipeline(); }
+			/// <summary>
+			/// Render the object
+			/// </summary>
+			void render(vk::CommandBuffer& commandBuffer); 
 
-		protected:
-
+			void setPointLight(common::Light* newLight) { this->pointLight = newLight; }
+			common::Light* getPointLight() { return this->pointLight; }
+			bool hasPointLight() { return this->pointLight == nullptr ? false : true; }
+			void setAmbientLight(common::Light* newLight) { this->ambientLight = newLight; }
+			bool hasAmbientLight() { return this->ambientLight == nullptr ? false : true; }
 
 		private:
 			StarDevice* starDevice; 
+			int numSwapChainImages = 0; 
+
+			std::unique_ptr<StarBuffer> vertexBuffer;
+			std::unique_ptr<StarBuffer> indexBuffer; 
 
 			//only 10 of these are permitted in general 
 			vk::DescriptorPool descriptorPool;
@@ -96,10 +100,20 @@ namespace star {
 			common::Handle fragShaderHandle; 
 			common::Shader* fragShader = nullptr; 
 
+			common::Light* ambientLight = nullptr;
+			common::Light* pointLight = nullptr; 
+
 			std::vector<std::unique_ptr<RenderObject>> renderObjects; 
 			std::unique_ptr<StarPipeline> starPipeline;
 			vk::PipelineLayout pipelineLayout;
 
+ 
+			/// <summary>
+			/// Concat all verticies of all objects into a single buffer and copy to gpu.
+			/// </summary>
+			void createVertexBuffer(); 
+
+			void createIndexBuffer();
 		};
 	}
 }
