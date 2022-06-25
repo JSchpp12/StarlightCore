@@ -19,6 +19,10 @@ namespace core {
 		return std::make_unique<RenderObject>(this->objectHandle, this->gameObject, this->numVerticies, this->numIndicies, this->numSwapChainImages); 
 	}
 
+	//void RenderObject::render(vk::CommandBuffer& commandBuffer, vk::PipelineLayout layout, int swapChainImageIndex) {
+	//	commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, 1, 1, &this->uboDescriptorSets.at(swapChainImageIndex), 0, nullpt)
+	//}
+
 	common::Handle RenderObject::getHandle() {
 		return this->objectHandle;
 	}

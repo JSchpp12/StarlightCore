@@ -25,7 +25,15 @@ namespace star {
 		/// </summary>
 		class RenderSysObj {
 		public:
-			class Builder {
+			/// <summary>
+			/// Object type to be used per render object
+			/// </summary>
+			virtual struct UniformBufferObject {
+				alignas(16) glm::mat4 modelMatrix;
+				alignas(16) glm::mat4 normalMatrix;
+			};
+
+			virtual class Builder {
 			public:
 
 			protected:
@@ -35,85 +43,120 @@ namespace star {
 			};
 			//vertex buffer
 
-			void init();
+			virtual void init();
+
+			//virtual void initSECOND(); 
 
 			uint32_t totalNumVerticies = 0; 
 			uint32_t totalNumIndicies = 0;
 
+			RenderSysObj(StarDevice* device, size_t numSwapChainImages, vk::DescriptorSetLayout globalSetLayout, 
+				vk::Extent2D swapChainExtent, vk::RenderPass renderPass) :
+				starDevice(device), numSwapChainImages(numSwapChainImages), 
+				globalSetLayout(globalSetLayout), swapChainExtent(swapChainExtent),
+				renderPass(renderPass) {};
+			virtual ~RenderSysObj();
+
 			//no copy
-			RenderSysObj(const RenderSysObj&) = delete; 
+			RenderSysObj(const RenderSysObj&) = delete;
 
-			RenderSysObj(StarDevice* device, size_t numSwapChainImages) :
-				starDevice(device), numSwapChainImages(numSwapChainImages) {};
-			~RenderSysObj(); 
 
-			void registerShader(vk::ShaderStageFlagBits stage, common::Shader* newShader, common::Handle newShaderHandle);
+			virtual void registerShader(vk::ShaderStageFlagBits stage, common::Shader* newShader, common::Handle newShaderHandle);
 
 			/// <summary>
 			/// Add a new rendering object which will be rendered with the pipeline contained in this vulkan object.
 			/// </summary>
 			/// <param name="newObjectHandle"></param>
-			void addObject(common::Handle newObjectHandle, common::GameObject* newObject, size_t numSwapChainImages);
+			virtual void addObject(common::Handle newObjectHandle, common::GameObject* newObject, size_t numSwapChainImages);
 
 			/// <summary>
 			/// Check if the object has a shader for the requestd stage
 			/// </summary>
 			/// <param name="stage"></param>
 			/// <returns></returns>
-			bool hasShader(vk::ShaderStageFlagBits stage); 
+			virtual bool hasShader(vk::ShaderStageFlagBits stage);
 
-			common::Handle getBaseShader(vk::ShaderStageFlags stage);
+			virtual common::Handle getBaseShader(vk::ShaderStageFlags stage);
 
-			void setPipelineLayout(vk::PipelineLayout newPipelineLayout);
+			virtual void setPipelineLayout(vk::PipelineLayout newPipelineLayout);
 
-			vk::PipelineLayout getPipelineLayout(); 
+			virtual size_t getNumRenderObjects();
 
-			size_t getNumRenderObjects(); 
+			virtual RenderObject* getRenderObjectAt(size_t index);
 
-			RenderObject* getRenderObjectAt(size_t index);
+			virtual void bind(vk::CommandBuffer& commandBuffer);
 
-			void createPipeline(PipelineConfigSettings& configs);
+			virtual void updateBuffers(uint32_t currentImage); 
+
+			//void createPipeline(PipelineConfigSettings& settings); 
 
 			/// <summary>
 			/// Render the object
 			/// </summary>
-			void render(vk::CommandBuffer& commandBuffer); 
+			virtual void render(vk::CommandBuffer& commandBuffer, int swapChainImageIndex);
 
-			void setPointLight(common::Light* newLight) { this->pointLight = newLight; }
-			common::Light* getPointLight() { return this->pointLight; }
-			bool hasPointLight() { return this->pointLight == nullptr ? false : true; }
-			void setAmbientLight(common::Light* newLight) { this->ambientLight = newLight; }
-			bool hasAmbientLight() { return this->ambientLight == nullptr ? false : true; }
+			virtual void setPointLight(common::Light* newLight) { this->pointLight = newLight; }
+			virtual common::Light* getPointLight() { return this->pointLight; }
+			virtual bool hasPointLight() { return this->pointLight == nullptr ? false : true; }
+			virtual void setAmbientLight(common::Light* newLight) { this->ambientLight = newLight; }
+			virtual bool hasAmbientLight() { return this->ambientLight == nullptr ? false : true; }
 
-		private:
-			StarDevice* starDevice; 
-			int numSwapChainImages = 0; 
+			//TODO: remove
+			virtual vk::PipelineLayout getPipelineLayout() { return this->pipelineLayout; }
+			virtual StarDescriptorSetLayout* getSetLayout() { return this->descriptorSetLayout.get(); }
+			virtual StarDescriptorPool* getDescriptorPool() { return this->descriptorPool.get(); }
+			virtual StarBuffer* getBufferAt(int i) { return this->uniformBuffers.at(i).get(); }
+			
+		protected:
+			StarDevice* starDevice;
+			int numSwapChainImages = 0;
+
+			vk::Extent2D swapChainExtent; 
+			vk::RenderPass renderPass; 
 
 			std::unique_ptr<StarBuffer> vertexBuffer;
-			std::unique_ptr<StarBuffer> indexBuffer; 
+			std::unique_ptr<StarBuffer> indexBuffer;
 
-			//only 10 of these are permitted in general 
-			vk::DescriptorPool descriptorPool;
-
-			common::Handle vertShaderHandle; 
-			common::Shader* vertShader = nullptr; 
-			common::Handle fragShaderHandle; 
-			common::Shader* fragShader = nullptr; 
+			common::Handle vertShaderHandle;
+			common::Shader* vertShader = nullptr;
+			common::Handle fragShaderHandle;
+			common::Shader* fragShader = nullptr;
 
 			common::Light* ambientLight = nullptr;
-			common::Light* pointLight = nullptr; 
+			common::Light* pointLight = nullptr;
 
-			std::vector<std::unique_ptr<RenderObject>> renderObjects; 
+			vk::DescriptorSetLayout globalSetLayout; 
+			
+			std::vector<std::unique_ptr<RenderObject>> renderObjects;
+			std::unique_ptr<StarDescriptorPool> descriptorPool; 
+			std::vector<std::unique_ptr<StarBuffer>> uniformBuffers; 
+			std::unique_ptr<StarDescriptorSetLayout> descriptorSetLayout; 
+			std::vector<std::vector<vk::DescriptorSet>> descriptorSets; 
 			std::unique_ptr<StarPipeline> starPipeline;
 			vk::PipelineLayout pipelineLayout;
 
- 
+
 			/// <summary>
 			/// Concat all verticies of all objects into a single buffer and copy to gpu.
 			/// </summary>
-			void createVertexBuffer(); 
+			virtual void createVertexBuffer();
 
-			void createIndexBuffer();
+			virtual void createIndexBuffer();
+			/// <summary>
+			/// Create buffers needed for render operations. Such as those used by descriptors
+			/// </summary>
+			virtual void createRenderBuffers(); 
+			/// <summary>
+			/// Create descriptors for binding render buffers to shaders.
+			/// </summary>
+			virtual void createDescriptors();
+
+			virtual void createPipelineLayout(); 
+
+			virtual void createPipeline(); 
+
+		private:
+
 		};
 	}
 }

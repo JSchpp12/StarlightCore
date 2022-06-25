@@ -41,7 +41,7 @@ namespace core {
 
 		void bind(vk::CommandBuffer commandBuffer); 
 
-		//static void defaultPipelineConfigInfo(PipelineConfigSettings& configInfo);
+		static void defaultPipelineConfigInfo(PipelineConfigSettings& configInfo, vk::Extent2D swapChainExtent);
 	protected:
 
 

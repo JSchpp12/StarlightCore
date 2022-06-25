@@ -47,6 +47,8 @@ namespace core {
 			numIndicies(numIndicies), 
 			uboDescriptorSets(numImages) { }
 
+		//void render(vk::CommandBuffer& commandBuffer, vk::PipelineLayout layout, int swapChainImageIndex); 
+		
 		common::Handle getHandle(); 
 
 		size_t getNumVerticies(); 
@@ -59,10 +61,6 @@ namespace core {
 
 
 	private: 
-		//TODO: move these here from common::Object
-		//std::unique_ptr<std::vector<common::Vertex>> vertexList;
-		//std::unique_ptr<std::vector<uint32_t>> indiciesList;
-
 		//TODO: I would like to make the descriptor sets a unique_ptr
 		common::Handle objectHandle;
 		common::GameObject* gameObject = nullptr;

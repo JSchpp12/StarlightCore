@@ -48,42 +48,68 @@ common::Handle RenderSysObj::getBaseShader(vk::ShaderStageFlags stage) {
 }
 
 void RenderSysObj::setPipelineLayout(vk::PipelineLayout newPipelineLayout) {
-	this->pipelineLayout = newPipelineLayout;
-}
-
-vk::PipelineLayout RenderSysObj::getPipelineLayout() {
-	return this->pipelineLayout;
+    this->pipelineLayout = newPipelineLayout;
 }
 
 size_t RenderSysObj::getNumRenderObjects()
 {
-	return this->renderObjects.size(); 
+    return this->renderObjects.size();
 }
 
 RenderObject* star::core::RenderSysObj::getRenderObjectAt(size_t index) {
-	return this->renderObjects.at(index).get();
+    return this->renderObjects.at(index).get();
 }
 
-void star::core::RenderSysObj::createPipeline(PipelineConfigSettings& configs) {
-	this->starPipeline = std::make_unique<StarPipeline>(this->starDevice, this->vertShader, this->fragShader, configs); 
+void star::core::RenderSysObj::bind(vk::CommandBuffer& commandBuffer) {
+    this->starPipeline->bind(commandBuffer);
 }
 
-void star::core::RenderSysObj::render(vk::CommandBuffer& commandBuffer) {
-    this->starPipeline->bind(commandBuffer); 
+void star::core::RenderSysObj::updateBuffers(uint32_t currentImage) {
+    UniformBufferObject newBufferObject{};
+    std::vector<UniformBufferObject> bufferObjects(this->renderObjects.size());
 
-    vk::DeviceSize offsets{}; 
+    for (size_t i = 0; i < this->renderObjects.size(); i++) {
+        newBufferObject.modelMatrix = this->renderObjects.at(i)->getGameObject()->getDisplayMatrix(); 
+        newBufferObject.normalMatrix = this->renderObjects.at(i)->getGameObject()->getNormalMatrix(); 
+
+        bufferObjects.at(i) = newBufferObject; 
+    }
+
+    this->uniformBuffers[currentImage]->writeToBuffer(bufferObjects.data(), sizeof(UniformBufferObject) * bufferObjects.size()); 
+}
+
+void star::core::RenderSysObj::render(vk::CommandBuffer& commandBuffer, int swapChainImageIndex) {
+    vk::DeviceSize offsets{};
     commandBuffer.bindVertexBuffers(0, this->vertexBuffer->getBuffer(), offsets);
 
     commandBuffer.bindIndexBuffer(this->indexBuffer->getBuffer(), 0, vk::IndexType::eUint32);
+
+    int vertexCount = 0; 
+    RenderObject* currRenderObject = nullptr; 
+    for (size_t i = 0; i < this->renderObjects.size(); i++) {
+        currRenderObject = this->renderObjects.at(i).get();
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, this->pipelineLayout, 1, 1, &this->renderObjects.at(i)->getDefaultDescriptorSets()->at(swapChainImageIndex), 0, nullptr);
+
+        auto numToDraw = currRenderObject->getNumVerticies(); 
+        commandBuffer.drawIndexed(numToDraw, 1, 0, vertexCount, 0); 
+        vertexCount += currRenderObject->getNumIndicies(); 
+
+    }
 }
 
 void star::core::RenderSysObj::init() {
-	//create needed buffers 
-    createVertexBuffer(); 
+    //create needed buffers 
+    createVertexBuffer();
     createIndexBuffer();
-	//object buffer 
-
+    createRenderBuffers(); 
+    createDescriptors();
+    createPipelineLayout(); 
+    createPipeline(); 
 }
+
+//void RenderSysObj::createPipeline(PipelineConfigSettings& settings) {
+//    this->starPipeline = std::make_unique<StarPipeline>(this->starDevice, this->vertShader, this->fragShader, settings);
+//}
 
 void RenderSysObj::createVertexBuffer() {
     vk::DeviceSize bufferSize;
@@ -177,6 +203,244 @@ void RenderSysObj::createIndexBuffer() {
         vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
         vk::MemoryPropertyFlagBits::eDeviceLocal );
     this->starDevice->copyBuffer(stagingBuffer.getBuffer(), this->indexBuffer->getBuffer(), bufferSize);
+}
+
+void RenderSysObj::createDescriptors() {
+    //create descriptor pools 
+    this->descriptorPool = StarDescriptorPool::Builder(this->starDevice)
+        .setMaxSets(this->numSwapChainImages * this->renderObjects.size())
+        .addPoolSize(vk::DescriptorType::eUniformBuffer, this->numSwapChainImages * this->renderObjects.size())
+        .build();
+
+    //create descriptor layouts
+    this->descriptorSetLayout = StarDescriptorSetLayout::Builder(this->starDevice)
+        .addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
+        .build();
+
+    // 
+    //create descritptor sets 
+    vk::DescriptorBufferInfo bufferInfo{}; 
+    for (int i = 0; i < this->numSwapChainImages; i++) {
+        for (int j = 0; j < this->renderObjects.size(); j++) {
+            bufferInfo = vk::DescriptorBufferInfo{
+                this->uniformBuffers[i]->getBuffer(),
+                sizeof(UniformBufferObject) * j,
+                sizeof(UniformBufferObject)
+            };
+
+            StarDescriptorWriter(this->starDevice, *this->descriptorSetLayout, *this->descriptorPool)
+                .writeBuffer(0, &bufferInfo)
+                .build(this->renderObjects.at(j)->getDefaultDescriptorSets()->at(i));
+        }
+    }
+
+}
+
+void RenderSysObj::createRenderBuffers() {
+    this->uniformBuffers.resize(this->numSwapChainImages);
+
+    for (size_t i = 0; i < numSwapChainImages; i++) {
+        this->uniformBuffers[i] = std::make_unique<StarBuffer>(this->starDevice, this->renderObjects.size(), sizeof(UniformBufferObject), 
+            vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+        this->uniformBuffers[i]->map();
+    }
+}
+
+void RenderSysObj::createPipelineLayout() {
+
+    std::vector<vk::DescriptorSetLayout> descriptorSetLayouts{ this->globalSetLayout, this->descriptorSetLayout->getDescriptorSetLayout()};
+    /* Pipeline Layout */
+    //uniform values in shaders need to be defined here 
+    vk::PipelineLayoutCreateInfo pipelineLayoutInfo{};
+    //pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipelineLayoutInfo.sType = vk::StructureType::ePipelineLayoutCreateInfo;
+    pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size());
+    pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
+    // pipelineLayoutInfo.pushConstantRangeCount = 1;
+    // pipelineLayoutInfo.pPushConstantRanges = &pushConstant;
+    pipelineLayoutInfo.pushConstantRangeCount = 0;
+    pipelineLayoutInfo.pPushConstantRanges = nullptr;
+
+    this->pipelineLayout = this->starDevice->getDevice().createPipelineLayout(pipelineLayoutInfo);
+    if (!this->pipelineLayout) {
+        throw std::runtime_error("failed to create pipeline layout");
+    }
+}
+
+
+void RenderSysObj::createPipeline() {
+		/* Scissor */
+	//this defines in which regions pixels will actually be stored. 
+	//any pixels outside will be discarded 
+
+	//we just want to draw the whole framebuffer for now
+	vk::Rect2D scissor{};
+	//scissor.offset = { 0, 0 };
+	scissor.extent = swapChainExtent;
+
+	/* Viewport */
+	//Viewport describes the region of the framebuffer where the output will be rendered to
+	vk::Viewport viewport{};
+	viewport.x = 0.0f;
+	viewport.y = 0.0f;
+
+	viewport.width = (float)this->swapChainExtent.width;
+	viewport.height = (float)this->swapChainExtent.height;
+	//Specify values range of depth values to use for the framebuffer. If not doing anything special, leave at default
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+
+	//put scissor and viewport together into struct for creation 
+	vk::PipelineViewportStateCreateInfo viewportState{};
+	viewportState.sType = vk::StructureType::ePipelineViewportStateCreateInfo;
+	viewportState.viewportCount = 1;
+	viewportState.pViewports = &viewport;
+	viewportState.scissorCount = 1;
+	viewportState.pScissors = &scissor;
+
+	/* Rasterizer */
+	 //takes the geometry and creates fragments which are then passed onto the fragment shader 
+	 //also does: depth testing, face culling, and the scissor test
+	vk::PipelineRasterizationStateCreateInfo rasterizer{};
+	rasterizer.sType = vk::StructureType::ePipelineRasterizationStateCreateInfo;
+	//if set to true -> fragments that are beyond near and far planes are set to those distances rather than being removed
+	rasterizer.depthClampEnable = VK_FALSE;
+
+	//polygonMode determines how frags are generated. Different options: 
+	//1. VK_POLYGON_MODE_FILL: fill the area of the polygon with fragments
+	//2. VK_POLYGON_MODE_LINE: polygon edges are drawn as lines 
+	//3. VK_POLYGON_MODE_POINT: polygon verticies are drawn as points
+	//NOTE: using any other than fill, requires GPU feature
+	rasterizer.polygonMode = vk::PolygonMode::eFill;
+
+	//available line widths, depend on GPU. If above 1.0f, required wideLines GPU feature
+	rasterizer.lineWidth = 1.0f; //measured in fragment widths
+
+	//cullMode : type of face culling to use.
+	rasterizer.cullMode = vk::CullModeFlagBits::eBack;
+	rasterizer.frontFace = vk::FrontFace::eCounterClockwise;
+
+	//depth values can be used in way that is known as 'shadow mapping'. 
+	//rasterizer is capable of changing depth values through constant addition or biasing based on frags slope 
+	//this is left as off for now 
+	rasterizer.depthBiasEnable = VK_FALSE;
+	rasterizer.depthBiasConstantFactor = 0.0f; //optional 
+	rasterizer.depthBiasClamp = 0.0f; //optional 
+	rasterizer.depthBiasSlopeFactor = 0.0f; //optional
+
+	/* Multisampling */
+	//this is one of the methods of performing anti-aliasing
+	//enabling requires GPU feature -- left off for this tutorial 
+	vk::PipelineMultisampleStateCreateInfo multisampling{};
+	multisampling.sType = vk::StructureType::ePipelineMultisampleStateCreateInfo;
+	multisampling.sampleShadingEnable = VK_FALSE;
+	multisampling.rasterizationSamples = vk::SampleCountFlagBits::e1;
+	multisampling.minSampleShading = 1.0f; //optional 
+	multisampling.pSampleMask = nullptr; //optional
+	multisampling.alphaToCoverageEnable = VK_FALSE; //optional
+	multisampling.alphaToOneEnable = VK_FALSE; //optional
+
+	/* Depth and Stencil Testing */
+	//if using depth or stencil buffer, a depth and stencil tests are neeeded
+	vk::PipelineDepthStencilStateCreateInfo depthStencil{};
+	depthStencil.sType = vk::StructureType::ePipelineDepthStencilStateCreateInfo;
+	depthStencil.depthTestEnable = VK_TRUE;             //specifies if depth of new fragments should be compared to the depth buffer to test for actual display state
+	depthStencil.depthWriteEnable = VK_TRUE;            //specifies if the new depth of fragments that pass the depth tests should be written to the depth buffer 
+	depthStencil.depthCompareOp = vk::CompareOp::eLess;   //comparison that is performed to keep or discard fragments - here this is: lower depth = closer, so depth of new frags should be less
+	//following are for optional depth bound testing - keep frags within a specific range 
+	depthStencil.depthBoundsTestEnable = VK_FALSE;
+	depthStencil.minDepthBounds = 0.0f;                 //optional 
+	depthStencil.maxDepthBounds = 1.0f;                 //optional
+	//following are used for stencil tests - make sure that format of depth image contains a stencil component
+	depthStencil.stencilTestEnable = VK_FALSE;
+
+	/* Color blending */
+	// after the fragShader has returned a color, it must be combined with the color already in the framebuffer
+	// there are two ways to do this: 
+	//      1. mix the old and new value to produce final color
+	//      2. combine the old a new value using a bitwise operation 
+	//two structs are needed to create this functionality: 
+	//  1. VkPipelineColorBlendAttachmentState: configuration per attached framebuffer 
+	//  2. VkPipelineColorBlendStateCreateInfo: global configuration
+	//only using one framebuffer in this project -- both of these are disabled in this project
+	vk::PipelineColorBlendAttachmentState colorBlendAttachment{};
+	//colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	colorBlendAttachment.colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
+	colorBlendAttachment.blendEnable = VK_FALSE;
+
+	vk::PipelineColorBlendStateCreateInfo colorBlending{};
+	colorBlending.sType = vk::StructureType::ePipelineColorBlendStateCreateInfo;
+	colorBlending.logicOpEnable = VK_FALSE;
+	colorBlending.logicOp = vk::LogicOp::eCopy;
+	colorBlending.attachmentCount = 1;
+	colorBlending.pAttachments = &colorBlendAttachment;
+	colorBlending.blendConstants[0] = 0.0f;
+	colorBlending.blendConstants[1] = 0.0f;
+	colorBlending.blendConstants[2] = 0.0f;
+	colorBlending.blendConstants[3] = 0.0f;
+
+	//std::vector<vk::DescriptorSetLayout> descriptorSetLayouts{ this->globalSetLayout->getDescriptorSetLayout(), this->RenderSysObjs.at(0)->getSetLayout()->getDescriptorSetLayout()};
+	///* Pipeline Layout */
+	////uniform values in shaders need to be defined here 
+	//vk::PipelineLayoutCreateInfo pipelineLayoutInfo{};
+	////pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	//pipelineLayoutInfo.sType = vk::StructureType::ePipelineLayoutCreateInfo;
+	//pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size());
+	//pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
+	//// pipelineLayoutInfo.pushConstantRangeCount = 1;
+	//// pipelineLayoutInfo.pPushConstantRanges = &pushConstant;
+	//pipelineLayoutInfo.pushConstantRangeCount = 0;
+	//pipelineLayoutInfo.pPushConstantRanges = nullptr;
+
+	//vk::PipelineLayout newLayout = this->starDevice->getDevice().createPipelineLayout(pipelineLayoutInfo);
+	//if (!newLayout) {
+	//	throw std::runtime_error("failed to create pipeline layout");
+	//}
+	//RenderSysObj->setPipelineLayout(newLayout);
+
+	PipelineConfigSettings config{};
+	config.viewportInfo = viewportState;
+	config.rasterizationInfo = rasterizer;
+	config.multisampleInfo = multisampling;
+	config.depthStencilInfo = depthStencil;
+	config.colorBlendInfo = colorBlending;
+	config.colorBlendAttachment = colorBlendAttachment;
+	config.pipelineLayout = this->pipelineLayout; 
+	config.renderPass = this->renderPass;
+
+    	/* Scissor */
+	//this defines in which regions pixels will actually be stored. 
+	//any pixels outside will be discarded 
+
+	////we just want to draw the whole framebuffer for now
+	//vk::Rect2D scissor{};
+	////scissor.offset = { 0, 0 };
+	//scissor.extent = swapChainExtent;
+
+	///* Viewport */
+	////Viewport describes the region of the framebuffer where the output will be rendered to
+	//vk::Viewport viewport{};
+	//viewport.x = 0.0f;
+	//viewport.y = 0.0f;
+
+	//viewport.width = (float)this->swapChainExtent.width;
+	//viewport.height = (float)this->swapChainExtent.height;
+	////Specify values range of depth values to use for the framebuffer. If not doing anything special, leave at default
+	//viewport.minDepth = 0.0f;
+	//viewport.maxDepth = 1.0f;
+
+	////put scissor and viewport together into struct for creation 
+	//vk::PipelineViewportStateCreateInfo viewportState{};
+	//viewportState.sType = vk::StructureType::ePipelineViewportStateCreateInfo;
+	//viewportState.viewportCount = 1;
+	//viewportState.pViewports = &viewport;
+	//viewportState.scissorCount = 1;
+	//viewportState.pScissors = &scissor;
+ //   this->newPipeSettings.viewportInfo = viewportState; 
+    //this->newPipeSettings.renderPass = renderPass;
+
+ //   StarPipeline::defaultPipelineConfigInfo(this->newPipeSettings, this->swapChainExtent); 
+    this->starPipeline = std::make_unique<StarPipeline>(this->starDevice, this->vertShader, this->fragShader, config);
 }
 
 }

@@ -10,10 +10,11 @@
 #include "SC/Enums.h"
 #include "SC/Light.hpp"
 #include "VulkanVertex.hpp"
-#include "StarSystem_RenderObj.hpp"
 #include "Star_Descriptors.hpp"
 #include "Star_Device.hpp"
 #include "Star_Buffer.hpp"
+#include "StarSystem_RenderObj.hpp"
+#include "StarSystem_RenderPointLight.hpp"
 
 #include <stb_image.h>
 
@@ -31,9 +32,9 @@ namespace star {
             std::unique_ptr<const char**> glfwRequiredExtensions;
             std::unique_ptr<uint32_t> glfwRequiredExtensionsCount;
 
-            VulkanRenderer(common::ConfigFile* configFile, common::FileResourceManager<common::Shader>* shaderManager, common::FileResourceManager<common::GameObject>* objectManager, 
-                common::FileResourceManager<common::Texture>* textureManager, common::Camera* inCamera, 
-                std::vector<common::Handle>* objectHandleList, std::vector<common::Light*>& listHandleList, 
+            VulkanRenderer(common::ConfigFile* configFile, common::FileResourceManager<common::Shader>* shaderManager, common::FileResourceManager<common::GameObject>* objectManager,
+                common::FileResourceManager<common::Texture>* textureManager, common::Camera* inCamera,
+                std::vector<common::Handle>* objectHandleList, std::vector<common::Light*>& listHandleList,
                 StarWindow& window);
 
             ~VulkanRenderer();
@@ -50,15 +51,15 @@ namespace star {
             void cleanup();
 
         protected:
-            std::vector<common::Light*>& lightList; 
+            std::vector<common::Light*>& lightList;
             common::Light* ambientLight = nullptr;
             common::Light* pointLight = nullptr;
 
             std::unique_ptr<StarDevice> starDevice{};
-            std::vector<std::unique_ptr<StarBuffer>> uniformBuffers;
+            //std::vector<std::unique_ptr<StarBuffer>> uniformBuffers;
 
             std::vector<std::unique_ptr<RenderSysObj>> RenderSysObjs;
-            std::unique_ptr<RenderSysObj> lightRenderSysObj; 
+            std::unique_ptr<RenderSysPointLight> lightRenderSys;
 
             bool frameBufferResized = false; //explicit declaration of resize, used if driver does not trigger VK_ERROR_OUT_OF_DATE
 
@@ -80,10 +81,10 @@ namespace star {
 
 
             //storage for multiple buffers for each swap chain image  
-            std::vector<std::unique_ptr<StarBuffer>> globalUniformBuffers; 
+            std::vector<std::unique_ptr<StarBuffer>> globalUniformBuffers;
 
-            std::vector<vk::DescriptorSet> globalDescriptorSets; 
-            //std::vector<std::vector<vk::DescriptorSet>> perObjectDescriptorSets; 
+            std::vector<vk::DescriptorSet> globalDescriptorSets;
+
 
             //pipeline and dependency storage
             vk::RenderPass renderPass;
@@ -100,11 +101,10 @@ namespace star {
             std::vector<vk::Fence> imagesInFlight;
 
             std::unique_ptr<StarDescriptorPool> globalPool{};
-            std::unique_ptr<StarDescriptorPool> perObjectDynamicPool{}; 
-            std::unique_ptr<StarDescriptorPool> perObjectStaticPool{}; 
-            std::unique_ptr<StarDescriptorSetLayout> globalSetLayout{}; 
-            std::unique_ptr<StarDescriptorSetLayout> perObjectStaticLayout{};
-
+            //std::unique_ptr<StarDescriptorPool> perObjectDynamicPool{}; 
+            //std::unique_ptr<StarDescriptorPool> perObjectStaticPool{}; 
+            std::unique_ptr<StarDescriptorSetLayout> globalSetLayout{};
+            //std::unique_ptr<StarDescriptorSetLayout> perObjectStaticLayout{};
 
             //depth testing storage 
             vk::Image depthImage;
@@ -152,16 +152,7 @@ namespace star {
             /// <returns></returns>
             vk::Format findDepthFormat();
 
-            /// <summary>
-            /// Create the descriptors for the buffers that will be passed to the GPU with additional information regarding verticies. (model-view-projection matricies)
-            /// </summary>
-            //void createDescriptorSetLayout();
-
-            /// <summary>
-            /// Create a graphics pipeline to handle the needs for the application with the vertex and fragment shaders. The pipeline is immutable so it must be created if any changes are needed.
-            /// </summary>
             void createGraphicsPipeline();
-
             /// <summary>
             /// Create a shader module from bytecode. The shader module is a wrapper around the shader code with function definitions. 
             /// </summary>
@@ -244,7 +235,7 @@ namespace star {
 #pragma region HelperFunctions 
 #pragma endregion
         private:
-            StarWindow& starWindow; 
+            StarWindow& starWindow;
             std::vector<common::Handle>* objectHandles;
 
         };
