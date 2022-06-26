@@ -154,7 +154,6 @@ namespace star {
             /// <returns></returns>
             vk::Format findDepthFormat();
 
-            void createGraphicsPipeline();
             /// <summary>
             /// Create a shader module from bytecode. The shader module is a wrapper around the shader code with function definitions. 
             /// </summary>
