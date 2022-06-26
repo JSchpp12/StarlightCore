@@ -22,7 +22,7 @@ namespace core {
 		return std::make_unique<StarDescriptorSetLayout>(this->starDevice, this->bindings); 
 	}
 
-	StarDescriptorSetLayout::StarDescriptorSetLayout(StarDevice* device, std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding> bindings) :
+	StarDescriptorSetLayout::StarDescriptorSetLayout(StarDevice& device, std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding> bindings) :
 			starDevice(device),
 			bindings{ bindings } {
 		std::vector<vk::DescriptorSetLayoutBinding> setLayoutBindings; 
@@ -36,14 +36,14 @@ namespace core {
 		createInfo.bindingCount = static_cast<uint32_t>(setLayoutBindings.size()); 
 		createInfo.pBindings = setLayoutBindings.data(); 
 
-		this->descriptorSetLayout = this->starDevice->getDevice().createDescriptorSetLayout(createInfo);
+		this->descriptorSetLayout = this->starDevice.getDevice().createDescriptorSetLayout(createInfo);
 		if (!this->descriptorSetLayout) {
 			throw std::runtime_error("failed to create descriptor set layout"); 
 		}
 	}
 
 	StarDescriptorSetLayout::~StarDescriptorSetLayout() {
-		this->starDevice->getDevice().destroyDescriptorSetLayout(this->descriptorSetLayout);
+		this->starDevice.getDevice().destroyDescriptorSetLayout(this->descriptorSetLayout);
 	}
 
 

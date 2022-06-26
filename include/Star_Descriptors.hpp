@@ -13,7 +13,7 @@ namespace star {
 		public:
 			class Builder {
 			public:
-				Builder(StarDevice* device) : starDevice(device) {}
+				Builder(StarDevice& device) : starDevice(device) {}
 
 				Builder& addBinding(
 					uint32_t binding,
@@ -25,12 +25,12 @@ namespace star {
 			protected:
 
 			private:
-				StarDevice* starDevice; 
+				StarDevice& starDevice; 
 				std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding> bindings{};
 
 			};
 
-			StarDescriptorSetLayout(StarDevice* device, std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding> bindings); 
+			StarDescriptorSetLayout(StarDevice& device, std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding> bindings); 
 
 			~StarDescriptorSetLayout(); 
 
@@ -39,7 +39,7 @@ namespace star {
 		protected:
 
 		private: 
-			StarDevice* starDevice; 
+			StarDevice& starDevice; 
 			vk::DescriptorSetLayout descriptorSetLayout; 
 			std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding> bindings; 
 
