@@ -228,7 +228,7 @@ void RenderSysObj::createDescriptors() {
                 sizeof(UniformBufferObject)
             };
 
-            StarDescriptorWriter(this->starDevice, *this->descriptorSetLayout, *this->descriptorPool)
+            StarDescriptorWriter(*this->starDevice, *this->descriptorSetLayout, *this->descriptorPool)
                 .writeBuffer(0, &bufferInfo)
                 .build(this->renderObjects.at(j)->getDefaultDescriptorSets()->at(i));
         }

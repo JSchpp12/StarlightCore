@@ -122,7 +122,7 @@ namespace core {
 	/* Descriptor Writer */
 
 
-	StarDescriptorWriter::StarDescriptorWriter(StarDevice* device, StarDescriptorSetLayout& setLayout, StarDescriptorPool& pool) :
+	StarDescriptorWriter::StarDescriptorWriter(StarDevice& device, StarDescriptorSetLayout& setLayout, StarDescriptorPool& pool) :
 		starDevice(device),
 		setLayout{setLayout}, 
 		pool{ pool } {}
@@ -173,7 +173,7 @@ namespace core {
 		for (auto& write : this->writeSets) {
 			write.dstSet = set;
 		}
-		this->starDevice->getDevice().updateDescriptorSets(this->writeSets, nullptr);
+		this->starDevice.getDevice().updateDescriptorSets(this->writeSets, nullptr);
 	}
 }
 }

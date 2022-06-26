@@ -194,7 +194,7 @@ void star::core::VulkanRenderer::prepare() {
 			0,
 			sizeof(GlobalUniformBufferObject) });
 
-		StarDescriptorWriter(this->starDevice.get(), *this->globalSetLayout, *this->globalPool)
+		StarDescriptorWriter(*this->starDevice.get(), *this->globalSetLayout, *this->globalPool)
 			.writeBuffer(0, &bufferInfos.get()->at(0))
 			.build(this->globalDescriptorSets.at(i));
 	}

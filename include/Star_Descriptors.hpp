@@ -91,7 +91,7 @@ namespace star {
 		//allow access to the descriptor writer 
 		class StarDescriptorWriter {
 		public:
-			StarDescriptorWriter(StarDevice* device, StarDescriptorSetLayout& setLayout, StarDescriptorPool& pool); 
+			StarDescriptorWriter(StarDevice& device, StarDescriptorSetLayout& setLayout, StarDescriptorPool& pool); 
 
 			StarDescriptorWriter& writeBuffer(uint32_t binding, vk::DescriptorBufferInfo* bufferInfos); 
 
@@ -102,7 +102,7 @@ namespace star {
 			void overwrite(vk::DescriptorSet& set);
 
 		private:
-			StarDevice* starDevice; 
+			StarDevice& starDevice; 
 			StarDescriptorSetLayout& setLayout;
 			StarDescriptorPool& pool; 
 			std::vector<vk::WriteDescriptorSet> writeSets; 
