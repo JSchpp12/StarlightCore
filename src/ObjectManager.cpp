@@ -23,12 +23,29 @@ namespace core {
 		this->fragShader = fragShader; 
 		return *this; 
 	}
+	ObjectManager::Builder& ObjectManager::Builder::setVerticies(const std::vector<glm::vec3>& verticies) {
+		this->verticies = std::make_unique<std::vector<common::Vertex>>(verticies.size()); 
+
+		for (auto& vert : verticies) {
+			this->verticies->push_back(common::Vertex{ vert }); 
+		}
+		return *this; 
+	}
+	ObjectManager::Builder& ObjectManager::Builder::setIndicies(const std::vector<uint32_t>& indicies) {
+		this->indicies = std::make_unique<std::vector<uint32_t>>(indicies);
+		return *this; 
+	}
 	ObjectManager::Builder& ObjectManager::Builder::setTexture(const common::Handle& texture) {
 		this->texture = texture; 
 		return *this; 
 	}
 	common::Handle ObjectManager::Builder::build() {
-		return this->manager->Add(this->path, this->position, this->scale, this->texture, this->vertShader, this->fragShader);
+		if (!this->verticies && !this->indicies) {
+			return this->manager->Add(this->path, this->position, this->scale, this->texture, this->vertShader, this->fragShader);
+		} else if (this->verticies && this->verticies->size() != 0 && this->indicies && this->indicies->size() != 0) {
+			return this->manager->Add(std::move(this->verticies), std::move(this->indicies), this->position, this->scale, this->texture, this->vertShader, this->fragShader);
+		}	
+		throw std::runtime_error("Invalid parameters provided to complete build of object"); 
 	}
 }
 }
@@ -83,6 +100,15 @@ star::common::Handle star::core::ObjectManager::Add(const std::string& pathToFil
 	}
 }
 
+star::common::Handle star::core::ObjectManager::Add(std::unique_ptr<std::vector<common::Vertex>> verticies, std::unique_ptr<std::vector<uint32_t>> indicies,
+	glm::vec3 position, glm::vec3 scaleAmt,
+	common::Handle texture, common::Handle vertShader,
+	common::Handle fragShader) {
+
+	std::unique_ptr<common::GameObject> newObject = std::make_unique<common::GameObject>(std::move(verticies), std::move(indicies), position, scaleAmt, texture, vertShader, fragShader); 
+	return this->fileContainer.AddResource(std::move(newObject)); 
+}
+
 void star::core::ObjectManager::load(const std::string& pathToFile, std::vector<common::Vertex>* vertexList, std::vector<uint32_t>* indiciesList) {
 	/* Load Object From File */
 	tinyobj::attrib_t attrib;
@@ -101,7 +127,6 @@ void star::core::ObjectManager::load(const std::string& pathToFile, std::vector<
 		//tinyobj ensures three verticies per triangle  -- assuming unique verticies 
 		for (const auto& index : shape.mesh.indices) {
 			common::Vertex vertex{};
-
 			if (index.vertex_index >= 0) {
 				vertex.pos = {
 					//must multiply index by 3 due to object being type float rather than glm::vec3 

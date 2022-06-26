@@ -41,12 +41,6 @@ namespace star {
 			private: 
 
 			};
-			//vertex buffer
-
-			virtual void init();
-
-			//virtual void initSECOND(); 
-
 			uint32_t totalNumVerticies = 0; 
 			uint32_t totalNumIndicies = 0;
 
@@ -60,6 +54,7 @@ namespace star {
 			//no copy
 			RenderSysObj(const RenderSysObj&) = delete;
 
+			virtual void init();
 
 			virtual void registerShader(vk::ShaderStageFlagBits stage, common::Shader* newShader, common::Handle newShaderHandle);
 

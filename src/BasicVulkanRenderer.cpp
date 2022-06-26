@@ -53,6 +53,8 @@ void star::core::VulkanRenderer::updateUniformBuffer(uint32_t currentImage) {
 		RenderSysObjs.at(i)->updateBuffers(currentImage);
 	}
 
+	this->lightRenderSys->updateBuffers(currentImage); 
+
 	//UniformBufferObject obj; 
 	//obj.model = currObject->getDisplayMatrix(); 
 	////obj.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
@@ -161,6 +163,19 @@ void star::core::VulkanRenderer::prepare() {
 	}
 	tmpRenderSysObj->init();
 
+	//TODO: might need more than one light system
+	this->lightRenderSys = std::make_unique<RenderSysPointLight>(this->starDevice.get(), this->swapChainImages.size(), this->globalSetLayout->getDescriptorSetLayout(), this->swapChainExtent, this->renderPass);
+	common::GameObject* lightLinkedObject = this->objectManager->Get(this->pointLight->getLinkedObjectHandle());
+	this->lightRenderSys->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager->Get(lightLinkedObject->getVertShader()), lightLinkedObject->getVertShader());
+	this->lightRenderSys->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager->Get(lightLinkedObject->getFragShader()), lightLinkedObject->getFragShader());
+	for (auto light : this->lightList) {
+		if (light->getType() == common::Type::Light::point) {
+			common::GameObject* lightLinkedObject = this->objectManager->Get(light->getLinkedObjectHandle());
+
+			this->lightRenderSys->addLight(light, lightLinkedObject, this->swapChainImages.size());
+		}
+	}
+	this->lightRenderSys->init(); 
 
 	createDepthResources();
 	createFramebuffers();
@@ -1360,21 +1375,15 @@ void star::core::VulkanRenderer::createCommandBuffers() {
 			*   6. array of sets to bind
 			*   7 - 8. array of offsets used for dynamic descriptors (not used here)
 			*/
-			//bind the right descriptor set for each swap chain image to the descripts in the shader 
-
-
+			//bind the right descriptor set for each swap chain image to the descripts in the shader
 			//bind global descriptor
 			newBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, tmpRenderSysObj->getPipelineLayout(), 0, 1, &this->globalDescriptorSets.at(i), 0, nullptr);
-
 			tmpRenderSysObj->render(newBuffers[i], i);
-			//draw light 
-			//newBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, this->lightRenderSysObj->getPipeline());
-			//newBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, tmpRenderSysObj->getPipelineLayout(), 0, 1, &this->globalDescriptorSets.at(i), 0, nullptr);
 
-			//vkCmdDrawIndexed(graphicsCommandBuffers[i], 3, 1, 0, 0, 0); 
+			//bind light pipe 
+			this->lightRenderSys->bind(newBuffers[i]);
+			this->lightRenderSys->render(newBuffers[i], i);
 
-			//can now finish render pass
-			//vkCmdEndRenderPass(graphicsCommandBuffers[i]);
 			newBuffers[i].endRenderPass();
 
 			//record command buffer

@@ -27,6 +27,8 @@ namespace star{
                 Builder& setVertShader(const common::Handle& vertShader);
                 Builder& setFragShader(const common::Handle& fragShader); 
                 Builder& setTexture(const common::Handle& texture); 
+                Builder& setVerticies(const std::vector<glm::vec3>& verticies); 
+                Builder& setIndicies(const std::vector<uint32_t>& indicies); 
                 common::Handle build(); 
 
             protected:
@@ -39,6 +41,8 @@ namespace star{
                 common::Handle fragShader = common::Handle{ 1 };
                 common::Handle texture = common::Handle{ 0 }; 
                 std::string path; 
+                std::unique_ptr<std::vector<uint32_t>> indicies; 
+                std::unique_ptr<std::vector<common::Vertex>> verticies; 
             };
 
             ~ObjectManager(); 
@@ -48,6 +52,11 @@ namespace star{
             common::Handle Add(const std::string& pathToFile,
                 glm::vec3 position, glm::vec3 scaleAmt,
                 common::Handle texture, common::Handle vertShader, 
+                common::Handle fragShader);
+
+            common::Handle Add(std::unique_ptr<std::vector<common::Vertex>> verticies, std::unique_ptr<std::vector<uint32_t>> indicies,
+                glm::vec3 position, glm::vec3 scaleAmt,
+                common::Handle texture, common::Handle vertShader,
                 common::Handle fragShader);
 
         protected: 
