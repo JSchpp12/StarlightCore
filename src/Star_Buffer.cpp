@@ -14,7 +14,7 @@ namespace core {
 		return instanceSize; 
 	}
 
-	StarBuffer::StarBuffer(StarDevice* device, vk::DeviceSize instanceSize, uint32_t instanceCount,
+	StarBuffer::StarBuffer(StarDevice& device, vk::DeviceSize instanceSize, uint32_t instanceCount,
 		vk::BufferUsageFlags flags, vk::MemoryPropertyFlags memoryPropertyFlags,
 		vk::DeviceSize minOffsetAlignment) : 
 			starDevice(device), 
@@ -24,23 +24,23 @@ namespace core {
 			memoryPropertyFlags{memoryPropertyFlags} {
 		this->alignmentSize = getAlignment(this->instanceSize, minOffsetAlignment); 
 		this->bufferSize = this->alignmentSize * instanceCount; 
-		this->starDevice->createBuffer(this->bufferSize, this->usageFlags, this->memoryPropertyFlags, this->buffer, this->memory); 
+		this->starDevice.createBuffer(this->bufferSize, this->usageFlags, this->memoryPropertyFlags, this->buffer, this->memory); 
 	}
 
 	StarBuffer::~StarBuffer() {
 		unmap(); 
-		this->starDevice->getDevice().destroyBuffer(this->buffer); 
-		this->starDevice->getDevice().freeMemory(this->memory); 
+		this->starDevice.getDevice().destroyBuffer(this->buffer); 
+		this->starDevice.getDevice().freeMemory(this->memory); 
 	}
 
 	void StarBuffer::map(vk::DeviceSize size, vk::DeviceSize offset) {
 		assert(this->buffer && this->memory && "Called map on buffer before creation"); 
-		this->mapped = this->starDevice->getDevice().mapMemory(this->memory, offset, size, {});
+		this->mapped = this->starDevice.getDevice().mapMemory(this->memory, offset, size, {});
 	}
 
 	void StarBuffer::unmap() {
 		if (mapped) {
-			this->starDevice->getDevice().unmapMemory(this->memory); 
+			this->starDevice.getDevice().unmapMemory(this->memory); 
 			this->mapped = nullptr; 
 		}
 	}
@@ -64,7 +64,7 @@ namespace core {
 		mappedRange.memory = this->memory; 
 		mappedRange.offset = offset; 
 		mappedRange.size = size; 
-		return this->starDevice->getDevice().flushMappedMemoryRanges(1, &mappedRange); 
+		return this->starDevice.getDevice().flushMappedMemoryRanges(1, &mappedRange); 
 	}
 
 	vk::Result StarBuffer::invalidate(vk::DeviceSize size, vk::DeviceSize offset) {
@@ -73,7 +73,7 @@ namespace core {
 		mappedRange.memory = this->memory; 
 		mappedRange.offset = offset; 
 		mappedRange.size = size; 
-		return this->starDevice->getDevice().invalidateMappedMemoryRanges(1, &mappedRange); 
+		return this->starDevice.getDevice().invalidateMappedMemoryRanges(1, &mappedRange); 
 	}
 
 	vk::DescriptorBufferInfo StarBuffer::descriptorInfo(vk::DeviceSize size, vk::DeviceSize offset) {

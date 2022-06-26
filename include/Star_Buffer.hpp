@@ -8,7 +8,7 @@ namespace star {
 namespace core {
 	class StarBuffer {
 	public:
-		StarBuffer(StarDevice* device, vk::DeviceSize instanceSize, uint32_t instanceCount, 
+		StarBuffer(StarDevice& device, vk::DeviceSize instanceSize, uint32_t instanceCount, 
 			vk::BufferUsageFlags flags, vk::MemoryPropertyFlags memoryPropertyFlags, 
 			vk::DeviceSize minOffsetAlignment = 1); 
 		~StarBuffer(); 
@@ -48,7 +48,7 @@ namespace core {
 	private: 
 		static vk::DeviceSize getAlignment(vk::DeviceSize instanceSize, vk::DeviceSize minOffsetAlignment); 
 
-		StarDevice* starDevice; 
+		StarDevice& starDevice; 
 		void* mapped = nullptr; 
 		vk::Buffer buffer = VK_NULL_HANDLE; 
 		vk::DeviceMemory memory = VK_NULL_HANDLE; 
