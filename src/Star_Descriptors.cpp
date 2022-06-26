@@ -69,7 +69,7 @@ namespace core {
 		return std::make_unique<StarDescriptorPool>(this->starDevice, this->maxSets, this->poolFlags, this->poolSizes); 
 	}
 
-	StarDescriptorPool::StarDescriptorPool(StarDevice* device, 
+	StarDescriptorPool::StarDescriptorPool(StarDevice& device, 
 		uint32_t maxSets, 
 		vk::DescriptorPoolCreateFlags poolFlags, 
 		const std::vector<vk::DescriptorPoolSize>& poolSizes) :
@@ -82,14 +82,14 @@ namespace core {
 		createInfo.maxSets = maxSets; 
 		createInfo.flags = poolFlags; 
 
-		this->descriptorPool = this->starDevice->getDevice().createDescriptorPool(createInfo);
+		this->descriptorPool = this->starDevice.getDevice().createDescriptorPool(createInfo);
 		if (!this->descriptorPool) {
 			throw std::runtime_error("Unable to create descriptor pool"); 
 		}
 	}
 
 	StarDescriptorPool::~StarDescriptorPool() {
-		this->starDevice->getDevice().destroyDescriptorPool(this->descriptorPool); 
+		this->starDevice.getDevice().destroyDescriptorPool(this->descriptorPool); 
 	}
 
 	vk::DescriptorPool StarDescriptorPool::getDescriptorPool() {
@@ -103,7 +103,7 @@ namespace core {
 		allocInfo.pSetLayouts = &descriptorSetLayout;
 		allocInfo.descriptorSetCount = 1;
 
-		if (this->starDevice->getDevice().allocateDescriptorSets(&allocInfo, &descriptorSet) != vk::Result::eSuccess) {
+		if (this->starDevice.getDevice().allocateDescriptorSets(&allocInfo, &descriptorSet) != vk::Result::eSuccess) {
 			return false; 
 		}
 
@@ -111,11 +111,11 @@ namespace core {
 	}
 
 	void StarDescriptorPool::freeDescriptors(std::vector<vk::DescriptorSet>& descriptors) const {
-		this->starDevice->getDevice().freeDescriptorSets(this->descriptorPool, descriptors);
+		this->starDevice.getDevice().freeDescriptorSets(this->descriptorPool, descriptors);
 	}
 
 	void StarDescriptorPool::resetPool() {
-		this->starDevice->getDevice().resetDescriptorPool(this->descriptorPool);
+		this->starDevice.getDevice().resetDescriptorPool(this->descriptorPool);
 	}
 
 

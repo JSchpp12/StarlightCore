@@ -115,12 +115,12 @@ void star::core::VulkanRenderer::prepare() {
 	createImageViews();
 	createRenderPass();
 
-	this->globalPool = StarDescriptorPool::Builder(this->starDevice.get())
+	this->globalPool = StarDescriptorPool::Builder(*this->starDevice.get())
 		.setMaxSets((this->swapChainImages.size()))
 		.addPoolSize(vk::DescriptorType::eUniformBuffer, this->swapChainImages.size())
 		.build();
 
-	this->globalSetLayout = StarDescriptorSetLayout::Builder(this->starDevice.get())
+	this->globalSetLayout = StarDescriptorSetLayout::Builder(*this->starDevice.get())
 		.addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
 		.build();
 
@@ -183,7 +183,6 @@ void star::core::VulkanRenderer::prepare() {
 	createTextureImageView();
 	createTextureSampler();
 	createRenderingBuffers();
-	createGraphicsPipeline();
 
 	std::unique_ptr<std::vector<vk::DescriptorBufferInfo>> bufferInfos{};
 	for (size_t i = 0; i < this->swapChainImages.size(); i++) {
@@ -466,10 +465,6 @@ void star::core::VulkanRenderer::recreateSwapChain() {
 
 	//render pass depends on the format of swap chain images
 	createRenderPass();
-
-	////viewport and scissor rectangle size are declared during pipeline creation, so the pipeline must be recreated
-	////can use dynamic states for viewport and scissor to avoid this 
-	createGraphicsPipeline();
 
 	createDepthResources();
 
@@ -939,7 +934,7 @@ void star::core::VulkanRenderer::createRenderingBuffers() {
 	this->globalUniformBuffers.resize(this->swapChainImages.size());
 
 	for (size_t i = 0; i < swapChainImages.size(); i++) {
-		this->globalUniformBuffers[i] = std::make_unique<StarBuffer>(this->starDevice.get(), tmpRenderSysObj->getNumRenderObjects(), sizeof(GlobalUniformBufferObject),
+		this->globalUniformBuffers[i] = std::make_unique<StarBuffer>(*this->starDevice.get(), tmpRenderSysObj->getNumRenderObjects(), sizeof(GlobalUniformBufferObject),
 			vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 		this->globalUniformBuffers[i]->map();
 

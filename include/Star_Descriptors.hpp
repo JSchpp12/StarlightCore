@@ -51,7 +51,7 @@ namespace star {
 		public:
 			class Builder {
 			public:
-				Builder(StarDevice* device) : starDevice(device) {};
+				Builder(StarDevice& device) : starDevice(device) {};
 
 				Builder& addPoolSize(vk::DescriptorType descriptorType, uint32_t count);
 				Builder& setPoolFlags(vk::DescriptorPoolCreateFlags flags); 
@@ -61,13 +61,13 @@ namespace star {
 			protected:
 				
 			private:
-				StarDevice* starDevice; 
+				StarDevice& starDevice; 
 				std::vector<vk::DescriptorPoolSize> poolSizes; 
 				uint32_t maxSets = 50; 
 				vk::DescriptorPoolCreateFlags poolFlags{}; 
 			};
 
-			StarDescriptorPool(StarDevice* device, uint32_t maxSets, vk::DescriptorPoolCreateFlags poolFlags, const std::vector<vk::DescriptorPoolSize>& poolSizes);
+			StarDescriptorPool(StarDevice& device, uint32_t maxSets, vk::DescriptorPoolCreateFlags poolFlags, const std::vector<vk::DescriptorPoolSize>& poolSizes);
 			~StarDescriptorPool(); 
 
 			vk::DescriptorPool getDescriptorPool(); 
@@ -81,7 +81,7 @@ namespace star {
 		protected:
 
 		private: 
-			StarDevice* starDevice; 
+			StarDevice& starDevice; 
 			vk::DescriptorPool descriptorPool; 
 
 			//allow this class to read the private info of StarDescriptorSetLayout for construction 

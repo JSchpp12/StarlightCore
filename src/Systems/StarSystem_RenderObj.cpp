@@ -136,7 +136,7 @@ void RenderSysObj::createVertexBuffer() {
 	uint32_t vertexCount = vertexList.size(); 
 
     StarBuffer stagingBuffer{
-        this->starDevice,
+        *this->starDevice,
 		vertexSize,
         vertexCount, 
         vk::BufferUsageFlagBits::eTransferSrc,
@@ -146,7 +146,7 @@ void RenderSysObj::createVertexBuffer() {
     stagingBuffer.writeToBuffer(vertexList.data()); 
 
     this->vertexBuffer = std::make_unique<StarBuffer>(
-        this->starDevice,
+        *this->starDevice,
 		vertexSize,
         vertexCount,
         vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst, 
@@ -187,7 +187,7 @@ void RenderSysObj::createIndexBuffer() {
     uint32_t indexSize = sizeof(indiciesList[0]);
 
     StarBuffer stagingBuffer{
-        this->starDevice, 
+        *this->starDevice, 
         indexSize, 
         this->totalNumIndicies, 
         vk::BufferUsageFlagBits::eTransferSrc, 
@@ -197,7 +197,7 @@ void RenderSysObj::createIndexBuffer() {
     stagingBuffer.writeToBuffer(indiciesList.data()); 
 
     this->indexBuffer = std::make_unique<StarBuffer>(
-        this->starDevice, 
+        *this->starDevice, 
         indexSize, 
         this->totalNumIndicies, 
         vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
@@ -207,13 +207,13 @@ void RenderSysObj::createIndexBuffer() {
 
 void RenderSysObj::createDescriptors() {
     //create descriptor pools 
-    this->descriptorPool = StarDescriptorPool::Builder(this->starDevice)
+    this->descriptorPool = StarDescriptorPool::Builder(*this->starDevice)
         .setMaxSets(this->numSwapChainImages * this->renderObjects.size())
         .addPoolSize(vk::DescriptorType::eUniformBuffer, this->numSwapChainImages * this->renderObjects.size())
         .build();
 
     //create descriptor layouts
-    this->descriptorSetLayout = StarDescriptorSetLayout::Builder(this->starDevice)
+    this->descriptorSetLayout = StarDescriptorSetLayout::Builder(*this->starDevice)
         .addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
         .build();
 
@@ -240,7 +240,7 @@ void RenderSysObj::createRenderBuffers() {
     this->uniformBuffers.resize(this->numSwapChainImages);
 
     for (size_t i = 0; i < numSwapChainImages; i++) {
-        this->uniformBuffers[i] = std::make_unique<StarBuffer>(this->starDevice, this->renderObjects.size(), sizeof(UniformBufferObject), 
+        this->uniformBuffers[i] = std::make_unique<StarBuffer>(*this->starDevice, this->renderObjects.size(), sizeof(UniformBufferObject), 
             vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
         this->uniformBuffers[i]->map();
     }
