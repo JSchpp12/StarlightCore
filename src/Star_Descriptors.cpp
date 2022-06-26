@@ -43,7 +43,7 @@ namespace core {
 	}
 
 	StarDescriptorSetLayout::~StarDescriptorSetLayout() {
-		//this->device.destroyDescriptorSetLayout(this->descriptorSetLayout, nullptr); 
+		this->starDevice->getDevice().destroyDescriptorSetLayout(this->descriptorSetLayout);
 	}
 
 
@@ -89,7 +89,7 @@ namespace core {
 	}
 
 	StarDescriptorPool::~StarDescriptorPool() {
-		//this->device.destroyDescriptorPool(this->descriptorPool); 
+		this->starDevice->getDevice().destroyDescriptorPool(this->descriptorPool); 
 	}
 
 	vk::DescriptorPool StarDescriptorPool::getDescriptorPool() {

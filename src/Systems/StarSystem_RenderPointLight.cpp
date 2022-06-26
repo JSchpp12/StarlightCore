@@ -4,7 +4,7 @@ namespace star {
 namespace core {
 
 	RenderSysPointLight::~RenderSysPointLight() {
-		this->RenderSysObj::~RenderSysObj(); 
+		//this->RenderSysObj::~RenderSysObj(); 
 	}
 
 	void RenderSysPointLight::addLight(common::Light* newLight, common::GameObject* linkedObject, size_t numSwapChainImages) {

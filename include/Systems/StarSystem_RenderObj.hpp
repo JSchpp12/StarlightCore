@@ -124,12 +124,11 @@ namespace star {
 			
 			std::vector<std::unique_ptr<RenderObject>> renderObjects;
 			std::unique_ptr<StarDescriptorPool> descriptorPool; 
+			std::unique_ptr<StarPipeline> starPipeline;
+			vk::PipelineLayout pipelineLayout;
 			std::vector<std::unique_ptr<StarBuffer>> uniformBuffers; 
 			std::unique_ptr<StarDescriptorSetLayout> descriptorSetLayout; 
 			std::vector<std::vector<vk::DescriptorSet>> descriptorSets; 
-			std::unique_ptr<StarPipeline> starPipeline;
-			vk::PipelineLayout pipelineLayout;
-
 
 			/// <summary>
 			/// Concat all verticies of all objects into a single buffer and copy to gpu.

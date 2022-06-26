@@ -331,8 +331,6 @@ void star::core::VulkanRenderer::cleanup() {
 	this->starDevice->getDevice().destroyImage(this->textureImage);
 	this->starDevice->getDevice().freeMemory(this->textureImageMemory);
 
-	//this->starDevice->getDevice().destroyDescriptorSetLayout(this->descriptorSetLayout);
-
 	RenderSysObj* currRenderSysObj = this->RenderSysObjs.at(0).get();
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
@@ -340,11 +338,6 @@ void star::core::VulkanRenderer::cleanup() {
 		this->starDevice->getDevice().destroySemaphore(imageAvailableSemaphores[i]);
 		this->starDevice->getDevice().destroyFence(inFlightFences[i]);
 	}
-
-	this->starDevice->getDevice().destroyDescriptorSetLayout(this->globalSetLayout->getDescriptorSetLayout());
-	this->starDevice->getDevice().destroyDescriptorPool(this->globalPool->getDescriptorPool());
-	//this->starDevice->getDevice().destroyDescriptorSetLayout(this->perObjectStaticLayout->getDescriptorSetLayout()); 
-	//this->starDevice->getDevice().destroyDescriptorPool(this->perObjectStaticPool->getDescriptorPool()); 
 }
 
 void star::core::VulkanRenderer::cleanupSwapChain() {

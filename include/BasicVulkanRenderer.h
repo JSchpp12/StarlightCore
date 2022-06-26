@@ -51,11 +51,13 @@ namespace star {
             void cleanup();
 
         protected:
+            std::unique_ptr<StarDevice> starDevice{};
+
             std::vector<common::Light*>& lightList;
             common::Light* ambientLight = nullptr;
             common::Light* pointLight = nullptr;
 
-            std::unique_ptr<StarDevice> starDevice{};
+
             //std::vector<std::unique_ptr<StarBuffer>> uniformBuffers;
 
             std::vector<std::unique_ptr<RenderSysObj>> RenderSysObjs;

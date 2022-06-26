@@ -46,6 +46,7 @@ namespace core {
 			numVerticies(numVerticies), 
 			numIndicies(numIndicies), 
 			uboDescriptorSets(numImages) { }
+		//~RenderObject(); 
 
 		//void render(vk::CommandBuffer& commandBuffer, vk::PipelineLayout layout, int swapChainImageIndex); 
 		

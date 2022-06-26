@@ -4,7 +4,7 @@ namespace star {
 namespace core {
 
 RenderSysObj::~RenderSysObj() {
-    this->starDevice->getDevice().destroyPipelineLayout(this->pipelineLayout);
+	this->starDevice->getDevice().destroyPipelineLayout(this->pipelineLayout);
 }
 
 void RenderSysObj::registerShader(vk::ShaderStageFlagBits stage, common::Shader* newShader, common::Handle newShaderHandle) {
