@@ -48,63 +48,63 @@ common::Handle RenderSysObj::getBaseShader(vk::ShaderStageFlags stage) {
 }
 
 void RenderSysObj::setPipelineLayout(vk::PipelineLayout newPipelineLayout) {
-    this->pipelineLayout = newPipelineLayout;
+	this->pipelineLayout = newPipelineLayout;
 }
 
 size_t RenderSysObj::getNumRenderObjects()
 {
-    return this->renderObjects.size();
+	return this->renderObjects.size();
 }
 
 RenderObject* star::core::RenderSysObj::getRenderObjectAt(size_t index) {
-    return this->renderObjects.at(index).get();
+	return this->renderObjects.at(index).get();
 }
 
 void star::core::RenderSysObj::bind(vk::CommandBuffer& commandBuffer) {
-    this->starPipeline->bind(commandBuffer);
+	this->starPipeline->bind(commandBuffer);
 }
 
 void star::core::RenderSysObj::updateBuffers(uint32_t currentImage) {
-    UniformBufferObject newBufferObject{};
-    std::vector<UniformBufferObject> bufferObjects(this->renderObjects.size());
+	UniformBufferObject newBufferObject{};
+	std::vector<UniformBufferObject> bufferObjects(this->renderObjects.size());
 
-    for (size_t i = 0; i < this->renderObjects.size(); i++) {
-        newBufferObject.modelMatrix = this->renderObjects.at(i)->getGameObject()->getDisplayMatrix(); 
-        newBufferObject.normalMatrix = this->renderObjects.at(i)->getGameObject()->getNormalMatrix(); 
+	for (size_t i = 0; i < this->renderObjects.size(); i++) {
+		newBufferObject.modelMatrix = this->renderObjects.at(i)->getGameObject()->getDisplayMatrix(); 
+		newBufferObject.normalMatrix = this->renderObjects.at(i)->getGameObject()->getNormalMatrix(); 
 
-        bufferObjects.at(i) = newBufferObject; 
-    }
+		bufferObjects.at(i) = newBufferObject; 
+	}
 
-    this->uniformBuffers[currentImage]->writeToBuffer(bufferObjects.data(), sizeof(UniformBufferObject) * bufferObjects.size()); 
+	this->uniformBuffers[currentImage]->writeToBuffer(bufferObjects.data(), sizeof(UniformBufferObject) * bufferObjects.size()); 
 }
 
 void star::core::RenderSysObj::render(vk::CommandBuffer& commandBuffer, int swapChainImageIndex) {
-    vk::DeviceSize offsets{};
-    commandBuffer.bindVertexBuffers(0, this->vertexBuffer->getBuffer(), offsets);
+	vk::DeviceSize offsets{};
+	commandBuffer.bindVertexBuffers(0, this->vertexBuffer->getBuffer(), offsets);
 
-    commandBuffer.bindIndexBuffer(this->indexBuffer->getBuffer(), 0, vk::IndexType::eUint32);
+	commandBuffer.bindIndexBuffer(this->indexBuffer->getBuffer(), 0, vk::IndexType::eUint32);
 
-    int vertexCount = 0; 
-    RenderObject* currRenderObject = nullptr; 
-    for (size_t i = 0; i < this->renderObjects.size(); i++) {
-        currRenderObject = this->renderObjects.at(i).get();
-        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, this->pipelineLayout, 1, 1, &this->renderObjects.at(i)->getDefaultDescriptorSets()->at(swapChainImageIndex), 0, nullptr);
+	int vertexCount = 0; 
+	RenderObject* currRenderObject = nullptr; 
+	for (size_t i = 0; i < this->renderObjects.size(); i++) {
+		currRenderObject = this->renderObjects.at(i).get();
+		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, this->pipelineLayout, 1, 1, &this->renderObjects.at(i)->getDefaultDescriptorSets()->at(swapChainImageIndex), 0, nullptr);
 
-        auto numToDraw = currRenderObject->getNumVerticies(); 
-        commandBuffer.drawIndexed(numToDraw, 1, 0, vertexCount, 0); 
-        vertexCount += currRenderObject->getNumIndicies(); 
+		auto numToDraw = currRenderObject->getNumVerticies(); 
+		commandBuffer.drawIndexed(numToDraw, 1, 0, vertexCount, 0); 
+		vertexCount += currRenderObject->getNumIndicies(); 
 
-    }
+	}
 }
 
-void star::core::RenderSysObj::init() {
-    //create needed buffers 
-    createVertexBuffer();
-    createIndexBuffer();
-    createRenderBuffers(); 
-    createDescriptors();
-    createPipelineLayout(); 
-    createPipeline(); 
+void star::core::RenderSysObj::init(std::vector<vk::DescriptorSetLayout> globalDescriptorSets) {
+	//create needed buffers 
+	createVertexBuffer();
+	createIndexBuffer();
+	createRenderBuffers(); 
+	createDescriptors();
+	createPipelineLayout(globalDescriptorSets); 
+	createPipeline(); 
 }
 
 //void RenderSysObj::createPipeline(PipelineConfigSettings& settings) {
@@ -112,161 +112,169 @@ void star::core::RenderSysObj::init() {
 //}
 
 void RenderSysObj::createVertexBuffer() {
-    vk::DeviceSize bufferSize;
+	vk::DeviceSize bufferSize;
 
-    //TODO: ensure that more objects can be drawn 
-    common::GameObject* currObject = nullptr;
-    std::vector<common::Vertex>* currObjectVerticies = nullptr; 
-    std::vector<common::Vertex> vertexList(this->totalNumVerticies);
-    size_t vertexCounter = 0;
+	//TODO: ensure that more objects can be drawn 
+	common::GameObject* currObject = nullptr;
+	std::vector<common::Vertex>* currObjectVerticies = nullptr; 
+	std::vector<common::Vertex> vertexList(this->totalNumVerticies);
+	size_t vertexCounter = 0;
 
-    for (auto& object : this->renderObjects) {
-        //go through all objects in object list and generate the vertex indicies -- only works with 1 object at the moment 
-        currObjectVerticies = object->getGameObject()->getVerticies();
+	for (auto& object : this->renderObjects) {
+		//go through all objects in object list and generate the vertex indicies -- only works with 1 object at the moment 
+		currObjectVerticies = object->getGameObject()->getVerticies();
 
-        //copy verticies from the render object into the total vertex list for the vulkan object
-        for (size_t j = 0; j < currObjectVerticies->size(); j++) {
-            vertexList.at(vertexCounter) = currObjectVerticies->at(j);
-            vertexCounter++;
-        }
-    }
+		//copy verticies from the render object into the total vertex list for the vulkan object
+		for (size_t j = 0; j < currObjectVerticies->size(); j++) {
+			vertexList.at(vertexCounter) = currObjectVerticies->at(j);
+			vertexCounter++;
+		}
+	}
 
-    bufferSize = sizeof(vertexList.at(0)) * vertexList.size();
+	bufferSize = sizeof(vertexList.at(0)) * vertexList.size();
 	uint32_t vertexSize = sizeof(vertexList[0]);
 	uint32_t vertexCount = vertexList.size(); 
 
-    StarBuffer stagingBuffer{
-        *this->starDevice,
+	StarBuffer stagingBuffer{
+		*this->starDevice,
 		vertexSize,
-        vertexCount, 
-        vk::BufferUsageFlagBits::eTransferSrc,
-        vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
-    }; 
-    stagingBuffer.map();
-    stagingBuffer.writeToBuffer(vertexList.data()); 
+		vertexCount, 
+		vk::BufferUsageFlagBits::eTransferSrc,
+		vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
+	}; 
+	stagingBuffer.map();
+	stagingBuffer.writeToBuffer(vertexList.data()); 
 
-    this->vertexBuffer = std::make_unique<StarBuffer>(
-        *this->starDevice,
+	this->vertexBuffer = std::make_unique<StarBuffer>(
+		*this->starDevice,
 		vertexSize,
-        vertexCount,
-        vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst, 
+		vertexCount,
+		vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst, 
 		vk::MemoryPropertyFlagBits::eDeviceLocal);
 
 	this->starDevice->copyBuffer(stagingBuffer.getBuffer(), this->vertexBuffer->getBuffer(), bufferSize); 
 }
 
 void RenderSysObj::createIndexBuffer() {
-    vk::DeviceSize bufferSize;
+	vk::DeviceSize bufferSize;
 
-    //TODO: will only support one object at the moment
-    std::vector<uint32_t> indiciesList(this->totalNumIndicies);
-    std::vector<uint32_t>* currRenderObjectIndicies = nullptr;
-    RenderObject* currRenderObject = nullptr; 
-    common::GameObject* currObject = nullptr;
-    size_t indexCounter = 0; //used to keep track of index offsets 
+	//TODO: will only support one object at the moment
+	std::vector<uint32_t> indiciesList(this->totalNumIndicies);
+	std::vector<uint32_t>* currRenderObjectIndicies = nullptr;
+	RenderObject* currRenderObject = nullptr; 
+	common::GameObject* currObject = nullptr;
+	size_t indexCounter = 0; //used to keep track of index offsets 
 
-    for (size_t i = 0; i < this->renderObjects.size(); i++) {
-        currRenderObject = this->renderObjects.at(i).get();
-        currRenderObjectIndicies = currRenderObject->getGameObject()->getIndicies();
+	for (size_t i = 0; i < this->renderObjects.size(); i++) {
+		currRenderObject = this->renderObjects.at(i).get();
+		currRenderObjectIndicies = currRenderObject->getGameObject()->getIndicies();
 
-        for (size_t j = 0; j < currRenderObjectIndicies->size(); j++) {
-            if (i > 0) {
-                //not the first object 
-                //displace the index counter by the number of indicies previously used
-                indiciesList.at(indexCounter) = indexCounter + currRenderObjectIndicies->at(j);
-            }
-            else {
-                indiciesList.at(indexCounter) = indexCounter;
-            }
+		for (size_t j = 0; j < currRenderObjectIndicies->size(); j++) {
+			if (i > 0) {
+				//not the first object 
+				//displace the index counter by the number of indicies previously used
+				indiciesList.at(indexCounter) = indexCounter + currRenderObjectIndicies->at(j);
+			}
+			else {
+				indiciesList.at(indexCounter) = indexCounter;
+			}
 
-            indexCounter++;
-        }
-    }
+			indexCounter++;
+		}
+	}
 
-    bufferSize = sizeof(indiciesList.at(0)) * indiciesList.size();
-    uint32_t indexSize = sizeof(indiciesList[0]);
+	bufferSize = sizeof(indiciesList.at(0)) * indiciesList.size();
+	uint32_t indexSize = sizeof(indiciesList[0]);
 
-    StarBuffer stagingBuffer{
-        *this->starDevice, 
-        indexSize, 
-        this->totalNumIndicies, 
-        vk::BufferUsageFlagBits::eTransferSrc, 
-        vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
-    };
-    stagingBuffer.map(); 
-    stagingBuffer.writeToBuffer(indiciesList.data()); 
+	StarBuffer stagingBuffer{
+		*this->starDevice, 
+		indexSize, 
+		this->totalNumIndicies, 
+		vk::BufferUsageFlagBits::eTransferSrc, 
+		vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
+	};
+	stagingBuffer.map(); 
+	stagingBuffer.writeToBuffer(indiciesList.data()); 
 
-    this->indexBuffer = std::make_unique<StarBuffer>(
-        *this->starDevice, 
-        indexSize, 
-        this->totalNumIndicies, 
-        vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
-        vk::MemoryPropertyFlagBits::eDeviceLocal );
-    this->starDevice->copyBuffer(stagingBuffer.getBuffer(), this->indexBuffer->getBuffer(), bufferSize);
+	this->indexBuffer = std::make_unique<StarBuffer>(
+		*this->starDevice, 
+		indexSize, 
+		this->totalNumIndicies, 
+		vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+		vk::MemoryPropertyFlagBits::eDeviceLocal );
+	this->starDevice->copyBuffer(stagingBuffer.getBuffer(), this->indexBuffer->getBuffer(), bufferSize);
 }
 
 void RenderSysObj::createDescriptors() {
-    //create descriptor pools 
-    this->descriptorPool = StarDescriptorPool::Builder(*this->starDevice)
-        .setMaxSets(this->numSwapChainImages * this->renderObjects.size())
-        .addPoolSize(vk::DescriptorType::eUniformBuffer, this->numSwapChainImages * this->renderObjects.size())
-        .build();
+	//create descriptor pools 
+	this->descriptorPool = StarDescriptorPool::Builder(*this->starDevice)
+		.setMaxSets(this->numSwapChainImages * this->renderObjects.size())
+		.addPoolSize(vk::DescriptorType::eUniformBuffer, this->numSwapChainImages * this->renderObjects.size())
+		.build();
 
-    //create descriptor layouts
-    this->descriptorSetLayout = StarDescriptorSetLayout::Builder(*this->starDevice)
-        .addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
-        .build();
+	//create descriptor layouts
+	this->descriptorSetLayout = StarDescriptorSetLayout::Builder(*this->starDevice)
+		.addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
+		.build();
 
-    // 
-    //create descritptor sets 
-    vk::DescriptorBufferInfo bufferInfo{}; 
-    for (int i = 0; i < this->numSwapChainImages; i++) {
-        for (int j = 0; j < this->renderObjects.size(); j++) {
-            bufferInfo = vk::DescriptorBufferInfo{
-                this->uniformBuffers[i]->getBuffer(),
-                sizeof(UniformBufferObject) * j,
-                sizeof(UniformBufferObject)
-            };
+	auto testSize = sizeof(UniformBufferObject); 
 
-            StarDescriptorWriter(*this->starDevice, *this->descriptorSetLayout, *this->descriptorPool)
-                .writeBuffer(0, &bufferInfo)
-                .build(this->renderObjects.at(j)->getDefaultDescriptorSets()->at(i));
-        }
-    }
+	auto tmp = this->starDevice->getPhysicalDevice().getProperties();
 
+	auto minProp = tmp.limits.minUniformBufferOffsetAlignment; 
+
+	auto minAlignmentOfUBOElements = StarBuffer::getAlignment(sizeof(UniformBufferObject), minProp);
+
+	// 
+	//create descritptor sets 
+	vk::DescriptorBufferInfo bufferInfo{}; 
+	for (int i = 0; i < this->numSwapChainImages; i++) {		
+		for (int j = 0; j < this->renderObjects.size(); j++) {
+
+			bufferInfo = vk::DescriptorBufferInfo{
+				this->uniformBuffers[i]->getBuffer(),
+				minAlignmentOfUBOElements* j,
+				sizeof(UniformBufferObject)
+			};
+
+			StarDescriptorWriter(*this->starDevice, *this->descriptorSetLayout, *this->descriptorPool)
+				.writeBuffer(0, &bufferInfo)
+				.build(this->renderObjects.at(j)->getDefaultDescriptorSets()->at(i));
+		}
+	}
 }
 
 void RenderSysObj::createRenderBuffers() {
-    this->uniformBuffers.resize(this->numSwapChainImages);
+	this->uniformBuffers.resize(this->numSwapChainImages);
 
-    for (size_t i = 0; i < numSwapChainImages; i++) {
-        this->uniformBuffers[i] = std::make_unique<StarBuffer>(*this->starDevice, this->renderObjects.size(), sizeof(UniformBufferObject), 
-            vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-        this->uniformBuffers[i]->map();
-    }
+	auto minUniformSize = this->starDevice->getPhysicalDevice().getProperties().limits.minUniformBufferOffsetAlignment;
+	for (size_t i = 0; i < numSwapChainImages; i++) {
+		this->uniformBuffers[i] = std::make_unique<StarBuffer>(*this->starDevice, this->renderObjects.size(), sizeof(UniformBufferObject), 
+			vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, minUniformSize);
+		this->uniformBuffers[i]->map();
+	}
 }
 
-void RenderSysObj::createPipelineLayout() {
+void RenderSysObj::createPipelineLayout(std::vector<vk::DescriptorSetLayout> globalDescriptorSets) {
+	globalDescriptorSets.push_back(this->descriptorSetLayout->getDescriptorSetLayout()); 
 
-    std::vector<vk::DescriptorSetLayout> descriptorSetLayouts{ this->globalSetLayout, this->descriptorSetLayout->getDescriptorSetLayout()};
-    /* Pipeline Layout */
-    //uniform values in shaders need to be defined here 
-    vk::PipelineLayoutCreateInfo pipelineLayoutInfo{};
-    //pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutInfo.sType = vk::StructureType::ePipelineLayoutCreateInfo;
-    pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size());
-    pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
-    // pipelineLayoutInfo.pushConstantRangeCount = 1;
-    // pipelineLayoutInfo.pPushConstantRanges = &pushConstant;
-    pipelineLayoutInfo.pushConstantRangeCount = 0;
-    pipelineLayoutInfo.pPushConstantRanges = nullptr;
+	/* Pipeline Layout */
+	//uniform values in shaders need to be defined here 
+	vk::PipelineLayoutCreateInfo pipelineLayoutInfo{};
+	//pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutInfo.sType = vk::StructureType::ePipelineLayoutCreateInfo;
+	pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(globalDescriptorSets.size());
+	pipelineLayoutInfo.pSetLayouts = globalDescriptorSets.data();
+	// pipelineLayoutInfo.pushConstantRangeCount = 1;
+	// pipelineLayoutInfo.pPushConstantRanges = &pushConstant;
+	pipelineLayoutInfo.pushConstantRangeCount = 0;
+	pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
-    this->pipelineLayout = this->starDevice->getDevice().createPipelineLayout(pipelineLayoutInfo);
-    if (!this->pipelineLayout) {
-        throw std::runtime_error("failed to create pipeline layout");
-    }
+	this->pipelineLayout = this->starDevice->getDevice().createPipelineLayout(pipelineLayoutInfo);
+	if (!this->pipelineLayout) {
+		throw std::runtime_error("failed to create pipeline layout");
+	}
 }
-
 
 void RenderSysObj::createPipeline() {
 		/* Scissor */
@@ -408,7 +416,7 @@ void RenderSysObj::createPipeline() {
 	config.pipelineLayout = this->pipelineLayout; 
 	config.renderPass = this->renderPass;
 
-    	/* Scissor */
+		/* Scissor */
 	//this defines in which regions pixels will actually be stored. 
 	//any pixels outside will be discarded 
 
@@ -437,10 +445,10 @@ void RenderSysObj::createPipeline() {
 	//viewportState.scissorCount = 1;
 	//viewportState.pScissors = &scissor;
  //   this->newPipeSettings.viewportInfo = viewportState; 
-    //this->newPipeSettings.renderPass = renderPass;
+	//this->newPipeSettings.renderPass = renderPass;
 
  //   StarPipeline::defaultPipelineConfigInfo(this->newPipeSettings, this->swapChainExtent); 
-    this->starPipeline = std::make_unique<StarPipeline>(this->starDevice, this->vertShader, this->fragShader, config);
+	this->starPipeline = std::make_unique<StarPipeline>(this->starDevice, this->vertShader, this->fragShader, config);
 }
 
 }

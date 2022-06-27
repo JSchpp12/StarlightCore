@@ -54,7 +54,7 @@ namespace star {
 			//no copy
 			RenderSysObj(const RenderSysObj&) = delete;
 
-			virtual void init();
+			virtual void init(std::vector<vk::DescriptorSetLayout> globalDescriptorSets);
 
 			virtual void registerShader(vk::ShaderStageFlagBits stage, common::Shader* newShader, common::Handle newShaderHandle);
 
@@ -63,7 +63,10 @@ namespace star {
 			/// </summary>
 			/// <param name="newObjectHandle"></param>
 			virtual void addObject(common::Handle newObjectHandle, common::GameObject* newObject, size_t numSwapChainImages);
-
+			/// <summary>
+			/// Register a light color and location for rendering light effects on objects
+			/// </summary>
+			virtual void addLight(common::Light* newLight) { this->lights.push_back(newLight); }
 			/// <summary>
 			/// Check if the object has a shader for the requestd stage
 			/// </summary>
@@ -121,12 +124,13 @@ namespace star {
 			common::Light* pointLight = nullptr;
 
 			vk::DescriptorSetLayout globalSetLayout; 
-			
+			std::vector<common::Light*> lights; 
 			std::vector<std::unique_ptr<RenderObject>> renderObjects;
 			std::unique_ptr<StarDescriptorPool> descriptorPool; 
 			std::unique_ptr<StarPipeline> starPipeline;
 			vk::PipelineLayout pipelineLayout;
-			std::vector<std::unique_ptr<StarBuffer>> uniformBuffers; 
+			std::vector<std::unique_ptr<StarBuffer>> uniformBuffers;
+
 			std::unique_ptr<StarDescriptorSetLayout> descriptorSetLayout; 
 			std::vector<std::vector<vk::DescriptorSet>> descriptorSets; 
 
@@ -145,7 +149,7 @@ namespace star {
 			/// </summary>
 			virtual void createDescriptors();
 
-			virtual void createPipelineLayout(); 
+			virtual void createPipelineLayout(std::vector<vk::DescriptorSetLayout> globalDescriptorSets);
 
 			virtual void createPipeline(); 
 

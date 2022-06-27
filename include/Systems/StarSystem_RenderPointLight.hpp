@@ -10,9 +10,12 @@ namespace star {
 namespace core {
 	class RenderSysPointLight : private RenderSysObj{
 	public:
-		//virtual struct UniformBufferObject {
-		//	alignas(16)
-		//};
+		struct UniformBufferObject{
+			alignas(16) glm::mat4 modelMatrix;
+			alignas(16) glm::mat4 normalMatrix;
+			uint16_t numLights;
+		};
+
 		RenderSysPointLight(const RenderSysObj&) = delete;
 
 		RenderSysPointLight(StarDevice* device, size_t numSwapChainImages, vk::DescriptorSetLayout globalSetLayout,
@@ -21,7 +24,7 @@ namespace core {
 
 		virtual ~RenderSysPointLight();
 
-		virtual void init() override { this->RenderSysObj::init(); }
+		virtual void init(std::vector<vk::DescriptorSetLayout> globalSets) override { this->RenderSysObj::init(globalSets); }
 
 		virtual void addLight(common::Light* newLight, common::GameObject* linkedObject, size_t numSwapChainImages);
 

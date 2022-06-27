@@ -53,9 +53,8 @@ namespace star {
         protected:
             std::unique_ptr<StarDevice> starDevice{};
 
-            std::vector<common::Light*>& lightList;
+            std::vector<common::Light*> pointLights;
             common::Light* ambientLight = nullptr;
-            common::Light* pointLight = nullptr;
 
 
             //std::vector<std::unique_ptr<StarBuffer>> uniformBuffers;
@@ -84,9 +83,11 @@ namespace star {
 
             //storage for multiple buffers for each swap chain image  
             std::vector<std::unique_ptr<StarBuffer>> globalUniformBuffers;
-
+            std::vector<std::unique_ptr<StarBuffer>> pointLightLocationBuffers;
+            std::vector<std::unique_ptr<StarBuffer>> pointLightColorBuffers; 
             std::vector<vk::DescriptorSet> globalDescriptorSets;
-
+            //std::vector<vk::DescriptorSet> pointLightDescriptorSets;
+            std::unique_ptr<StarDescriptorSetLayout> pointLightLocationSetLayout;
 
             //pipeline and dependency storage
             vk::RenderPass renderPass;
