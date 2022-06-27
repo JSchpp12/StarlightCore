@@ -67,10 +67,6 @@ void star::core::VulkanRenderer::updateUniformBuffer(uint32_t currentImage) {
 	this->lightRenderSys->updateBuffers(currentImage); 
 }
 
-void star::core::VulkanRenderer::prepareGLFW(int width, int height, GLFWkeyfun keyboardCallbackFunction, GLFWmousebuttonfun mouseButtonCallback, GLFWcursorposfun cursorPositionCallback, GLFWscrollfun scrollCallback) {
-
-}
-
 
 void star::core::VulkanRenderer::pollEvents() {
 	glfwPollEvents();
@@ -1052,10 +1048,6 @@ void star::core::VulkanRenderer::createCommandBuffers() {
 
 
 			tmpRenderSysObj->bind(newBuffers[i]);
-
-
-			//bind vertex buffers -> how to pass information to the vertex shader once it is uploaded to the GPU
-			//newBuffers[i].bindVertexBuffers(0, RenderSysObj->vertexBuffer, offsets);
 
 			/* vkCmdBindDescriptorSets:
 			*   1.

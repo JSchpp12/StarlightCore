@@ -39,9 +39,6 @@ namespace star {
 
             ~VulkanRenderer();
 
-            //attach vulkan to GLFW
-            void prepareGLFW(int width, int height, GLFWkeyfun keyboardCallbackFunction, GLFWmousebuttonfun mouseButtonCallback, GLFWcursorposfun cursorPositionCallback, GLFWscrollfun scrollCallback);
-
             void pollEvents();
 
             void prepare();

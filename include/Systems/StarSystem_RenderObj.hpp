@@ -93,9 +93,6 @@ namespace star {
 			/// </summary>
 			virtual void render(vk::CommandBuffer& commandBuffer, int swapChainImageIndex);
 
-			virtual void setPointLight(common::Light* newLight) { this->pointLight = newLight; }
-			virtual common::Light* getPointLight() { return this->pointLight; }
-			virtual bool hasPointLight() { return this->pointLight == nullptr ? false : true; }
 			virtual void setAmbientLight(common::Light* newLight) { this->ambientLight = newLight; }
 			virtual bool hasAmbientLight() { return this->ambientLight == nullptr ? false : true; }
 
@@ -121,7 +118,6 @@ namespace star {
 			common::Shader* fragShader = nullptr;
 
 			common::Light* ambientLight = nullptr;
-			common::Light* pointLight = nullptr;
 
 			vk::DescriptorSetLayout globalSetLayout; 
 			std::vector<common::Light*> lights; 
