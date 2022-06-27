@@ -51,12 +51,14 @@ void star::core::VulkanRenderer::updateUniformBuffer(uint32_t currentImage) {
 	this->globalUniformBuffers[currentImage]->writeToBuffer(&globalUbo, sizeof(globalUbo));
 
 	//update buffer for light positions
-	std::vector<glm::vec3> lightPositions(this->pointLights.size()); 
+	std::vector<glm::vec4> lightPositions(this->pointLights.size()); 
+	std::vector<glm::vec4> lightColors(this->pointLights.size());
 	for (size_t i = 0; i < this->pointLights.size(); i++) {
-		lightPositions[i] = this->pointLights.at(i)->getPosition(); 
+		lightPositions[i] = glm::vec4{ this->pointLights.at(i)->getPosition(), 1.0 };
+		lightColors[i] = this->pointLights.at(i)->getColor(); 
 	}
-	this->pointLightLocationBuffers[currentImage]->writeToBuffer(lightPositions.data(), sizeof(glm::vec3) * lightPositions.size()); 
-
+	this->pointLightLocationBuffers[currentImage]->writeToBuffer(lightPositions.data(), sizeof(glm::vec4) * lightPositions.size()); 
+	this->pointLightColorBuffers[currentImage]->writeToBuffer(lightColors.data(), sizeof(glm::vec4) * lightPositions.size()); 
 
 	for (size_t i = 0; i < this->RenderSysObjs.size(); i++) {
 		RenderSysObjs.at(i)->updateBuffers(currentImage);
@@ -128,7 +130,7 @@ void star::core::VulkanRenderer::prepare() {
 		.setMaxSets((this->swapChainImages.size()))
 		.addPoolSize(vk::DescriptorType::eUniformBuffer, this->swapChainImages.size())
 		.addPoolSize(vk::DescriptorType::eUniformBuffer, this->pointLights.size())				//add set for light positions
-		//.addPoolSize(vk::DescriptorType::eUniformBuffer, this->pointLights.size())				//add set for light colors
+		.addPoolSize(vk::DescriptorType::eUniformBuffer, this->pointLights.size())				//add set for light colors
 		.build();
 
 	this->globalSetLayout = StarDescriptorSetLayout::Builder(*this->starDevice.get())
@@ -208,14 +210,22 @@ void star::core::VulkanRenderer::prepare() {
 			0,
 			sizeof(GlobalUniformBufferObject) });
 
+		//buffer descriptors for point light locations 
 		bufferInfos->push_back(vk::DescriptorBufferInfo{
 			this->pointLightLocationBuffers[i]->getBuffer(),
 			0,
-			sizeof(glm::vec3) * this->pointLights.size()});
+			sizeof(glm::vec4) * this->pointLights.size()});
+
+		//buffer descriptors for point light colors 
+		bufferInfos->push_back(vk::DescriptorBufferInfo{
+			this->pointLightColorBuffers[i]->getBuffer(), 
+			0,
+			sizeof(glm::vec4) * this->pointLights.size()});
 
 		StarDescriptorWriter(*this->starDevice.get(), *this->globalSetLayout, *this->globalPool)
 			.writeBuffer(0, &bufferInfos.get()->at(0))
 			.writeBuffer(1, &bufferInfos.get()->at(1))
+			.writeBuffer(2, &bufferInfos.get()->at(2))
 			.build(this->globalDescriptorSets.at(i));
 	}
 
@@ -952,7 +962,7 @@ void star::core::VulkanRenderer::createRenderingBuffers() {
 	this->globalUniformBuffers.resize(this->swapChainImages.size());
 	if (this->pointLights.size() > 0) {
 		this->pointLightLocationBuffers.resize(this->swapChainImages.size());
-		//this->pointLightColorBuffers.resize(this->swapChainImages.size());
+		this->pointLightColorBuffers.resize(this->swapChainImages.size());
 	}
 
 
@@ -963,13 +973,13 @@ void star::core::VulkanRenderer::createRenderingBuffers() {
 
 		//create light buffers 
 		if (this->pointLights.size() > 0) {
-			this->pointLightLocationBuffers[i] = std::make_unique<StarBuffer>(*this->starDevice.get(), this->pointLights.size(), sizeof(glm::vec3) * this->pointLights.size(),
+			this->pointLightLocationBuffers[i] = std::make_unique<StarBuffer>(*this->starDevice.get(), this->pointLights.size(), sizeof(glm::vec4) * this->pointLights.size(),
 				vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 			this->pointLightLocationBuffers[i]->map();
 
-			//this->pointLightColorBuffers[i] = std::make_unique<StarBuffer>(*this->starDevice.get(), this->pointLights.size(), sizeof(glm::vec4) * this->pointLights.size(),
-			//	vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-			//this->pointLightColorBuffers[i]->map();
+			this->pointLightColorBuffers[i] = std::make_unique<StarBuffer>(*this->starDevice.get(), this->pointLights.size(), sizeof(glm::vec4) * this->pointLights.size(),
+				vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+			this->pointLightColorBuffers[i]->map();
 		}
 	}
 }
