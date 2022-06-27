@@ -103,6 +103,7 @@ namespace star {
 			virtual StarBuffer* getBufferAt(int i) { return this->uniformBuffers.at(i).get(); }
 			
 		protected:
+			bool ownerOfSetLayout = true; 
 			StarDevice* starDevice;
 			int numSwapChainImages = 0;
 

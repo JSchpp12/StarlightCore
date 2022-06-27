@@ -4,7 +4,8 @@ namespace star {
 namespace core {
 
 RenderSysObj::~RenderSysObj() {
-	this->starDevice->getDevice().destroyPipelineLayout(this->pipelineLayout);
+	if (this->ownerOfSetLayout)
+		this->starDevice->getDevice().destroyPipelineLayout(this->pipelineLayout);
 }
 
 void RenderSysObj::registerShader(vk::ShaderStageFlagBits stage, common::Shader* newShader, common::Handle newShaderHandle) {
@@ -48,6 +49,7 @@ common::Handle RenderSysObj::getBaseShader(vk::ShaderStageFlags stage) {
 }
 
 void RenderSysObj::setPipelineLayout(vk::PipelineLayout newPipelineLayout) {
+	this->ownerOfSetLayout = false; 
 	this->pipelineLayout = newPipelineLayout;
 }
 
@@ -103,7 +105,8 @@ void star::core::RenderSysObj::init(std::vector<vk::DescriptorSetLayout> globalD
 	createIndexBuffer();
 	createRenderBuffers(); 
 	createDescriptors();
-	createPipelineLayout(globalDescriptorSets); 
+	if (!this->pipelineLayout)
+		createPipelineLayout(globalDescriptorSets); 
 	createPipeline(); 
 }
 
@@ -225,7 +228,6 @@ void RenderSysObj::createDescriptors() {
 
 	auto minAlignmentOfUBOElements = StarBuffer::getAlignment(sizeof(UniformBufferObject), minProp);
 
-	// 
 	//create descritptor sets 
 	vk::DescriptorBufferInfo bufferInfo{}; 
 	for (int i = 0; i < this->numSwapChainImages; i++) {		

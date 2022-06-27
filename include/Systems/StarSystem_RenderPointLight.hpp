@@ -13,7 +13,7 @@ namespace core {
 		struct UniformBufferObject{
 			alignas(16) glm::mat4 modelMatrix;
 			alignas(16) glm::mat4 normalMatrix;
-			uint16_t numLights;
+			alignas(16) glm::vec4 color; 
 		};
 
 		RenderSysPointLight(const RenderSysObj&) = delete;
@@ -34,15 +34,23 @@ namespace core {
 
 		virtual void bind(vk::CommandBuffer& commandBuffer) { this->RenderSysObj::bind(commandBuffer); }
 
-		virtual void updateBuffers(uint32_t currentImage) { this->RenderSysObj::updateBuffers(currentImage); }
+		virtual void updateBuffers(uint32_t currentImage) override; 
 		
 		virtual void render(vk::CommandBuffer& commandBuffer, int swapChainImageIndex) { this->RenderSysObj::render(commandBuffer, swapChainImageIndex); }
+
+		virtual void setPipelineLayout(vk::PipelineLayout newPipelineLayout) { this->RenderSysObj::setPipelineLayout(newPipelineLayout); }
 
 	protected:
 
 	private:
 		std::vector<common::Light*> lightList; 
 
+		//might be able to change this to be a template method
+		virtual void createRenderBuffers() override; 
+
+		virtual void createDescriptors() override; 
+
+		//virtual void createPipeline() override;
 
 	};
 }

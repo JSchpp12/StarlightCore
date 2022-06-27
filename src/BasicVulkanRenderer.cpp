@@ -142,6 +142,7 @@ void star::core::VulkanRenderer::prepare() {
 			this->lightRenderSys->addLight(light, lightLinkedObject, this->swapChainImages.size());
 		}
 	}
+	this->lightRenderSys->setPipelineLayout(this->RenderSysObjs.at(0)->getPipelineLayout()); 
 	this->lightRenderSys->init(globalSets); 
 
 	createDepthResources();
