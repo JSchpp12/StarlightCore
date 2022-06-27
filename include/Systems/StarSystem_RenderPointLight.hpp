@@ -50,8 +50,6 @@ namespace core {
 
 		virtual void createDescriptors() override; 
 
-		//virtual void createPipeline() override;
-
 	};
 }
 }

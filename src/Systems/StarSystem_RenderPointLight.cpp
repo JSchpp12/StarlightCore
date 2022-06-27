@@ -3,9 +3,7 @@
 namespace star {
 namespace core {
 
-	RenderSysPointLight::~RenderSysPointLight() {
-		//this->RenderSysObj::~RenderSysObj(); 
-	}
+	RenderSysPointLight::~RenderSysPointLight() {}
 
 	void RenderSysPointLight::addLight(common::Light* newLight, common::GameObject* linkedObject, size_t numSwapChainImages) {
 		this->lightList.push_back(newLight); 
