@@ -65,51 +65,6 @@ void star::core::VulkanRenderer::updateUniformBuffer(uint32_t currentImage) {
 	}
 
 	this->lightRenderSys->updateBuffers(currentImage); 
-
-	//UniformBufferObject obj; 
-	//obj.model = currObject->getDisplayMatrix(); 
-	////obj.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-
-	//void* data = this->starDevice->getDevice().mapMemory(this->uniformBuffersMemory[currentImage], 0, sizeof(UniformBufferObject));
-	//memcpy(data, &obj, sizeof(obj));
-	//this->starDevice->getDevice().unmapMemory(uniformBuffersMemory[currentImage]); 
-
-	//std::unique_ptr<RenderSysObj::UniformBufferObject> newBufferObject;
-	//auto test = tmpRenderSysObj->getNumRenderObjects();
-	//for (size_t i = 0; i < tmpRenderSysObj->getNumRenderObjects(); i++) {
-	//	newBufferObject = std::make_unique<RenderSysObj::UniformBufferObject>(RenderSysObj::UniformBufferObject());
-
-	//	RenderObject* currRenderObject = tmpRenderSysObj->getRenderObjectAt(i);
-	//	currObject = this->objectManager->Get(currRenderObject->getHandle()); 
-	//		//this->objectManager->Get(tmpRenderSysObj->getObjectHandleAt(i));
-	//	//glm::mat4(1,0f) = identity matrix
-	//	//time * radians(90) = rotate 90degrees per second
-	//	
-	//	newBufferObject->modelMatrix = currObject->getDisplayMatrix();
-	//	newBufferObject->normalMatrix = currObject->getNormalMatrix(); 
-	//	//look at geometry from above at 45 degree angle 
-	//	/* LookAt takes:
-	//	*   1. eye position
-	//	*   2. center position
-	//	*   3. up axis
-	//	*/
-
-	//	//perspective projection with 45 degree vertical field of view -- important to use swapChainExtent to calculate aspect ratio (REFRESH WITH WINDOW RESIZE)
-	//	/* perspective takes:
-	//	*   1. fov
-	//	*   2. aspect ratio
-	//	*   3. near view plane
-	//	*   4. far view plane
-	//	*/
-	//	//copy data to the current uniform buffer 
-
-	//	ubos.at(i) = *newBufferObject;
-	//}
-
-	//TODO: this NEEDS to be more dynamic 
-	//create ubo for light 
-
-	//this->uniformBuffers[currentImage]->writeToBuffer(ubos.data(), sizeof(RenderSysObj::UniformBufferObject) * ubos.size());
 }
 
 void star::core::VulkanRenderer::prepareGLFW(int width, int height, GLFWkeyfun keyboardCallbackFunction, GLFWmousebuttonfun mouseButtonCallback, GLFWcursorposfun cursorPositionCallback, GLFWscrollfun scrollCallback) {
