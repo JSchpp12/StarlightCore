@@ -13,7 +13,7 @@ namespace core {
 		struct UniformBufferObject{
 			alignas(16) glm::mat4 modelMatrix;
 			alignas(16) glm::mat4 normalMatrix;
-			alignas(16) glm::vec4 color; 
+			glm::vec4 color; 
 		};
 
 		RenderSysPointLight(const RenderSysObj&) = delete;

@@ -110,10 +110,6 @@ void star::core::RenderSysObj::init(std::vector<vk::DescriptorSetLayout> globalD
 	createPipeline(); 
 }
 
-//void RenderSysObj::createPipeline(PipelineConfigSettings& settings) {
-//    this->starPipeline = std::make_unique<StarPipeline>(this->starDevice, this->vertShader, this->fragShader, settings);
-//}
-
 void RenderSysObj::createVertexBuffer() {
 	vk::DeviceSize bufferSize;
 
@@ -263,12 +259,9 @@ void RenderSysObj::createPipelineLayout(std::vector<vk::DescriptorSetLayout> glo
 	/* Pipeline Layout */
 	//uniform values in shaders need to be defined here 
 	vk::PipelineLayoutCreateInfo pipelineLayoutInfo{};
-	//pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	pipelineLayoutInfo.sType = vk::StructureType::ePipelineLayoutCreateInfo;
 	pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(globalDescriptorSets.size());
 	pipelineLayoutInfo.pSetLayouts = globalDescriptorSets.data();
-	// pipelineLayoutInfo.pushConstantRangeCount = 1;
-	// pipelineLayoutInfo.pPushConstantRanges = &pushConstant;
 	pipelineLayoutInfo.pushConstantRangeCount = 0;
 	pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
@@ -279,7 +272,7 @@ void RenderSysObj::createPipelineLayout(std::vector<vk::DescriptorSetLayout> glo
 }
 
 void RenderSysObj::createPipeline() {
-		/* Scissor */
+	/* Scissor */
 	//this defines in which regions pixels will actually be stored. 
 	//any pixels outside will be discarded 
 
@@ -374,7 +367,6 @@ void RenderSysObj::createPipeline() {
 	//  2. VkPipelineColorBlendStateCreateInfo: global configuration
 	//only using one framebuffer in this project -- both of these are disabled in this project
 	vk::PipelineColorBlendAttachmentState colorBlendAttachment{};
-	//colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 	colorBlendAttachment.colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
 	colorBlendAttachment.blendEnable = VK_FALSE;
 
@@ -389,25 +381,6 @@ void RenderSysObj::createPipeline() {
 	colorBlending.blendConstants[2] = 0.0f;
 	colorBlending.blendConstants[3] = 0.0f;
 
-	//std::vector<vk::DescriptorSetLayout> descriptorSetLayouts{ this->globalSetLayout->getDescriptorSetLayout(), this->RenderSysObjs.at(0)->getSetLayout()->getDescriptorSetLayout()};
-	///* Pipeline Layout */
-	////uniform values in shaders need to be defined here 
-	//vk::PipelineLayoutCreateInfo pipelineLayoutInfo{};
-	////pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	//pipelineLayoutInfo.sType = vk::StructureType::ePipelineLayoutCreateInfo;
-	//pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size());
-	//pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
-	//// pipelineLayoutInfo.pushConstantRangeCount = 1;
-	//// pipelineLayoutInfo.pPushConstantRanges = &pushConstant;
-	//pipelineLayoutInfo.pushConstantRangeCount = 0;
-	//pipelineLayoutInfo.pPushConstantRanges = nullptr;
-
-	//vk::PipelineLayout newLayout = this->starDevice->getDevice().createPipelineLayout(pipelineLayoutInfo);
-	//if (!newLayout) {
-	//	throw std::runtime_error("failed to create pipeline layout");
-	//}
-	//RenderSysObj->setPipelineLayout(newLayout);
-
 	PipelineConfigSettings config{};
 	config.viewportInfo = viewportState;
 	config.rasterizationInfo = rasterizer;
@@ -418,38 +391,6 @@ void RenderSysObj::createPipeline() {
 	config.pipelineLayout = this->pipelineLayout; 
 	config.renderPass = this->renderPass;
 
-		/* Scissor */
-	//this defines in which regions pixels will actually be stored. 
-	//any pixels outside will be discarded 
-
-	////we just want to draw the whole framebuffer for now
-	//vk::Rect2D scissor{};
-	////scissor.offset = { 0, 0 };
-	//scissor.extent = swapChainExtent;
-
-	///* Viewport */
-	////Viewport describes the region of the framebuffer where the output will be rendered to
-	//vk::Viewport viewport{};
-	//viewport.x = 0.0f;
-	//viewport.y = 0.0f;
-
-	//viewport.width = (float)this->swapChainExtent.width;
-	//viewport.height = (float)this->swapChainExtent.height;
-	////Specify values range of depth values to use for the framebuffer. If not doing anything special, leave at default
-	//viewport.minDepth = 0.0f;
-	//viewport.maxDepth = 1.0f;
-
-	////put scissor and viewport together into struct for creation 
-	//vk::PipelineViewportStateCreateInfo viewportState{};
-	//viewportState.sType = vk::StructureType::ePipelineViewportStateCreateInfo;
-	//viewportState.viewportCount = 1;
-	//viewportState.pViewports = &viewport;
-	//viewportState.scissorCount = 1;
-	//viewportState.pScissors = &scissor;
- //   this->newPipeSettings.viewportInfo = viewportState; 
-	//this->newPipeSettings.renderPass = renderPass;
-
- //   StarPipeline::defaultPipelineConfigInfo(this->newPipeSettings, this->swapChainExtent); 
 	this->starPipeline = std::make_unique<StarPipeline>(this->starDevice, this->vertShader, this->fragShader, config);
 }
 

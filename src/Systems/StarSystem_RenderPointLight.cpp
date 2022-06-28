@@ -14,20 +14,22 @@ namespace core {
 	void RenderSysPointLight::updateBuffers(uint32_t currentImage) {
 		UniformBufferObject newBufferObject{};
 		std::vector<UniformBufferObject> bufferObjects(this->renderObjects.size());
+		auto deviceProperties = this->starDevice->getPhysicalDevice().getProperties();
+
+		auto minAlignmentOfUBOElements = StarBuffer::getAlignment(sizeof(UniformBufferObject), deviceProperties.limits.minUniformBufferOffsetAlignment);
 
 		for (size_t i = 0; i < this->renderObjects.size(); i++) {
 			newBufferObject.modelMatrix = this->renderObjects.at(i)->getGameObject()->getDisplayMatrix();
 			newBufferObject.normalMatrix = this->renderObjects.at(i)->getGameObject()->getNormalMatrix();
 			newBufferObject.color = this->lightList.at(i)->getColor(); 
-			bufferObjects.at(i) = newBufferObject;
-		}
 
-		this->uniformBuffers[currentImage]->writeToBuffer(bufferObjects.data(), sizeof(UniformBufferObject) * bufferObjects.size());
+			this->uniformBuffers[currentImage]->writeToBuffer(&newBufferObject, sizeof(UniformBufferObject), minAlignmentOfUBOElements * i);
+		}
 	}
 
 	void RenderSysPointLight::createRenderBuffers() {
 		this->uniformBuffers.resize(this->numSwapChainImages);
-
+		auto test = sizeof(UniformBufferObject); 
 		auto minUniformSize = this->starDevice->getPhysicalDevice().getProperties().limits.minUniformBufferOffsetAlignment;
 		for (size_t i = 0; i < numSwapChainImages; i++) {
 			this->uniformBuffers[i] = std::make_unique<StarBuffer>(*this->starDevice, this->renderObjects.size(), sizeof(UniformBufferObject),
@@ -48,15 +50,9 @@ namespace core {
 			.addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
 			.build();
 
-		auto testSize = sizeof(UniformBufferObject);
+		auto deviceProperties = this->starDevice->getPhysicalDevice().getProperties();
+		auto minAlignmentOfUBOElements = StarBuffer::getAlignment(sizeof(UniformBufferObject), deviceProperties.limits.minUniformBufferOffsetAlignment);
 
-		auto tmp = this->starDevice->getPhysicalDevice().getProperties();
-
-		auto minProp = tmp.limits.minUniformBufferOffsetAlignment;
-
-		auto minAlignmentOfUBOElements = StarBuffer::getAlignment(sizeof(UniformBufferObject), minProp);
-
-		// 
 		//create descritptor sets 
 		vk::DescriptorBufferInfo bufferInfo{};
 		for (int i = 0; i < this->numSwapChainImages; i++) {
