@@ -38,5 +38,9 @@ namespace core {
 	std::vector<vk::DescriptorSet>* RenderObject::getDefaultDescriptorSets() {
 		return &this->uboDescriptorSets;
 	}
+
+	vk::DescriptorSet& RenderObject::getStaticDescriptorSet() {
+		return this->staticDescriptorSet; 
+	}
 }
 }

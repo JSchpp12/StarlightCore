@@ -45,6 +45,7 @@ namespace core {
 			gameObject(gameObject),
 			numVerticies(numVerticies), 
 			numIndicies(numIndicies), 
+			staticDescriptorSet(),
 			uboDescriptorSets(numImages) { }
 		//~RenderObject(); 
 
@@ -57,6 +58,7 @@ namespace core {
 		size_t getNumIndicies();
 		common::GameObject* getGameObject() { return this->gameObject; }
 		std::vector<vk::DescriptorSet>* getDefaultDescriptorSets(); 
+		vk::DescriptorSet& getStaticDescriptorSet();
 
 	protected:
 
@@ -65,6 +67,7 @@ namespace core {
 		//TODO: I would like to make the descriptor sets a unique_ptr
 		common::Handle objectHandle;
 		common::GameObject* gameObject = nullptr;
+		vk::DescriptorSet staticDescriptorSet; 
 		std::vector<vk::DescriptorSet> uboDescriptorSets; 
 		size_t numVerticies, numIndicies; 
 

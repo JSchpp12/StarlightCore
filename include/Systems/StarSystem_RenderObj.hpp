@@ -5,6 +5,7 @@
 #include "SC/Enums.h"
 #include "SC/Shader.h"
 #include "SC/Light.hpp"
+#include "SC/Material.hpp"
 #include "VulkanVertex.hpp"
 #include "Star_RenderObject.hpp"
 #include "Star_Descriptors.hpp"
@@ -26,7 +27,14 @@ namespace star {
 		class RenderSysObj {
 		public:
 			/// <summary>
-			/// Object type to be used per render object
+			/// Object type containing per render object information updated only once on scene init
+			/// </summary>
+			struct MaterialBufferObject {
+				glm::vec4 surfaceColor; 
+				glm::vec4 highlightColor; 
+			};
+			/// <summary>
+			/// Object type to be used per render object, updated each frame
 			/// </summary>
 			virtual struct UniformBufferObject {
 				alignas(16) glm::mat4 modelMatrix;
@@ -126,9 +134,13 @@ namespace star {
 			std::unique_ptr<StarDescriptorPool> descriptorPool; 
 			std::unique_ptr<StarPipeline> starPipeline;
 			vk::PipelineLayout pipelineLayout;
+			std::unique_ptr<StarBuffer> objectMaterialBuffer;						//buffer which contains object information updated on scene init
 			std::vector<std::unique_ptr<StarBuffer>> uniformBuffers;
 
+			std::unique_ptr<StarDescriptorSetLayout> staticDescriptorSetLayout;		//descriptor set layout for object data updated once
 			std::unique_ptr<StarDescriptorSetLayout> descriptorSetLayout; 
+
+			std::vector<std::vector<vk::DescriptorSet>> staticDescriptorSets;		//descriptor sets for object data updated on init
 			std::vector<std::vector<vk::DescriptorSet>> descriptorSets; 
 
 			/// <summary>
@@ -137,10 +149,15 @@ namespace star {
 			virtual void createVertexBuffer();
 
 			virtual void createIndexBuffer();
+
+			virtual void createDescriptorPool(); 
+
+			virtual void createObjectMaterialBuffer();
 			/// <summary>
 			/// Create buffers needed for render operations. Such as those used by descriptors
 			/// </summary>
 			virtual void createRenderBuffers(); 
+			virtual void createStaticDescriptors(); 
 			/// <summary>
 			/// Create descriptors for binding render buffers to shaders.
 			/// </summary>

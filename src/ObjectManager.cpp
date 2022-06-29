@@ -39,11 +39,15 @@ namespace core {
 		this->texture = texture; 
 		return *this; 
 	}
+	ObjectManager::Builder& ObjectManager::Builder::setMaterial(const common::Material& material) {
+		this->material = material; 
+		return *this; 
+	}
 	common::Handle ObjectManager::Builder::build() {
 		if (!this->verticies && !this->indicies) {
 			return this->manager->Add(this->path, this->position, this->scale, this->texture, this->vertShader, this->fragShader);
 		} else if (this->verticies && this->verticies->size() != 0 && this->indicies && this->indicies->size() != 0) {
-			return this->manager->Add(std::move(this->verticies), std::move(this->indicies), this->position, this->scale, this->texture, this->vertShader, this->fragShader);
+			return this->manager->Add(std::move(this->verticies), std::move(this->indicies), this->position, this->scale, this->material, this->texture, this->vertShader, this->fragShader);
 		}	
 		throw std::runtime_error("Invalid parameters provided to complete build of object"); 
 	}
@@ -70,29 +74,13 @@ star::common::Handle star::core::ObjectManager::Add(const std::string& pathToFil
 	}
 }
 
-//star::common::Handle star::core::ObjectManager::Add(const std::string& pathToFile, common::Handle texture) {
-//	bool hasBeenLoaded = this->fileContainer.FileLoaded(pathToFile); 
-//
-//	if (!hasBeenLoaded) {
-//		std::unique_ptr<std::vector<common::Vertex>> readVertexList(new std::vector<common::Vertex>);
-//		std::unique_ptr<std::vector<uint16_t>> readIndiciesList(new std::vector<uint16_t>);
-//		std::unique_ptr<common::Object> newObject(this->create(pathToFile));
-//		return this->fileContainer.AddFileResource(pathToFile, newObject);
-//	}
-//	else {
-//		throw std::runtime_error("This object is already loaded"); 
-//	}
-//}
-
 star::common::Handle star::core::ObjectManager::Add(const std::string& pathToFile, glm::vec3 position, glm::vec3 scaleAmt, common::Handle texture, common::Handle vertShader, common::Handle fragShader) {
-	//bool hasBeenLoaded = this->fileContainer.FileLoaded(pathToFile); 
 	bool hasBeenLoaded = false; 
 	if (!hasBeenLoaded) {
 		std::unique_ptr<std::vector<common::Vertex>> readVertexList(new std::vector<common::Vertex>);
 		std::unique_ptr<std::vector<uint32_t>> readIndiciesList(new std::vector<uint32_t>);
 
-		//std::unique_ptr<common::Object> newObject(this->create(pathToFile, vertShader, fragShader, texture)); 
-		std::unique_ptr<common::GameObject> newObject(this->create(pathToFile, position, scaleAmt, texture, vertShader, fragShader)); 
+		std::unique_ptr<common::GameObject> newObject(this->create(pathToFile, position, scaleAmt, {}, texture, vertShader, fragShader));
 		return this->fileContainer.AddFileResource(pathToFile, newObject); 
 	}
 	else {
@@ -101,11 +89,11 @@ star::common::Handle star::core::ObjectManager::Add(const std::string& pathToFil
 }
 
 star::common::Handle star::core::ObjectManager::Add(std::unique_ptr<std::vector<common::Vertex>> verticies, std::unique_ptr<std::vector<uint32_t>> indicies,
-	glm::vec3 position, glm::vec3 scaleAmt,
+	glm::vec3 position, glm::vec3 scaleAmt, common::Material& material,
 	common::Handle texture, common::Handle vertShader,
 	common::Handle fragShader) {
 
-	std::unique_ptr<common::GameObject> newObject = std::make_unique<common::GameObject>(std::move(verticies), std::move(indicies), position, scaleAmt, texture, vertShader, fragShader); 
+	std::unique_ptr<common::GameObject> newObject = std::make_unique<common::GameObject>(std::move(verticies), std::move(indicies), position, scaleAmt, material, texture, vertShader, fragShader);
 	return this->fileContainer.AddResource(std::move(newObject)); 
 }
 
@@ -181,11 +169,11 @@ void star::core::ObjectManager::load(const std::string& pathToFile, std::vector<
 	std::cout << "Loaded: " << pathToFile << std::endl; 
 }
 
-star::common::GameObject* star::core::ObjectManager::create(const std::string& pathToFile, glm::vec3 position, glm::vec3 scaleAmt, common::Handle texture, common::Handle vertShader, common::Handle fragShader) {
+star::common::GameObject* star::core::ObjectManager::create(const std::string& pathToFile, glm::vec3 position, glm::vec3 scaleAmt, common::Material material, common::Handle texture, common::Handle vertShader, common::Handle fragShader) {
 	std::unique_ptr<std::vector<common::Vertex>> readVertexList(new std::vector<common::Vertex>);
 	std::unique_ptr<std::vector<uint32_t>> readIndiciesList(new std::vector<uint32_t>);
 
 	//load object 
 	this->load(pathToFile, readVertexList.get(), readIndiciesList.get());
-	return new common::GameObject(std::move(readVertexList), std::move(readIndiciesList), position, scaleAmt, vertShader, fragShader, texture);
+	return new common::GameObject(std::move(readVertexList), std::move(readIndiciesList), position, scaleAmt, material, vertShader, fragShader, texture);
 }

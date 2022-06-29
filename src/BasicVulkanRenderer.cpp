@@ -45,6 +45,7 @@ void star::core::VulkanRenderer::updateUniformBuffer(uint32_t currentImage) {
 	//glm designed for openGL where the Y coordinate of the flip coordinates is inverted. Fix this by flipping the sign on the scaling factor of the Y axis in the projection matrix.
 	globalUbo.proj[1][1] *= -1;
 	globalUbo.view = this->camera->getDisplayMatrix();
+	globalUbo.inverseView = this->camera->getInverseViewMatrix(); 
 	globalUbo.ambientLightColor = this->ambientLight->getColor();
 	globalUbo.numLights = static_cast<uint32_t>(this->pointLights.size()); 
 
@@ -1065,8 +1066,8 @@ void star::core::VulkanRenderer::createCommandBuffers() {
 			tmpRenderSysObj->render(newBuffers[i], i);
 
 			//bind light pipe 
-			this->lightRenderSys->bind(newBuffers[i]);
-			this->lightRenderSys->render(newBuffers[i], i);
+			//this->lightRenderSys->bind(newBuffers[i]);
+			//this->lightRenderSys->render(newBuffers[i], i);
 
 			newBuffers[i].endRenderPass();
 

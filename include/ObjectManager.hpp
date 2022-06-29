@@ -5,6 +5,7 @@
 #include "SC/RenderObject.hpp"
 #include "SC/GameObject.hpp"
 #include "SC/Vertex.hpp"
+#include "SC/Material.hpp"
 
 #include <tiny_obj_loader.h>
 #include <glm/glm.hpp>
@@ -29,6 +30,7 @@ namespace star{
                 Builder& setTexture(const common::Handle& texture); 
                 Builder& setVerticies(const std::vector<glm::vec3>& verticies); 
                 Builder& setIndicies(const std::vector<uint32_t>& indicies); 
+                Builder& setMaterial(const common::Material& material); 
                 common::Handle build(); 
 
             protected:
@@ -40,6 +42,7 @@ namespace star{
                 common::Handle vertShader = common::Handle{ 0 };
                 common::Handle fragShader = common::Handle{ 1 };
                 common::Handle texture = common::Handle{ 0 }; 
+                common::Material material; 
                 std::string path; 
                 std::unique_ptr<std::vector<uint32_t>> indicies; 
                 std::unique_ptr<std::vector<common::Vertex>> verticies; 
@@ -55,7 +58,7 @@ namespace star{
                 common::Handle fragShader);
 
             common::Handle Add(std::unique_ptr<std::vector<common::Vertex>> verticies, std::unique_ptr<std::vector<uint32_t>> indicies,
-                glm::vec3 position, glm::vec3 scaleAmt,
+                glm::vec3 position, glm::vec3 scaleAmt, common::Material& material, 
                 common::Handle texture, common::Handle vertShader,
                 common::Handle fragShader);
 
@@ -64,7 +67,8 @@ namespace star{
             void load(const std::string& pathToFile, std::vector<common::Vertex>* vertexList, std::vector<uint32_t>* indiciesList);
 
         private: 
-            common::GameObject* create(const std::string& pathToFile, glm::vec3 position = glm::vec3{0.0f, 0.0f, 0.0f}, glm::vec3 scaleAmt = glm::vec3{1.0f, 1.0f, 1.0f}, common::Handle texture = common::Handle{0}, common::Handle vertShader = common::Handle{0}, common::Handle fragShader = common::Handle{1});
+            //TODO: replace this with the scene builder implementation
+            common::GameObject* create(const std::string& pathToFile, glm::vec3 position = glm::vec3{ 0.0f, 0.0f, 0.0f }, glm::vec3 scaleAmt = glm::vec3{ 1.0f, 1.0f, 1.0f }, common::Material = common::Material{}, common::Handle texture = common::Handle{ 0 }, common::Handle vertShader = common::Handle{ 0 }, common::Handle fragShader = common::Handle{ 1 });
 
         };
     }
