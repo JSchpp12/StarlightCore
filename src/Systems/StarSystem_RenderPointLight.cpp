@@ -39,13 +39,6 @@ namespace core {
 	}
 
 	void RenderSysPointLight::createDescriptors() {
-		//create descriptor pools 
-		this->descriptorPool = StarDescriptorPool::Builder(*this->starDevice)
-			.setMaxSets(this->numSwapChainImages * this->renderObjects.size())
-			.addPoolSize(vk::DescriptorType::eUniformBuffer, this->numSwapChainImages * this->renderObjects.size())
-			.build();
-
-		//create descriptor layouts
 		this->descriptorSetLayout = StarDescriptorSetLayout::Builder(*this->starDevice)
 			.addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
 			.build();

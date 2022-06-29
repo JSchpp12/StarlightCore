@@ -1066,8 +1066,8 @@ void star::core::VulkanRenderer::createCommandBuffers() {
 			tmpRenderSysObj->render(newBuffers[i], i);
 
 			//bind light pipe 
-			//this->lightRenderSys->bind(newBuffers[i]);
-			//this->lightRenderSys->render(newBuffers[i], i);
+			this->lightRenderSys->bind(newBuffers[i]);
+			this->lightRenderSys->render(newBuffers[i], i);
 
 			newBuffers[i].endRenderPass();
 

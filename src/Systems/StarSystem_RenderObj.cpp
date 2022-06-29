@@ -95,7 +95,6 @@ void star::core::RenderSysObj::render(vk::CommandBuffer& commandBuffer, int swap
 		auto numToDraw = currRenderObject->getNumVerticies(); 
 		commandBuffer.drawIndexed(numToDraw, 1, 0, vertexCount, 0); 
 		vertexCount += currRenderObject->getNumIndicies(); 
-
 	}
 }
 
