@@ -1,58 +1,6 @@
 #include "ObjectManager.hpp"
 
 
-namespace star {
-namespace core {
-	ObjectManager::Builder& ObjectManager::Builder::setPosition(const glm::vec3 position) {
-		this->position = position;
-		return *this;
-	}
-	ObjectManager::Builder& ObjectManager::Builder::setPath(const std::string& path) {
-		this->path = path;
-		return *this;
-	}
-	ObjectManager::Builder& ObjectManager::Builder::setScale(const glm::vec3 scale) {
-		this->scale = scale;
-		return *this; 
-	}
-	ObjectManager::Builder& ObjectManager::Builder::setVertShader(const common::Handle& vertShader) {
-		this->vertShader = vertShader; 
-		return *this; 
-	}
-	ObjectManager::Builder& ObjectManager::Builder::setFragShader(const common::Handle& fragShader) {
-		this->fragShader = fragShader; 
-		return *this; 
-	}
-	ObjectManager::Builder& ObjectManager::Builder::setVerticies(const std::vector<glm::vec3>& verticies) {
-		this->verticies = std::make_unique<std::vector<common::Vertex>>(verticies.size()); 
-
-		for (auto& vert : verticies) {
-			this->verticies->push_back(common::Vertex{ vert }); 
-		}
-		return *this; 
-	}
-	ObjectManager::Builder& ObjectManager::Builder::setIndicies(const std::vector<uint32_t>& indicies) {
-		this->indicies = std::make_unique<std::vector<uint32_t>>(indicies);
-		return *this; 
-	}
-	ObjectManager::Builder& ObjectManager::Builder::setTexture(const common::Handle& texture) {
-		this->texture = texture; 
-		return *this; 
-	}
-	ObjectManager::Builder& ObjectManager::Builder::setMaterial(const common::Material& material) {
-		this->material = material; 
-		return *this; 
-	}
-	common::Handle ObjectManager::Builder::build() {
-		if (!this->verticies && !this->indicies) {
-			return this->manager->Add(this->path, this->position, this->scale, this->texture, this->vertShader, this->fragShader);
-		} else if (this->verticies && this->verticies->size() != 0 && this->indicies && this->indicies->size() != 0) {
-			return this->manager->Add(std::move(this->verticies), std::move(this->indicies), this->position, this->scale, this->material, this->texture, this->vertShader, this->fragShader);
-		}	
-		throw std::runtime_error("Invalid parameters provided to complete build of object"); 
-	}
-}
-}
 star::core::ObjectManager::~ObjectManager(){
 
 }

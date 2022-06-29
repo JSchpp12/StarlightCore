@@ -19,34 +19,7 @@ namespace star{
         //TODO: inherit from manager base
         class ObjectManager : public common::FileResourceManager<common::GameObject> {
         public: 
-            class Builder {
-            public:
-                Builder(ObjectManager* manager) : manager(manager) {}; 
-                Builder& setPosition(const glm::vec3 position);
-                Builder& setPath(const std::string& path);
-                Builder& setScale(const glm::vec3 scale); 
-                Builder& setVertShader(const common::Handle& vertShader);
-                Builder& setFragShader(const common::Handle& fragShader); 
-                Builder& setTexture(const common::Handle& texture); 
-                Builder& setVerticies(const std::vector<glm::vec3>& verticies); 
-                Builder& setIndicies(const std::vector<uint32_t>& indicies); 
-                Builder& setMaterial(const common::Material& material); 
-                common::Handle build(); 
 
-            protected:
-
-            private: 
-                ObjectManager* manager; 
-                glm::vec3 scale = glm::vec3{1.0f, 1.0f, 1.0f};
-                glm::vec3 position = glm::vec3{ 0.0f, 0.0f, 0.0f }; 
-                common::Handle vertShader = common::Handle{ 0 };
-                common::Handle fragShader = common::Handle{ 1 };
-                common::Handle texture = common::Handle{ 0 }; 
-                common::Material material; 
-                std::string path; 
-                std::unique_ptr<std::vector<uint32_t>> indicies; 
-                std::unique_ptr<std::vector<common::Vertex>> verticies; 
-            };
 
             ~ObjectManager(); 
 
