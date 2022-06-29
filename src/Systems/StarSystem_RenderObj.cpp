@@ -276,7 +276,6 @@ void RenderSysObj::createStaticDescriptors() {
 			.writeBuffer(0, &bufferInfo)
 			.build(this->renderObjects.at(i)->getStaticDescriptorSet());
 	}
-
 }
 
 void RenderSysObj::createDescriptors() {
@@ -458,6 +457,5 @@ void RenderSysObj::createPipeline() {
 
 	this->starPipeline = std::make_unique<StarPipeline>(this->starDevice, this->vertShader, this->fragShader, config);
 }
-
 }
 }
