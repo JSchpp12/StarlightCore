@@ -22,7 +22,7 @@ namespace core {
 		StarSwapChain(const StarSwapChain&) = delete; 
 		StarSwapChain& operator=(const StarSwapChain&) = delete; 
 
-		vk::Framebuffer getFrameBuffer(int index){}
+		// vk::Framebuffer getFrameBuffer(int index){}
 
 	private:
 		vk::Format swapChainImageFormat; 

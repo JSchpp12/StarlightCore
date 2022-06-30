@@ -180,11 +180,10 @@ void RenderSysObj::createObjectMaterialBuffer() {
 	for (size_t i = 0; i < this->renderObjects.size(); i++) {
 		currObject = this->renderObjects.at(i).get();
 
-		newBufferObject = std::make_unique<MaterialBufferObject>(
+		newBufferObject = std::make_unique<MaterialBufferObject>(MaterialBufferObject{
 			currObject->getGameObject()->getMaterial()->surfaceColor,
 			currObject->getGameObject()->getMaterial()->highlightColor,
-			currObject->getGameObject()->getMaterial()->shinyCoefficient
-		); 
+			currObject->getGameObject()->getMaterial()->shinyCoefficient}); 
 		stagingBuffer.writeToBuffer(newBufferObject.get(), sizeof(MaterialBufferObject), stagingBuffer.getAlignmentSize() * i);
 	}
 

@@ -37,12 +37,12 @@ namespace star {
 			/// <summary>
 			/// Object type to be used per render object, updated each frame
 			/// </summary>
-			virtual struct UniformBufferObject {
+			struct UniformBufferObject {
 				alignas(16) glm::mat4 modelMatrix;
 				alignas(16) glm::mat4 normalMatrix;
 			};
 
-			virtual class Builder {
+			class Builder {
 			public:
 
 			protected:
