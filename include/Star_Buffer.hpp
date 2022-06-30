@@ -40,16 +40,15 @@ namespace core {
 		void* getMappepMemory() const { return mapped; }
 		uint32_t getInstanceCount() const { return instanceCount; }
 		vk::DeviceSize getInstanceSize() const { return instanceSize; }
-		vk::DeviceSize getAlignmentSize() const { return instanceSize; }
+		vk::DeviceSize getAlignmentSize() const { return alignmentSize; }
 		vk::BufferUsageFlags getUsageFlags() const { return usageFlags; }
 		vk::MemoryPropertyFlags getMemoryPropertyFlags() const { return memoryPropertyFlags; }
 		vk::DeviceSize getBufferSize() const { return bufferSize; }
 
 	protected:
 
+
 	private: 
-
-
 		StarDevice& starDevice; 
 		void* mapped = nullptr; 
 		vk::Buffer buffer = VK_NULL_HANDLE; 

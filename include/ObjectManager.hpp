@@ -23,15 +23,15 @@ namespace star{
 
             ~ObjectManager(); 
 
-            common::Handle Add(const std::string& pathToFile); 
+            virtual common::Handle add(const std::string& pathToFile); 
 
             common::Handle Add(const std::string& pathToFile,
-                glm::vec3 position, glm::vec3 scaleAmt,
+                common::Material* material, glm::vec3 position, glm::vec3 scaleAmt,
                 common::Handle texture, common::Handle vertShader, 
                 common::Handle fragShader);
 
             common::Handle Add(std::unique_ptr<std::vector<common::Vertex>> verticies, std::unique_ptr<std::vector<uint32_t>> indicies,
-                glm::vec3 position, glm::vec3 scaleAmt, common::Material& material, 
+                glm::vec3 position, glm::vec3 scaleAmt, common::Material* material, 
                 common::Handle texture, common::Handle vertShader,
                 common::Handle fragShader);
 
@@ -41,7 +41,7 @@ namespace star{
 
         private: 
             //TODO: replace this with the scene builder implementation
-            common::GameObject* create(const std::string& pathToFile, glm::vec3 position = glm::vec3{ 0.0f, 0.0f, 0.0f }, glm::vec3 scaleAmt = glm::vec3{ 1.0f, 1.0f, 1.0f }, common::Material = common::Material{}, common::Handle texture = common::Handle{ 0 }, common::Handle vertShader = common::Handle{ 0 }, common::Handle fragShader = common::Handle{ 1 });
+            common::GameObject* create(const std::string& pathToFile, common::Material* material, glm::vec3 position = glm::vec3{ 0.0f, 0.0f, 0.0f }, glm::vec3 scaleAmt = glm::vec3{ 1.0f, 1.0f, 1.0f }, common::Handle texture = common::Handle{ 0 }, common::Handle vertShader = common::Handle{ 0 }, common::Handle fragShader = common::Handle{ 1 });
 
         };
     }

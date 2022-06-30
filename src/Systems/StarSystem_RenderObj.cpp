@@ -161,19 +161,12 @@ void RenderSysObj::createObjectMaterialBuffer() {
 	std::vector<MaterialBufferObject> bufferInfo(this->renderObjects.size());
 	RenderObject* currObject = nullptr; 
 
-	for (size_t i = 0; i < this->renderObjects.size(); i++) {
-		newBufferObject = std::make_unique<MaterialBufferObject>();
-		currObject = this->renderObjects.at(i).get();
+	auto testone = sizeof(MaterialBufferObject); 
+	auto minProp = this->starDevice->getPhysicalDevice().getProperties().limits.minStorageBufferOffsetAlignment;
+	auto alignmentOfElements = StarBuffer::getAlignment(sizeof(MaterialBufferObject), minProp);
 
-		bufferInfo[i] = MaterialBufferObject{
-			currObject->getGameObject()->getMaterial()->surfaceColor,
-			currObject->getGameObject()->getMaterial()->highlightColor
-		}; 
-	}
-
-	//since this is normal size, should just be able to write to buffer directly
-	vk::DeviceSize bufferSize = sizeof(bufferInfo.at(0)) * bufferInfo.size();
-	uint32_t objectSize = sizeof(bufferInfo[0]);
+	vk::DeviceSize bufferSize = alignmentOfElements * bufferInfo.size();
+	uint32_t objectSize = sizeof(MaterialBufferObject);
 	uint32_t objectCount = bufferInfo.size();
 
 	StarBuffer stagingBuffer{
@@ -181,10 +174,19 @@ void RenderSysObj::createObjectMaterialBuffer() {
 		objectSize,
 		objectCount,
 		vk::BufferUsageFlagBits::eTransferSrc,
-		vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
-	};
+		vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, minProp };
 	stagingBuffer.map();
-	stagingBuffer.writeToBuffer(bufferInfo.data());
+
+	for (size_t i = 0; i < this->renderObjects.size(); i++) {
+		currObject = this->renderObjects.at(i).get();
+
+		newBufferObject = std::make_unique<MaterialBufferObject>(
+			currObject->getGameObject()->getMaterial()->surfaceColor,
+			currObject->getGameObject()->getMaterial()->highlightColor,
+			currObject->getGameObject()->getMaterial()->shinyCoefficient
+		); 
+		stagingBuffer.writeToBuffer(newBufferObject.get(), sizeof(MaterialBufferObject), stagingBuffer.getAlignmentSize() * i);
+	}
 
 	//this will eventually be used to store object textures, need a large buffer (storage buffer)
 	this->objectMaterialBuffer = std::make_unique<StarBuffer>(
@@ -192,9 +194,9 @@ void RenderSysObj::createObjectMaterialBuffer() {
 		objectSize,
 		objectCount, 
 		vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
-		vk::MemoryPropertyFlagBits::eDeviceLocal);
+		vk::MemoryPropertyFlagBits::eDeviceLocal, minProp);
 
-	this->starDevice->copyBuffer(stagingBuffer.getBuffer(), this->objectMaterialBuffer->getBuffer(), bufferSize);
+	this->starDevice->copyBuffer(stagingBuffer.getBuffer(), this->objectMaterialBuffer->getBuffer(), stagingBuffer.getBufferSize());
 }
 
 void RenderSysObj::createIndexBuffer() {
@@ -263,11 +265,12 @@ void RenderSysObj::createStaticDescriptors() {
 
 	//create descritptor sets 
 	vk::DescriptorBufferInfo bufferInfo{};
+	auto test = this->objectMaterialBuffer->getAlignmentSize(); 
 
 	for (int i = 0; i < this->renderObjects.size(); i++) {
 		bufferInfo = vk::DescriptorBufferInfo{
 			this->objectMaterialBuffer->getBuffer(),
-			sizeof(MaterialBufferObject) * i,
+			this->objectMaterialBuffer->getAlignmentSize()* i,
 			sizeof(MaterialBufferObject)
 		};
 

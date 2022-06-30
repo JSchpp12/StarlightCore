@@ -32,6 +32,7 @@ namespace star {
 			struct MaterialBufferObject {
 				glm::vec4 surfaceColor; 
 				glm::vec4 highlightColor; 
+				int shinyCoefficient; 
 			};
 			/// <summary>
 			/// Object type to be used per render object, updated each frame
