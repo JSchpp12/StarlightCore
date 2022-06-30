@@ -19,11 +19,11 @@ namespace core {
 	}
 
 	std::unique_ptr<StarDescriptorSetLayout> StarDescriptorSetLayout::Builder::build() const {
-		return std::make_unique<StarDescriptorSetLayout>(this->device, this->bindings); 
+		return std::make_unique<StarDescriptorSetLayout>(this->starDevice, this->bindings); 
 	}
 
-	StarDescriptorSetLayout::StarDescriptorSetLayout(vk::Device& device, std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding> bindings) :
-			device(device),
+	StarDescriptorSetLayout::StarDescriptorSetLayout(StarDevice& device, std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding> bindings) :
+			starDevice(device),
 			bindings{ bindings } {
 		std::vector<vk::DescriptorSetLayoutBinding> setLayoutBindings; 
 
@@ -36,14 +36,14 @@ namespace core {
 		createInfo.bindingCount = static_cast<uint32_t>(setLayoutBindings.size()); 
 		createInfo.pBindings = setLayoutBindings.data(); 
 
-		this->descriptorSetLayout = this->device.createDescriptorSetLayout(createInfo); 
+		this->descriptorSetLayout = this->starDevice.getDevice().createDescriptorSetLayout(createInfo);
 		if (!this->descriptorSetLayout) {
 			throw std::runtime_error("failed to create descriptor set layout"); 
 		}
 	}
 
 	StarDescriptorSetLayout::~StarDescriptorSetLayout() {
-		//this->device.destroyDescriptorSetLayout(this->descriptorSetLayout, nullptr); 
+		this->starDevice.getDevice().destroyDescriptorSetLayout(this->descriptorSetLayout);
 	}
 
 
@@ -66,14 +66,14 @@ namespace core {
 	}
 
 	std::unique_ptr<StarDescriptorPool> StarDescriptorPool::Builder::build() const {
-		return std::make_unique<StarDescriptorPool>(this->device, this->maxSets, this->poolFlags, this->poolSizes); 
+		return std::make_unique<StarDescriptorPool>(this->starDevice, this->maxSets, this->poolFlags, this->poolSizes); 
 	}
 
-	StarDescriptorPool::StarDescriptorPool(vk::Device& device, 
+	StarDescriptorPool::StarDescriptorPool(StarDevice& device, 
 		uint32_t maxSets, 
 		vk::DescriptorPoolCreateFlags poolFlags, 
 		const std::vector<vk::DescriptorPoolSize>& poolSizes) :
-		device(device)
+		starDevice(device)
 	{
 		vk::DescriptorPoolCreateInfo createInfo{}; 
 		createInfo.sType = vk::StructureType::eDescriptorPoolCreateInfo; 
@@ -82,14 +82,14 @@ namespace core {
 		createInfo.maxSets = maxSets; 
 		createInfo.flags = poolFlags; 
 
-		this->descriptorPool = this->device.createDescriptorPool(createInfo); 
+		this->descriptorPool = this->starDevice.getDevice().createDescriptorPool(createInfo);
 		if (!this->descriptorPool) {
 			throw std::runtime_error("Unable to create descriptor pool"); 
 		}
 	}
 
 	StarDescriptorPool::~StarDescriptorPool() {
-		//this->device.destroyDescriptorPool(this->descriptorPool); 
+		this->starDevice.getDevice().destroyDescriptorPool(this->descriptorPool); 
 	}
 
 	vk::DescriptorPool StarDescriptorPool::getDescriptorPool() {
@@ -103,7 +103,7 @@ namespace core {
 		allocInfo.pSetLayouts = &descriptorSetLayout;
 		allocInfo.descriptorSetCount = 1;
 
-		if (this->device.allocateDescriptorSets(&allocInfo, &descriptorSet) != vk::Result::eSuccess) {
+		if (this->starDevice.getDevice().allocateDescriptorSets(&allocInfo, &descriptorSet) != vk::Result::eSuccess) {
 			return false; 
 		}
 
@@ -111,19 +111,19 @@ namespace core {
 	}
 
 	void StarDescriptorPool::freeDescriptors(std::vector<vk::DescriptorSet>& descriptors) const {
-		this->device.freeDescriptorSets(this->descriptorPool, descriptors); 
+		this->starDevice.getDevice().freeDescriptorSets(this->descriptorPool, descriptors);
 	}
 
 	void StarDescriptorPool::resetPool() {
-		this->device.resetDescriptorPool(this->descriptorPool); 
+		this->starDevice.getDevice().resetDescriptorPool(this->descriptorPool);
 	}
 
 
 	/* Descriptor Writer */
 
 
-	StarDescriptorWriter::StarDescriptorWriter(vk::Device& device, StarDescriptorSetLayout& setLayout, StarDescriptorPool& pool) :
-		device(device),
+	StarDescriptorWriter::StarDescriptorWriter(StarDevice& device, StarDescriptorSetLayout& setLayout, StarDescriptorPool& pool) :
+		starDevice(device),
 		setLayout{setLayout}, 
 		pool{ pool } {}
 
@@ -173,7 +173,7 @@ namespace core {
 		for (auto& write : this->writeSets) {
 			write.dstSet = set;
 		}
-		this->device.updateDescriptorSets(this->writeSets, nullptr);
+		this->starDevice.getDevice().updateDescriptorSets(this->writeSets, nullptr);
 	}
 }
 }

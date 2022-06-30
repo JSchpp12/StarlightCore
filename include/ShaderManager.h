@@ -27,7 +27,7 @@ namespace star{
             ~ShaderManager(); 
 
             ///add shader to manager, will return handle to compiled resource
-            virtual common::Handle Add(const std::string& pathToFile); 
+            virtual common::Handle add(const std::string& pathToFile); 
 
             //common::Shader* Get(const common::Handle& handle) override; 
         protected: 

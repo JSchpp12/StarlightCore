@@ -56,16 +56,26 @@ SET(${PROJECT_NAME}_SOURCES
 	"src/GLSLShader.cpp" 
 	"src/ShaderManager.cpp"
 	"src/EntityManager.cpp"
+	"src/LightManager.cpp"
+	"src/MaterialManager.cpp"
 	"src/Entity.cpp"
 	"src/ObjectManager.cpp"
 	"src/Object.cpp"
 	"src/TextureManager.cpp"
-	"src/VulkanRenderer.cpp"
-	"src/VulkanObject.cpp"
+	"src/BasicVulkanRenderer.cpp"
 	#composite files 
 	"src/Star_Descriptors.cpp"
 	"src/Star_Texture.cpp"
 	"src/Star_RenderObject.cpp"
+	"src/Star_Buffer.cpp"
+	"src/Star_Device.cpp"
+	"src/Star_Pipeline.cpp"
+	"src/Star_Window.cpp"
+	"src/Star_Swapchain.cpp"
+	#rendering sytems
+	"src/Systems/StarSystem_RenderObj.cpp"
+	"src/Systems/StarSystem_RenderPointLight.cpp"
+
 )
   
 SET(${PROJECT_NAME}_HEADERS
@@ -73,19 +83,28 @@ SET(${PROJECT_NAME}_HEADERS
 	"include/GLSLShader.h"
 	"include/ShaderManager.h"
 	"include/EntityManager.h"
+	"include/LightManager.hpp"
+	"include/MaterialManager.hpp"
 	"include/Entity.h"
-	"include/ObjectManager.h"
+	"include/ObjectManager.hpp"
 	"include/Object.h"
 	"include/TextureManager.h"
 	"include/RenderEngine.h"
 	"include/Windowing.h"
-	"include/VulkanRenderer.h"
-	"include/VulkanObject.h"
 	"include/MemoryDescriptor.h"
+	"include/BasicVulkanRenderer.h"
 	#composite files
 	"include/Star_Descriptors.hpp"
 	"include/Star_Texture.hpp"
 	"include/Star_RenderObject.hpp"
+	"include/Star_Buffer.hpp"
+	"include/Star_Device.hpp"
+	"include/Star_Pipeline.hpp"
+	"include/Star_Window.hpp"
+	"include/Star_Swapchain.hpp"
+	#rendering systems 
+	"include/Systems/StarSystem_RenderObj.hpp"
+	"include/Systems/RenderPointLight.hpp"
 	#header only files
 	"include/VulkanVertex.hpp"
 )
@@ -158,7 +177,7 @@ target_include_directories(${PROJECT_NAME}
 	PUBLIC 
 		${Vulkan_INCLUDE_DIRS}
 		${CMAKE_CURRENT_SOURCE_DIR}/include
-		${CMAKE_CURRENT_SOURCE_DIR}/include/Classes
+		${CMAKE_CURRENT_SOURCE_DIR}/include/Systems
 		${CMAKE_CURRENT_SOURCE_DIR}/external/shaderc/libshaderc/include
 		#${CMAKE_CURRENT_SOURCE_DIR}/external/tinyobjectloader
 		"external/tinyobjloader"

@@ -33,36 +33,41 @@ namespace core {
 
 		private: 
 			common::Handle objectHandle; 
+			common::GameObject* gameObject = nullptr; 
 			size_t numVerticies, numIndicies, numSwapChainImages; 
 		};
 
 		//RenderObject() {}
 			//uboDescriptorSet(std::make_unique<std::vector<vk::DescriptorSet>>()) { }
 
-		RenderObject(common::Handle objectHandle, size_t numVerticies, size_t numIndicies, size_t numImages = 0) : 
+		RenderObject(common::Handle objectHandle, common::GameObject* gameObject, size_t numVerticies, size_t numIndicies, size_t numImages = 0) : 
 			objectHandle(objectHandle),
+			gameObject(gameObject),
 			numVerticies(numVerticies), 
 			numIndicies(numIndicies), 
+			staticDescriptorSet(),
 			uboDescriptorSets(numImages) { }
+		//~RenderObject(); 
 
+		//void render(vk::CommandBuffer& commandBuffer, vk::PipelineLayout layout, int swapChainImageIndex); 
+		
 		common::Handle getHandle(); 
 
 		size_t getNumVerticies(); 
 
 		size_t getNumIndicies();
-
+		common::GameObject* getGameObject() { return this->gameObject; }
 		std::vector<vk::DescriptorSet>* getDefaultDescriptorSets(); 
+		vk::DescriptorSet& getStaticDescriptorSet();
 
 	protected:
 
 
 	private: 
-		//TODO: move these here from common::Object
-		//std::unique_ptr<std::vector<common::Vertex>> vertexList;
-		//std::unique_ptr<std::vector<uint32_t>> indiciesList;
-
 		//TODO: I would like to make the descriptor sets a unique_ptr
 		common::Handle objectHandle;
+		common::GameObject* gameObject = nullptr;
+		vk::DescriptorSet staticDescriptorSet; 
 		std::vector<vk::DescriptorSet> uboDescriptorSets; 
 		size_t numVerticies, numIndicies; 
 

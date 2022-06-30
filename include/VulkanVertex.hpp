@@ -39,8 +39,8 @@ namespace star{
             /// </summary>
             /// <returns>Array containing attribute descriptions</returns>
 
-            static std::array<vk::VertexInputAttributeDescription, 3> getAttributeDescriptions() {
-                std::array<vk::VertexInputAttributeDescription, 3> attributeDescriptions{};
+            static std::array<vk::VertexInputAttributeDescription, 4> getAttributeDescriptions() {
+                std::array<vk::VertexInputAttributeDescription, 4> attributeDescriptions{};
 
                 /* Struct */
                     //1. binding - which binding the per-vertex data comes in 
@@ -66,14 +66,19 @@ namespace star{
 
                 attributeDescriptions[1].binding = 0; 
                 attributeDescriptions[1].location = 1; 
-                attributeDescriptions[1].format = vk::Format::eR32G32B32Sfloat; 
-                attributeDescriptions[1].offset = offsetof(common::Vertex, color); 
+                attributeDescriptions[1].format = vk::Format::eR32G32B32Sfloat;
+                attributeDescriptions[1].offset = offsetof(common::Vertex, normal);
 
-                /*Binding for vertex texture coordinates*/
                 attributeDescriptions[2].binding = 0; 
                 attributeDescriptions[2].location = 2; 
                 attributeDescriptions[2].format = vk::Format::eR32G32B32Sfloat; 
-                attributeDescriptions[2].offset = offsetof(common::Vertex, texCoord); 
+                attributeDescriptions[2].offset = offsetof(common::Vertex, color); 
+
+                /*Binding for vertex texture coordinates*/
+                attributeDescriptions[3].binding = 0; 
+                attributeDescriptions[3].location = 3; 
+                attributeDescriptions[3].format = vk::Format::eR32G32Sfloat; 
+                attributeDescriptions[3].offset = offsetof(common::Vertex, texCoord); 
 
                 return attributeDescriptions;
             }
