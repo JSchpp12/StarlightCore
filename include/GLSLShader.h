@@ -11,7 +11,7 @@ namespace star{
     namespace core{
         class GLSLShader : public common::Shader{
             public:
-                static GLSLShader* New(common::Pipe_Stage stage, const std::string& pathToFile); 
+                static GLSLShader* New(const std::string& pathToFile); 
             protected: 
                                 
             private: 
