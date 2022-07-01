@@ -10,20 +10,24 @@ star::core::TextureManager::~TextureManager(){
     //}
 }
 
-star::common::Handle star::core::TextureManager::Add(const std::string& pathToFile){
+star::common::Handle star::core::TextureManager::add(const std::string& pathToFile){
     //TODO -- READ DATA FROM FILE: manual entry for now 
     int texWidth; 
     int texHeight; 
     int texChannels; 
     
-    bool fileLoaded = this->fileContainer.FileLoaded(pathToFile); 
+    bool fileLoaded = this->fileContainer.fileLoaded(pathToFile); 
 
     if (!fileLoaded){
         std::unique_ptr<unsigned char> imageData(loadImage(pathToFile, texWidth, texHeight, texChannels)); 
 
         std::unique_ptr<common::Texture> newImage(new common::Texture(pathToFile, std::move(imageData), texWidth, texHeight, texChannels));
         
-        return this->fileContainer.AddFileResource(pathToFile, newImage); 
+        common::Handle newHandle; 
+        newHandle.type = common::Handle_Type::texture; 
+
+        this->addResource(pathToFile, std::move(newImage), newHandle);
+        return newHandle; 
     }else{
         throw std::runtime_error("Previously loaded files are not yet permitted."); 
     }

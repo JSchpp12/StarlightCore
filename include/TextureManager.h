@@ -14,7 +14,7 @@ namespace star{
         public: 
             ~TextureManager(); 
             
-            common::Handle Add(const std::string& pathToFile); 
+            common::Handle add(const std::string& pathToFile); 
 
         protected: 
 
