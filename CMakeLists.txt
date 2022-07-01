@@ -139,6 +139,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 	message("Warning - vulkan libs need to be linked to manually on macos")
 	target_link_libraries(${PROJECT_NAME}
 		PRIVATE
+			${Vulkan_LIBRARIES}					#if there are linking issues, might need to link manually
 			shaderc
 			tinyobjloader
 			glfw

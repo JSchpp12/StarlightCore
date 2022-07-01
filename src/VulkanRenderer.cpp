@@ -405,7 +405,7 @@ void star::core::VulkanRenderer::createInstance(){
     if (this->deviceRequiredExtensions.size() != 0){
         for (const auto* name : this->deviceRequiredExtensions){
             for (const auto& extension : extensions){
-                if(strcmp("VK_KHR_get_physical_device_properties2", extension.extensionName) == 0){
+                if(strcmp("VK_KHR_get_physical_device_properties2", extension.extensionName) == 0 || strcmp("VK_EXT_metal_surface", extension.extensionName) == 0){
                     foundAdditional++;
                     enableExtensionNames.push_back(extension.extensionName);
                 }
@@ -432,8 +432,8 @@ void star::core::VulkanRenderer::createInstance(){
     vk::InstanceCreateInfo createInfo{};
     createInfo.sType = vk::StructureType::eInstanceCreateInfo; 
     createInfo.pApplicationInfo = &appInfo;
-    createInfo.enabledExtensionCount = enableExtensionNames.size();
-    createInfo.ppEnabledExtensionNames = &enableExtensionNames[0];
+    createInfo.enabledExtensionCount = static_cast<uint32_t>(enableExtensionNames.size());
+    createInfo.ppEnabledExtensionNames = enableExtensionNames.data();
     createInfo.enabledLayerCount = 0;
     if (enableValidationLayers) {
         createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
