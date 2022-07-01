@@ -192,6 +192,10 @@ namespace core {
 			extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 		}
 
+		//TODO: redo this for safety 
+		extensions.push_back("VK_KHR_get_physical_device_properties2"); 
+		//ensure that VK_EXT_metal_surface is not already in the required extensions list
+		extensions.push_back("VK_EXT_metal_surface"); 
 		return extensions;
 	}
 
