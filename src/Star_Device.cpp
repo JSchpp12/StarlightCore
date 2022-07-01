@@ -31,14 +31,12 @@ namespace core {
 
 		vk::ApplicationInfo appInfo{};
 		appInfo.sType = vk::StructureType::eApplicationInfo;
-		// appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-		appInfo.pApplicationName = "Hello Triangle";
+		appInfo.pApplicationName = "StarlightExtension";
 		appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
 		appInfo.pEngineName = "Starlight";
 		appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
 		appInfo.apiVersion = VK_API_VERSION_1_0;
 
-		//enumerate required extensions
 		auto requriedExtensions = this->getRequiredExtensions();
 
 		vk::InstanceCreateInfo createInfo{};
@@ -55,16 +53,12 @@ namespace core {
 			createInfo.enabledLayerCount = 0;
 		}
 
-		/*
-		All vulkan objects follow this pattern of creation :
-		1.pointer to a struct with creation info
-			2.pointer to custom allocator callbacks, (nullptr) here
-			3.pointer to the variable that stores the handle to the new object
-		*/
-		//TODO: PUT A TRY HERE
-		this->instance = vk::createInstance(createInfo);
+		hasGlfwRequiredInstanceExtensions();
 
-		hasGlfwRequiredInstanceExtensions(); 
+		this->instance = vk::createInstance(createInfo);
+		if (!this->instance) {
+			throw std::runtime_error("Failed to create vulkan instance"); 
+		}
 	}
 
 	void StarDevice::pickPhysicalDevice(){
@@ -192,43 +186,41 @@ namespace core {
 			extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 		}
 
-		//TODO: redo this for safety 
-		extensions.push_back("VK_KHR_get_physical_device_properties2"); 
-		//ensure that VK_EXT_metal_surface is not already in the required extensions list
-		extensions.push_back("VK_EXT_metal_surface"); 
+		//add additional required instance extensions for macos 
+		if (isMac) {
+			extensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME); 
+			extensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME); 
+			extensions.push_back("VK_KHR_surface"); 
+		}
+
 		return extensions;
 	}
 
 	void StarDevice::hasGlfwRequiredInstanceExtensions() {
-		uint32_t extensionCount = 0;
-		vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-		std::vector<VkExtensionProperties> extensions(extensionCount);
-		vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data());
+		uint32_t glfwExtensionCount = 0;
+		std::vector<vk::ExtensionProperties> deviceInstanceExtensions = vk::enumerateInstanceExtensionProperties();
 
-		//std::cout << "available extensions:" << std::endl;
 		std::unordered_set<std::string> available;
-		for (const auto& extension : extensions) {
-			//std::cout << "\t" << extension.extensionName << std::endl;
+		for (const auto& extension : deviceInstanceExtensions) {
 			available.insert(extension.extensionName);
 		}
 
-		//std::cout << "required extensions:" << std::endl;
-		auto requiredExtensions = getRequiredExtensions();
+		std::vector<const char*> requiredExtensions = getRequiredExtensions();
 		for (const auto& required : requiredExtensions) {
-			//std::cout << "\t" << required << std::endl;
 			if (available.find(required) == available.end()) {
-				throw std::runtime_error("Missing required glfw extension");
+				throw std::runtime_error("Missing required glfw extension - " + std::string(required));
 			}
 		}
 	}
 
 	bool StarDevice::checkDeviceExtensionSupport(vk::PhysicalDevice device) {
-		uint32_t extensionCount;
-		device.enumerateDeviceExtensionProperties(nullptr, &extensionCount, nullptr);
-		std::vector<vk::ExtensionProperties> availableExtensions(extensionCount);
-		device.enumerateDeviceExtensionProperties(nullptr, &extensionCount, availableExtensions.data());
-
+		std::vector<vk::ExtensionProperties> availableExtensions = device.enumerateDeviceExtensionProperties(); 
 		std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
+
+		//add additional mac device required extensions
+		if (isMac) {
+			deviceExtensions.push_back("VK_KHR_portability_subset");
+		}
 
 		//iterate through extensions looking for those that are required
 		for (const auto& extension : availableExtensions) {
@@ -489,30 +481,13 @@ namespace core {
 
 	SwapChainSupportDetails StarDevice::querySwapChainSupport(vk::PhysicalDevice device) {
 		SwapChainSupportDetails details;
-		uint32_t formatCount, presentModeCount;
 
 		//get surface capabilities 
 		details.capabilities = device.getSurfaceCapabilitiesKHR(this->surface.get());
-
-		device.getSurfaceFormatsKHR(this->surface.get(), &formatCount, nullptr);
-
-		device.getSurfacePresentModesKHR(this->surface.get(), &presentModeCount, nullptr);
-
-		if (formatCount != 0) {
-			//resize vector in order to hold all available formats
-			details.formats.resize(formatCount);
-			device.getSurfaceFormatsKHR(this->surface.get(), &formatCount, details.formats.data());
-		}
-
-		if (presentModeCount != 0) {
-			//resize for same reasons as format 
-			details.presentModes.resize(presentModeCount);
-			device.getSurfacePresentModesKHR(this->surface.get(), &presentModeCount, details.presentModes.data());
-		}
+		details.formats = device.getSurfaceFormatsKHR(this->surface.get()); 
+		details.presentModes = device.getSurfacePresentModesKHR(this->surface.get()); 
 
 		return details;
 	}
-
-
 }
 }

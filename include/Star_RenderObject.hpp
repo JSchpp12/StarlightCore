@@ -14,11 +14,9 @@ namespace star {
 namespace core {
 	class RenderObject {
 	public:
-		//eventually use for adding new buffers and shader data to the object which will be queried before draw time
 		class Builder {
 		public:
 			Builder& setFromObject(common::Handle objectHandle, common::GameObject* object); 
-
 			/// <summary>
 			/// Record the number of images in the swapchain. This will be used to resize the descriptor bindings. 
 			/// </summary>
@@ -47,9 +45,6 @@ namespace core {
 			numIndicies(numIndicies), 
 			staticDescriptorSet(),
 			uboDescriptorSets(numImages) { }
-		//~RenderObject(); 
-
-		//void render(vk::CommandBuffer& commandBuffer, vk::PipelineLayout layout, int swapChainImageIndex); 
 		
 		common::Handle getHandle(); 
 

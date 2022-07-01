@@ -122,15 +122,21 @@ namespace core {
 			"VK_LAYER_KHRONOS_validation"
 		};
 
-		const std::vector<const char*> deviceExtensions = {
+		std::vector<const char*> deviceExtensions = {
 			VK_KHR_SWAPCHAIN_EXTENSION_NAME  //image presentation is not built into the vulkan core...need to enable it through an extension
-			"VK_KHR_portability_subset"
 		};
-            
+
 		std::vector<const char*> deviceRequiredExtensions = {
 			"VK_KHR_get_physical_device_properties2",
 			"VK_EXT_metal_surface"
 		};
+		
+#if defined(WIN32) || defined(_WIN32) || defined(_WIN64) || defined(__WIN32__) || defined(__NT__)
+		bool isMac = false; 
+#elif __APPLE__
+		bool isMac = true; 
+#endif
+
 
 		vk::Instance instance; 
 		vk::Device vulkanDevice;

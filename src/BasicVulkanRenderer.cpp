@@ -273,7 +273,6 @@ void star::core::VulkanRenderer::draw() {
 
 	/* Presentation */
 	vk::PresentInfoKHR presentInfo{};
-	//presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	presentInfo.sType = vk::StructureType::ePresentInfoKHR;
 
 	//what to wait for 
@@ -292,7 +291,6 @@ void star::core::VulkanRenderer::draw() {
 	//make call to present image
 	auto presentResult = this->starDevice->getPresentQueue().presentKHR(presentInfo);
 
-	//if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || frameBufferResized) {
 	if (presentResult == vk::Result::eErrorOutOfDateKHR || presentResult == vk::Result::eSuboptimalKHR || frameBufferResized) {
 		frameBufferResized = false;
 		recreateSwapChain();
@@ -360,8 +358,7 @@ void star::core::VulkanRenderer::createSwapChain() {
 	}
 
 	vk::SwapchainCreateInfoKHR createInfo{};
-	createInfo.sType = vk::StructureType::eSwapchainCreateInfoKHR;
-	//createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;     
+	createInfo.sType = vk::StructureType::eSwapchainCreateInfoKHR;    
 	createInfo.surface = this->starDevice->getSurface();
 
 	//specify image information for the surface 
@@ -383,7 +380,6 @@ void star::core::VulkanRenderer::createSwapChain() {
 		* 1. VK_SHARING_MODE_EXCLUSIVE: an image is owned by one queue family at a time and can be transferred between groups
 		* 2. VK_SHARING_MODE_CONCURRENT: images can be used across queue families without explicit ownership
 		*/
-		//createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
 		createInfo.imageSharingMode = vk::SharingMode::eConcurrent;
 		createInfo.queueFamilyIndexCount = 3;
 		createInfo.pQueueFamilyIndices = queueFamilyIndicies;
@@ -414,10 +410,9 @@ void star::core::VulkanRenderer::createSwapChain() {
 	createInfo.oldSwapchain = VK_NULL_HANDLE;
 
 	this->swapChain = this->starDevice->getDevice().createSwapchainKHR(createInfo);
-
-	//if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain) != VK_SUCCESS) {
-	//    throw std::runtime_error("failed to create swap chain");
-	//}
+	if (!this->swapChain) {
+		throw std::runtime_error("failed to create swap chain");
+	}
 
 	//get images in the newly created swapchain 
 	this->swapChainImages = this->starDevice->getDevice().getSwapchainImagesKHR(this->swapChain);
@@ -455,10 +450,6 @@ void star::core::VulkanRenderer::recreateSwapChain() {
 
 	//uniform buffers are dependent on the number of swap chain images, will need to recreate since they are destroyed in cleanupSwapchain()
 	createRenderingBuffers();
-
-	//createDescriptorPool();
-
-	//createDescriptorSets();
 
 	createCommandBuffers();
 }
@@ -532,7 +523,6 @@ void star::core::VulkanRenderer::createImageViews() {
 
 	//need to create an imageView for each of the images available
 	for (size_t i = 0; i < swapChainImages.size(); i++) {
-		//swapChainImageViews[i] = createImageView(swapChainImages[i], swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
 		swapChainImageViews[i] = createImageView(swapChainImages[i], swapChainImageFormat, vk::ImageAspectFlagBits::eColor);
 	}
 }
@@ -637,7 +627,6 @@ void star::core::VulkanRenderer::createRenderPass() {
 	/* Render Pass */
 	std::array<vk::AttachmentDescription, 2> attachments = { colorAttachment, depthAttachment };
 	vk::RenderPassCreateInfo renderPassInfo{};
-	//renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	renderPassInfo.sType = vk::StructureType::eRenderPassCreateInfo;
 	renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
 	renderPassInfo.pAttachments = attachments.data();
@@ -863,7 +852,6 @@ void star::core::VulkanRenderer::transitionImageLayout(vk::Image image, vk::Form
 }
 
 void star::core::VulkanRenderer::createTextureImageView() {
-	//this->textureImageView = createImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
 	this->textureImageView = createImageView(textureImage, vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor);
 }
 
@@ -988,6 +976,7 @@ void star::core::VulkanRenderer::createCommandBuffers() {
 				throw std::runtime_error("failed to begin recording command buffer");
 			}
 
+			//need to redefine viewport due to dynamic definition in pipeline
 			vk::Viewport viewport{};
 			viewport.x = 0.0f;
 			viewport.y = 0.0f;
@@ -1043,11 +1032,6 @@ void star::core::VulkanRenderer::createCommandBuffers() {
 				//2. compute or graphics pipeline
 				//3. pipeline object
 			//vkCmdBindPipeline(graphicsCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-			//newBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, RenderSysObj->getPipeline());
-
-			//vk::Buffer vertexBuffers[] = { RenderSysObj->vertexBuffer };
-			//TODO: need to allow for an offset for each buffer
-
 
 			tmpRenderSysObj->bind(newBuffers[i]);
 
@@ -1104,7 +1088,6 @@ void star::core::VulkanRenderer::createFences() {
 	fenceInfo.sType = vk::StructureType::eFenceCreateInfo;
 
 	//create the fence in a signaled state 
-	//fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 	fenceInfo.flags = vk::FenceCreateFlagBits::eSignaled;
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {

@@ -29,7 +29,7 @@ namespace core {
         glfwInit();
         //tell GLFW to create a window but to not include a openGL instance as this is a default behavior
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-        //disable resizing functionality in glfw as this will not be handled in the first tutorial
+        //disable resizing functionality in glfw for now
         glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
         //create a window, 3rd argument allows selection of monitor, 4th argument only applies to openGL
@@ -38,6 +38,7 @@ namespace core {
         //need to give GLFW a pointer to current instance of this class
         glfwSetWindowUserPointer(this->window, this);
 
+        //TODO: fix window resize callback
         // glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 
         //set keyboard callbacks
@@ -48,9 +49,6 @@ namespace core {
         auto mouseBtnCallback = glfwSetMouseButtonCallback(this->window, mouseButtonCallback);
 
         auto mouseScrollCallback = glfwSetScrollCallback(this->window, scrollCallback);
-
-        // this->glfwRequiredExtensions = std::make_unique<std::vector<vk::ExtensionProperties>>(new std::vector<vk::ExtensionProperties>(**requiredExtensions)); 
-        //this->glfwRequiredExtensions = std::make_unique<const char**>(glfwGetRequiredInstanceExtensions(this->glfwRequiredExtensionsCount.get()));
     }
 }
 }
