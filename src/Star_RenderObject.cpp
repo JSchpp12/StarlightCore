@@ -9,6 +9,10 @@ namespace core {
 		this->gameObject = object; 
 		return *this; 
 	}
+	RenderObject::Builder& RenderObject::Builder::setTexture(common::Texture* texture) {
+		this->texture = texture; 
+		return *this; 
+	}
 
 	RenderObject::Builder& RenderObject::Builder::setNumFrames(size_t numImages) {
 		this->numSwapChainImages = numImages; 
@@ -16,7 +20,7 @@ namespace core {
 	}
 
 	std::unique_ptr<RenderObject> RenderObject::Builder::build() {
-		return std::make_unique<RenderObject>(this->objectHandle, this->gameObject, this->numVerticies, this->numIndicies, this->numSwapChainImages); 
+		return std::make_unique<RenderObject>(this->objectHandle, this->gameObject, this->numVerticies, this->texture, this->numIndicies, this->numSwapChainImages); 
 	}
 
 	//void RenderObject::render(vk::CommandBuffer& commandBuffer, vk::PipelineLayout layout, int swapChainImageIndex) {

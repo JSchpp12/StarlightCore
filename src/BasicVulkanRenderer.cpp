@@ -65,7 +65,7 @@ void star::core::VulkanRenderer::updateUniformBuffer(uint32_t currentImage) {
 		RenderSysObjs.at(i)->updateBuffers(currentImage);
 	}
 
-	this->lightRenderSys->updateBuffers(currentImage); 
+	//this->lightRenderSys->updateBuffers(currentImage); 
 }
 
 
@@ -111,7 +111,11 @@ void star::core::VulkanRenderer::prepare() {
 				//vulkan object does not have either a vertex or a fragment shader 
 				object->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager->get(currObject->getVertShader()), currObject->getVertShader());
 				object->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager->get(currObject->getFragShader()), currObject->getFragShader());
-				object->addObject(this->objectList->at(i), currObject, this->swapChainImages.size());
+				object->addObject(std::move(RenderObject::Builder::Builder()
+					.setFromObject(this->objectList->at(i), currObject)
+					.setTexture(this->textureManager->get(currObject->getTexture()))
+					.build()));
+				//object->addObject(this->objectList->at(i), currObject, this->swapChainImages.size());
 			}
 			else if ((object->getBaseShader(vk::ShaderStageFlagBits::eVertex).containerIndex != currObject->getVertShader().containerIndex) ||
 				(object->getBaseShader(vk::ShaderStageFlagBits::eFragment).containerIndex != currObject->getFragShader().containerIndex)) {
@@ -131,20 +135,19 @@ void star::core::VulkanRenderer::prepare() {
 	std::vector<vk::DescriptorSetLayout> globalSets = { this->globalSetLayout->getDescriptorSetLayout() }; 
 	tmpRenderSysObj->init(globalSets);
 
-	//TODO: might need more than one light system -- CAREFUL
-	this->lightRenderSys = std::make_unique<RenderSysPointLight>(this->starDevice.get(), this->swapChainImages.size(), this->globalSetLayout->getDescriptorSetLayout(), this->swapChainExtent, this->renderPass);
-	common::GameObject* lightLinkedObject = this->objectManager->get(this->pointLights.at(0)->getLinkedObjectHandle());
-	this->lightRenderSys->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager->get(lightLinkedObject->getVertShader()), lightLinkedObject->getVertShader());
-	this->lightRenderSys->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager->get(lightLinkedObject->getFragShader()), lightLinkedObject->getFragShader());
-	for (auto light : this->pointLights) {
-		if (light->getType() == common::Type::Light::point) {
-			common::GameObject* lightLinkedObject = this->objectManager->get(light->getLinkedObjectHandle());
+	//this->lightRenderSys = std::make_unique<RenderSysPointLight>(this->starDevice.get(), this->swapChainImages.size(), this->globalSetLayout->getDescriptorSetLayout(), this->swapChainExtent, this->renderPass);
+	//common::GameObject* lightLinkedObject = this->objectManager->get(this->pointLights.at(0)->getLinkedObjectHandle());
+	//this->lightRenderSys->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager->get(lightLinkedObject->getVertShader()), lightLinkedObject->getVertShader());
+	//this->lightRenderSys->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager->get(lightLinkedObject->getFragShader()), lightLinkedObject->getFragShader());
+	//for (auto light : this->pointLights) {
+	//	if (light->getType() == common::Type::Light::point) {
+	//		common::GameObject* lightLinkedObject = this->objectManager->get(light->getLinkedObjectHandle());
 
-			this->lightRenderSys->addLight(light, lightLinkedObject, this->swapChainImages.size());
-		}
-	}
-	this->lightRenderSys->setPipelineLayout(this->RenderSysObjs.at(0)->getPipelineLayout()); 
-	this->lightRenderSys->init(globalSets); 
+	//		this->lightRenderSys->addLight(light, lightLinkedObject, this->swapChainImages.size());
+	//	}
+	//}
+	//this->lightRenderSys->setPipelineLayout(this->RenderSysObjs.at(0)->getPipelineLayout()); 
+	//this->lightRenderSys->init(globalSets); 
 
 	createDepthResources();
 	createFramebuffers();
@@ -918,7 +921,6 @@ void star::core::VulkanRenderer::createRenderingBuffers() {
 		this->pointLightColorBuffers.resize(this->swapChainImages.size());
 	}
 
-
 	for (size_t i = 0; i < swapChainImages.size(); i++) {
 		this->globalUniformBuffers[i] = std::make_unique<StarBuffer>(*this->starDevice.get(), tmpRenderSysObj->getNumRenderObjects(), sizeof(GlobalUniformBufferObject),
 			vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
@@ -1066,8 +1068,8 @@ void star::core::VulkanRenderer::createCommandBuffers() {
 			tmpRenderSysObj->render(newBuffers[i], i);
 
 			//bind light pipe 
-			this->lightRenderSys->bind(newBuffers[i]);
-			this->lightRenderSys->render(newBuffers[i], i);
+			//this->lightRenderSys->bind(newBuffers[i]);
+			//this->lightRenderSys->render(newBuffers[i], i);
 
 			newBuffers[i].endRenderPass();
 

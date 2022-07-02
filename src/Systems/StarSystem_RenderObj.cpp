@@ -29,6 +29,10 @@ void RenderSysObj::addObject(common::Handle newObjectHandle, common::GameObject*
 	this->renderObjects.push_back(std::move(RenderObject::Builder().setFromObject(newObjectHandle, newObject).setNumFrames(numSwapChainImages).build())); 
 }
 
+void RenderSysObj::addObject(std::unique_ptr<RenderObject> renderObject) {
+	this->renderObjects.push_back(std::move(renderObject)); 
+}
+
 bool RenderSysObj::hasShader(vk::ShaderStageFlagBits stage) {
 	if (stage & vk::ShaderStageFlagBits::eVertex && this->vertShader != nullptr) {
 		return true; 
@@ -251,8 +255,9 @@ void RenderSysObj::createIndexBuffer() {
 void RenderSysObj::createDescriptorPool() {
 	//create descriptor pools 
 	this->descriptorPool = StarDescriptorPool::Builder(*this->starDevice)
-		.setMaxSets(this->numSwapChainImages * this->renderObjects.size() + this->renderObjects.size())
+		.setMaxSets((this->numSwapChainImages * this->renderObjects.size() * 2) + this->renderObjects.size())
 		.addPoolSize(vk::DescriptorType::eUniformBuffer, this->numSwapChainImages * this->renderObjects.size())
+		.addPoolSize(vk::DescriptorType::eUniformBuffer, this->numSwapChainImages * this->renderObjects.size())		//for image samplers (TODO: this assumes all objects have images)
 		.addPoolSize(vk::DescriptorType::eStorageBuffer, this->numSwapChainImages)
 		.build();
 }
@@ -263,7 +268,12 @@ void RenderSysObj::createStaticDescriptors() {
 		.build();
 
 	//create descritptor sets 
+	//TODO: move texture init somewhere else
 	vk::DescriptorBufferInfo bufferInfo{};
+	vk::DescriptorImageInfo imageBufferInfo{};
+	common::Texture* texture = nullptr; 
+	this->textures.resize(this->renderObjects.size()); 
+
 	auto test = this->objectMaterialBuffer->getAlignmentSize(); 
 
 	for (int i = 0; i < this->renderObjects.size(); i++) {
@@ -273,8 +283,17 @@ void RenderSysObj::createStaticDescriptors() {
 			sizeof(MaterialBufferObject)
 		};
 
+		texture = this->renderObjects.at(i)->getTexture(); 
+		//create texture 
+		this->textures.at(i) = std::make_unique<StarTexture>(*this->starDevice, *texture); 
+		imageBufferInfo = vk::DescriptorImageInfo{};
+		imageBufferInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+		imageBufferInfo.imageView = this->textures.at(i)->getImageView();
+		imageBufferInfo.sampler = this->textures.at(i)->getSampler();
+
 		StarDescriptorWriter(*this->starDevice, *this->staticDescriptorSetLayout, *this->descriptorPool)
 			.writeBuffer(0, &bufferInfo)
+			.writeImage(1, &imageBufferInfo)
 			.build(this->renderObjects.at(i)->getStaticDescriptorSet());
 	}
 }

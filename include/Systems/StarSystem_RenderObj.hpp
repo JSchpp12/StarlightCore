@@ -12,6 +12,7 @@
 #include "Star_Device.hpp"
 #include "Star_Pipeline.hpp"
 #include "Star_Buffer.hpp"
+#include "Star_Texture.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -72,6 +73,8 @@ namespace star {
 			/// </summary>
 			/// <param name="newObjectHandle"></param>
 			virtual void addObject(common::Handle newObjectHandle, common::GameObject* newObject, size_t numSwapChainImages);
+
+			virtual void addObject(std::unique_ptr<RenderObject> renderObject); 
 			/// <summary>
 			/// Register a light color and location for rendering light effects on objects
 			/// </summary>
@@ -137,7 +140,8 @@ namespace star {
 			vk::PipelineLayout pipelineLayout;
 			std::unique_ptr<StarBuffer> objectMaterialBuffer;						//buffer which contains object information updated on scene init
 			std::vector<std::unique_ptr<StarBuffer>> uniformBuffers;
-
+			//todo: should move this to the render object
+			std::vector<std::unique_ptr<StarTexture>> textures; 
 			std::unique_ptr<StarDescriptorSetLayout> staticDescriptorSetLayout;		//descriptor set layout for object data updated once
 			std::unique_ptr<StarDescriptorSetLayout> descriptorSetLayout; 
 
