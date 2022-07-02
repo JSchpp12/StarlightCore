@@ -71,7 +71,7 @@ SET(${PROJECT_NAME}_SOURCES
 	"src/Star_Device.cpp"
 	"src/Star_Pipeline.cpp"
 	"src/Star_Window.cpp"
-	"src/Star_Swapchain.cpp"
+	#"src/Star_Swapchain.cpp"
 	#rendering sytems
 	"src/Systems/StarSystem_RenderObj.cpp"
 	"src/Systems/StarSystem_RenderPointLight.cpp"
@@ -101,7 +101,7 @@ SET(${PROJECT_NAME}_HEADERS
 	"include/Star_Device.hpp"
 	"include/Star_Pipeline.hpp"
 	"include/Star_Window.hpp"
-	"include/Star_Swapchain.hpp"
+	#"include/Star_Swapchain.hpp"
 	#rendering systems 
 	"include/Systems/StarSystem_RenderObj.hpp"
 	"include/Systems/RenderPointLight.hpp"
