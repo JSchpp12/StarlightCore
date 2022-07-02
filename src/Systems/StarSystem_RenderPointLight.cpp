@@ -8,7 +8,7 @@ namespace core {
 	void RenderSysPointLight::addLight(common::Light* newLight, common::GameObject* linkedObject, size_t numSwapChainImages) {
 		this->lightList.push_back(newLight); 
 
-		this->RenderSysObj::addObject(newLight->getLinkedObjectHandle(), linkedObject, numSwapChainImages);
+		//this->RenderSysObj::addObject(newLight->getLinkedObjectHandle(), linkedObject, numSwapChainImages);
 	}
 
 	void RenderSysPointLight::updateBuffers(uint32_t currentImage) {

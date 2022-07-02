@@ -19,14 +19,21 @@ void RenderSysObj::registerShader(vk::ShaderStageFlagBits stage, common::Shader*
 	}
 }
 
-void RenderSysObj::addObject(common::Handle newObjectHandle, common::GameObject* newObject, size_t numSwapChainImages) {
-	auto numIndicies = newObject->getIndicies()->size();
-	auto numVerticies = newObject->getVerticies()->size();
+//void RenderSysObj::addObject(common::Handle newObjectHandle, common::GameObject* newObject, size_t numSwapChainImages) {
+//	auto numIndicies = newObject->getIndicies()->size();
+//	auto numVerticies = newObject->getVerticies()->size();
+//
+//	this->totalNumIndicies += numIndicies;
+//	this->totalNumVerticies += numVerticies;
+//
+//	this->renderObjects.push_back(std::move(RenderObject::Builder().setFromObject(newObjectHandle, newObject).setNumFrames(numSwapChainImages).build())); 
+//}
 
-	this->totalNumIndicies += numIndicies;
-	this->totalNumVerticies += numVerticies;
+void RenderSysObj::addObject(std::unique_ptr<RenderObject> newRenderObject) {
+	this->totalNumVerticies += newRenderObject->getGameObject()->getVerticies()->size(); 
+	this->totalNumIndicies += newRenderObject->getGameObject()->getIndicies()->size(); 
 
-	this->renderObjects.push_back(std::move(RenderObject::Builder().setFromObject(newObjectHandle, newObject).setNumFrames(numSwapChainImages).build())); 
+	this->renderObjects.push_back(std::move(newRenderObject)); 
 }
 
 bool RenderSysObj::hasShader(vk::ShaderStageFlagBits stage) {
