@@ -15,8 +15,27 @@ namespace core {
 		return *this; 
 	}
 
+	RenderObject::Builder& RenderObject::Builder::setTexture(common::Texture* texture) {
+		this->texture = texture; 
+		return *this; 
+	}
+
 	std::unique_ptr<RenderObject> RenderObject::Builder::build() {
-		return std::make_unique<RenderObject>(this->objectHandle, this->gameObject, this->numVerticies, this->numIndicies, this->numSwapChainImages); 
+		return std::make_unique<RenderObject>(this->starDevice, this->objectHandle, this->gameObject, this->texture, this->numVerticies, this->numIndicies, this->numSwapChainImages); 
+	}
+
+
+	RenderObject::RenderObject(StarDevice& starDevice, common::Handle objectHandle, common::GameObject* gameObject,
+		common::Texture* texture, size_t numVerticies, 
+		size_t numIndicies, size_t numImages) :
+		starDevice(starDevice), objectHandle(objectHandle),
+		gameObject(gameObject), numVerticies(numVerticies),
+		numIndicies(numIndicies), staticDescriptorSet(),
+		uboDescriptorSets(numImages) {
+		//create texture as needed
+		if (texture) {
+			this->starTexture = std::make_unique<StarTexture>(this->starDevice, *texture);
+		}
 	}
 
 	//void RenderObject::render(vk::CommandBuffer& commandBuffer, vk::PipelineLayout layout, int swapChainImageIndex) {
