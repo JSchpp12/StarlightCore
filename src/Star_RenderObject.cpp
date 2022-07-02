@@ -33,7 +33,7 @@ namespace core {
 		numIndicies(numIndicies), staticDescriptorSet(),
 		uboDescriptorSets(numImages) {
 		//create texture as needed
-		if (texture) {
+		if (texture != nullptr) {
 			this->starTexture = std::make_unique<StarTexture>(this->starDevice, *texture);
 		}
 	}

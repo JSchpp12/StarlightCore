@@ -267,10 +267,12 @@ void RenderSysObj::createDescriptorPool() {
 void RenderSysObj::createStaticDescriptors() {
 	this->staticDescriptorSetLayout = StarDescriptorSetLayout::Builder(*this->starDevice)
 		.addBinding(0, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eAllGraphics)
+		.addBinding(1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
 		.build();
 
 	//create descritptor sets 
 	vk::DescriptorBufferInfo bufferInfo{};
+	vk::DescriptorImageInfo imageInfo{}; 
 	auto test = this->objectMaterialBuffer->getAlignmentSize(); 
 
 	for (int i = 0; i < this->renderObjects.size(); i++) {
@@ -279,9 +281,15 @@ void RenderSysObj::createStaticDescriptors() {
 			this->objectMaterialBuffer->getAlignmentSize()* i,
 			sizeof(MaterialBufferObject)
 		};
+		imageInfo = vk::DescriptorImageInfo{
+			this->renderObjects.at(i)->getTexture().getSampler(),
+			this->renderObjects.at(i)->getTexture().getImageView(),
+			vk::ImageLayout::eShaderReadOnlyOptimal
+		};
 
 		StarDescriptorWriter(*this->starDevice, *this->staticDescriptorSetLayout, *this->descriptorPool)
 			.writeBuffer(0, &bufferInfo)
+			.writeImage(1, &imageInfo)
 			.build(this->renderObjects.at(i)->getStaticDescriptorSet());
 	}
 }

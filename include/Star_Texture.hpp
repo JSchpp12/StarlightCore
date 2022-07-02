@@ -5,6 +5,7 @@
 
 #include "Star_Device.hpp"
 #include "Star_Buffer.hpp"
+#include "Star_Descriptors.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -17,6 +18,7 @@ namespace star {
 			StarTexture(StarDevice& starDevice, common::Texture& texture);
 			~StarTexture();
 
+			
 			vk::ImageView getImageView() { return this->textureImageView; }
 			vk::Sampler getSampler() { return this->textureSampler; }
 		private:
@@ -26,6 +28,7 @@ namespace star {
 			vk::ImageView textureImageView;
 			vk::Sampler textureSampler;
 			vk::DeviceMemory imageMemory;
+			vk::DescriptorSet descriptorSet; 
 
 			void createTextureImage(common::Texture& texture);
 			/// <summary>
@@ -45,6 +48,8 @@ namespace star {
 
 			void transitionImageLayout(vk::Image image, vk::Format format, vk::ImageLayout oldLayout,
 				vk::ImageLayout newLayout);
+
+			void createImageSampler();
 
 			void createTextureImageView();
 

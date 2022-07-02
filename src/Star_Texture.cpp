@@ -4,7 +4,8 @@ namespace star {
 	namespace core {
 		StarTexture::StarTexture(StarDevice& starDevice, common::Texture& texture) : starDevice(starDevice) {
 			createTextureImage(texture);
-
+			createTextureImageView(); 
+			createImageSampler();
 		}
 
 		StarTexture::~StarTexture() {
@@ -144,6 +145,47 @@ namespace star {
 			);
 
 			this->starDevice.endSingleTimeCommands(commandBuffer);
+		}
+
+		void StarTexture::createImageSampler() {
+			//get device properties for amount of anisotropy permitted
+			vk::PhysicalDeviceProperties deviceProperties = this->starDevice.getPhysicalDevice().getProperties();
+
+			vk::SamplerCreateInfo samplerInfo{};
+			samplerInfo.sType = vk::StructureType::eSamplerCreateInfo;
+			samplerInfo.magFilter = vk::Filter::eLinear;                       //how to sample textures that are magnified 
+			samplerInfo.minFilter = vk::Filter::eLinear;                       //how to sample textures that are minified
+
+			//repeat mode - repeat the texture when going beyond the image dimensions
+			samplerInfo.addressModeU = vk::SamplerAddressMode::eRepeat;
+			samplerInfo.addressModeV = vk::SamplerAddressMode::eRepeat;
+			samplerInfo.addressModeW = vk::SamplerAddressMode::eRepeat;
+
+			//should anisotropic filtering be used? Really only matters if performance is a concern
+			samplerInfo.anisotropyEnable = VK_TRUE;
+			//specifies the limit on the number of texel samples that can be used (lower = better performance)
+			samplerInfo.maxAnisotropy = deviceProperties.limits.maxSamplerAnisotropy;;
+			samplerInfo.borderColor = vk::BorderColor::eIntOpaqueBlack;
+			//specifies coordinate system to use in addressing texels. 
+				//VK_TRUE - use coordinates [0, texWidth) and [0, texHeight]
+				//VK_FALSE - use [0, 1)
+			samplerInfo.unnormalizedCoordinates = VK_FALSE;
+
+			//if comparing, the texels will first compare to a value, the result of the comparison is used in filtering operations (percentage-closer filtering on shadow maps)
+			samplerInfo.compareEnable = VK_FALSE;
+			samplerInfo.compareOp = vk::CompareOp::eAlways;
+
+			//following apply to mipmapping -- not using here
+			samplerInfo.mipmapMode = vk::SamplerMipmapMode::eLinear;
+			samplerInfo.mipLodBias = 0.0f;
+			samplerInfo.minLod = 0.0f;
+			samplerInfo.maxLod = 0.0f;
+			samplerInfo.anisotropyEnable = VK_FALSE;
+
+			this->textureSampler = this->starDevice.getDevice().createSampler(samplerInfo);
+			if (!this->textureSampler) {
+				throw std::runtime_error("failed to create texture sampler!");
+			}
 		}
 
 		void StarTexture::createTextureImageView() {

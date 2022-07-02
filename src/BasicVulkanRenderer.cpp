@@ -113,6 +113,7 @@ void star::core::VulkanRenderer::prepare() {
 				object->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager->get(currObject->getFragShader()), currObject->getFragShader());
 				object->addObject(std::move(RenderObject::Builder(*this->starDevice)
 					.setFromObject(this->objectList->at(i), currObject)
+					.setTexture(this->textureManager->get(currObject->getTexture()))
 					.setNumFrames(this->swapChainImages.size())
 					.build()));
 			}
@@ -132,6 +133,7 @@ void star::core::VulkanRenderer::prepare() {
 				//vulkan object has the same shaders as the render object 
 				object->addObject(std::move(RenderObject::Builder(*this->starDevice)
 					.setFromObject(this->objectList->at(i), currObject)
+					.setTexture(this->textureManager->get(currObject->getTexture()))
 					.setNumFrames(this->swapChainImages.size())
 					.build()));
 			}

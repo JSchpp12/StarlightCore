@@ -60,6 +60,7 @@ namespace core {
 		common::GameObject* getGameObject() { return this->gameObject; }
 		std::vector<vk::DescriptorSet>* getDefaultDescriptorSets(); 
 		vk::DescriptorSet& getStaticDescriptorSet();
+		StarTexture& getTexture() { return *this->starTexture; }
 
 	protected:
 
