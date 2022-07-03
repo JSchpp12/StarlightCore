@@ -28,7 +28,7 @@ namespace core {
 
 		virtual void addLight(common::Light* newLight, common::GameObject* linkedObject, size_t numSwapChainImages);
 
-		virtual void registerShader(vk::ShaderStageFlagBits stage, common::Shader* newShader, common::Handle newShaderHandle) override {
+		virtual void registerShader(vk::ShaderStageFlagBits stage, common::Shader& newShader, common::Handle newShaderHandle) override {
 			this->RenderSysObj::registerShader(stage, newShader, newShaderHandle);
 		};
 

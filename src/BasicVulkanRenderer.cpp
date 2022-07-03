@@ -94,14 +94,13 @@ void star::core::VulkanRenderer::prepare() {
 	this->globalDescriptorSets.resize(this->swapChainImages.size());
 
 
-	common::GameObject* currObject = nullptr;
 	vk::ShaderStageFlagBits stages{};
 	vk::Device device = this->starDevice->getDevice();
 	this->RenderSysObjs.push_back(std::make_unique<RenderSysObj>(this->starDevice.get(), this->swapChainImages.size(), this->globalSetLayout->getDescriptorSetLayout(), this->swapChainExtent, this->renderPass));
 	RenderSysObj* tmpRenderSysObj = this->RenderSysObjs.at(0).get();
 
 	for (size_t i = 0; i < this->objectList->size(); i++) {
-		currObject = this->objectManager->get(this->objectList->at(i));
+		common::GameObject& currObject = this->objectManager->get(this->objectList->at(i));
 
 		//check if the vulkan object has a shader registered for the desired stage that is different than the one needed for the current object
 		for (size_t j = 0; j < this->RenderSysObjs.size(); j++) {
@@ -109,33 +108,36 @@ void star::core::VulkanRenderer::prepare() {
 			RenderSysObj* object = this->RenderSysObjs.at(j).get();
 			if (!object->hasShader(vk::ShaderStageFlagBits::eVertex) && (!object->hasShader(vk::ShaderStageFlagBits::eFragment))) {
 				//vulkan object does not have either a vertex or a fragment shader 
-				object->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager->get(currObject->getVertShader()), currObject->getVertShader());
-				object->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager->get(currObject->getFragShader()), currObject->getFragShader());
-				object->addObject(std::move(RenderObject::Builder(*this->starDevice)
-					.setFromObject(this->objectList->at(i), currObject)
-					.setTexture(this->textureManager->get(currObject->getTexture()))
-					.setNumFrames(this->swapChainImages.size())
-					.build()));
+				object->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager->get(currObject.getVertShader()), currObject.getVertShader());
+				object->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager->get(currObject.getFragShader()), currObject.getFragShader());
+				RenderObject::Builder builder(*this->starDevice, currObject);
+				builder.setNumFrames(this->swapChainImages.size()); 
+
+				for (auto& mesh : currObject.getMeshes()) {
+					builder.addMesh(*mesh, this->textureManager->get(mesh->getTexture()));
+				}
+				object->addObject(std::move(builder.build()));
 			}
-			else if ((object->getBaseShader(vk::ShaderStageFlagBits::eVertex).containerIndex != currObject->getVertShader().containerIndex) ||
-				(object->getBaseShader(vk::ShaderStageFlagBits::eFragment).containerIndex != currObject->getFragShader().containerIndex)) {
+			else if ((object->getBaseShader(vk::ShaderStageFlagBits::eVertex).containerIndex != currObject.getVertShader().containerIndex) ||
+				(object->getBaseShader(vk::ShaderStageFlagBits::eFragment).containerIndex != currObject.getFragShader().containerIndex)) {
 				//vulkan object has shaders but they are not the same as the shaders needed for current render object
 				this->RenderSysObjs.push_back(std::make_unique<RenderSysObj>(this->starDevice.get(), this->swapChainImages.size(), this->globalSetLayout->getDescriptorSetLayout(), this->swapChainExtent, this->renderPass));
 				RenderSysObj* newObject = this->RenderSysObjs.at(this->RenderSysObjs.size()).get();
-				newObject->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager->get(currObject->getVertShader()), currObject->getVertShader());
-				newObject->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager->get(currObject->getFragShader()), currObject->getFragShader());
-				newObject->addObject(std::move(RenderObject::Builder(*this->starDevice)
-					.setFromObject(this->objectList->at(i), currObject)
+				newObject->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager->get(currObject.getVertShader()), currObject.getVertShader());
+				newObject->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager->get(currObject.getFragShader()), currObject.getFragShader());
+				newObject->addObject(std::move(RenderObject::Builder(*this->starDevice, currObject)
 					.setNumFrames(this->swapChainImages.size())
 					.build()));
 			}
 			else {
 				//vulkan object has the same shaders as the render object 
-				object->addObject(std::move(RenderObject::Builder(*this->starDevice)
-					.setFromObject(this->objectList->at(i), currObject)
-					.setTexture(this->textureManager->get(currObject->getTexture()))
-					.setNumFrames(this->swapChainImages.size())
-					.build()));
+				RenderObject::Builder builder(*this->starDevice, currObject);
+				builder.setNumFrames(this->swapChainImages.size());
+
+				for (auto& mesh : currObject.getMeshes()) {
+					builder.addMesh(*mesh, this->textureManager->get(mesh->getTexture())); 
+				}
+				object->addObject(builder.build());
 			}
 		}
 	}
@@ -159,9 +161,6 @@ void star::core::VulkanRenderer::prepare() {
 
 	createDepthResources();
 	createFramebuffers();
-	createTextureImage();
-	createTextureImageView();
-	createTextureSampler();
 	createRenderingBuffers();
 
 	std::unique_ptr<std::vector<vk::DescriptorBufferInfo>> bufferInfos{};
@@ -767,155 +766,6 @@ void star::core::VulkanRenderer::createFramebuffers() {
 		if (!swapChainFramebuffers[i]) {
 			throw std::runtime_error("failed to create framebuffer");
 		}
-	}
-}
-
-void star::core::VulkanRenderer::createTextureImage() {
-	int texWidth;
-	int texHeight;
-	int texChannels;
-
-	auto currObject = this->objectManager->get(this->Renderer::objectList->at(0));
-
-	common::Texture* texture = this->textureManager->get(currObject->getTexture());
-
-	//stbi_uc* pixels = stbi_load(texture->path().c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha); 
-	vk::DeviceSize imageSize = texture->width() * texture->height() * 4;
-
-	/* Create Staging Buffer */
-	vk::Buffer stagingBuffer;
-	vk::DeviceMemory stagingBufferMemory;
-
-	//buffer needs to be in host visible memory
-	this->starDevice->createBuffer(imageSize, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, stagingBuffer, stagingBufferMemory);
-
-	//copy over to staging buffer
-	void* data;
-	data = this->starDevice->getDevice().mapMemory(stagingBufferMemory, 0, imageSize);
-	memcpy(data, texture->data(), static_cast<size_t>(imageSize));
-	this->starDevice->getDevice().unmapMemory(stagingBufferMemory);
-
-	//stbi_image_free(pixels);
-
-	createImage(texture->width(), texture->height(), vk::Format::eR8G8B8A8Srgb, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::MemoryPropertyFlagBits::eDeviceLocal, textureImage, textureImageMemory);
-
-	//copy staging buffer to texture image 
-	transitionImageLayout(textureImage, vk::Format::eR8G8B8A8Srgb, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
-
-	this->starDevice->copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texture->width()), static_cast<uint32_t>(texture->height()));
-
-	//prepare final image for texture mapping in shaders 
-	transitionImageLayout(textureImage, vk::Format::eR8G8B8A8Srgb, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
-
-	this->starDevice->getDevice().destroyBuffer(stagingBuffer);
-	this->starDevice->getDevice().freeMemory(stagingBufferMemory);
-}
-
-void star::core::VulkanRenderer::transitionImageLayout(vk::Image image, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout) {
-	vk::CommandBuffer commandBuffer = this->starDevice->beginSingleTimeCommands();
-
-	//create a barrier to prevent pipeline from moving forward until image transition is complete
-	vk::ImageMemoryBarrier barrier{};
-	//barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;     //specific flag for image operations
-	barrier.sType = vk::StructureType::eImageMemoryBarrier;     //specific flag for image operations
-	barrier.oldLayout = oldLayout;
-	barrier.newLayout = newLayout;
-
-	//if barrier is used for transferring ownership between queue families, this would be important -- set to ignore since we are not doing this
-	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-
-	barrier.image = image;
-	//barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-	barrier.subresourceRange.baseMipLevel = 0;                          //image does not have any mipmap levels
-	barrier.subresourceRange.levelCount = 1;                            //image is not an array
-	barrier.subresourceRange.baseArrayLayer = 0;
-	barrier.subresourceRange.layerCount = 1;
-
-	//the operations that need to be completed before and after the barrier, need to be defined
-	barrier.srcAccessMask = {}; //TODO
-	barrier.dstAccessMask = {}; //TODO
-
-	vk::PipelineStageFlags sourceStage, destinationStage;
-
-	if (oldLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eTransferDstOptimal) {
-		//undefined transition state, dont need to wait for this to complete
-		barrier.srcAccessMask = {};
-		//barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-		barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
-
-		sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
-		destinationStage = vk::PipelineStageFlagBits::eTransfer;
-	}
-	else if (oldLayout == vk::ImageLayout::eTransferDstOptimal && newLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
-		//transfer destination shdaer reading, will need to wait for completion. Especially in the frag shader where reads will happen
-		barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
-		barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
-
-		sourceStage = vk::PipelineStageFlagBits::eTransfer;
-		destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
-	}
-	else {
-		throw std::invalid_argument("unsupported layout transition!");
-	}
-
-	//transfer writes must occurr during the pipeline transfer stage
-	commandBuffer.pipelineBarrier(
-		sourceStage,                        //which pipeline stages should occurr before barrier 
-		destinationStage,                   //pipeline stage in which operations iwll wait on the barrier 
-		{},
-		{},
-		nullptr,
-		barrier
-	);
-
-	this->starDevice->endSingleTimeCommands(commandBuffer);
-}
-
-void star::core::VulkanRenderer::createTextureImageView() {
-	//this->textureImageView = createImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
-	this->textureImageView = createImageView(textureImage, vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor);
-}
-
-void star::core::VulkanRenderer::createTextureSampler() {
-	//get device properties for amount of anisotropy permitted
-	vk::PhysicalDeviceProperties deviceProperties = this->starDevice->getPhysicalDevice().getProperties();
-
-	vk::SamplerCreateInfo samplerInfo{};
-	samplerInfo.sType = vk::StructureType::eSamplerCreateInfo;
-	samplerInfo.magFilter = vk::Filter::eLinear;                       //how to sample textures that are magnified 
-	samplerInfo.minFilter = vk::Filter::eLinear;                       //how to sample textures that are minified
-
-	//repeat mode - repeat the texture when going beyond the image dimensions
-	samplerInfo.addressModeU = vk::SamplerAddressMode::eRepeat;
-	samplerInfo.addressModeV = vk::SamplerAddressMode::eRepeat;
-	samplerInfo.addressModeW = vk::SamplerAddressMode::eRepeat;
-
-	//should anisotropic filtering be used? Really only matters if performance is a concern
-	samplerInfo.anisotropyEnable = VK_TRUE;
-	//specifies the limit on the number of texel samples that can be used (lower = better performance)
-	samplerInfo.maxAnisotropy = deviceProperties.limits.maxSamplerAnisotropy;;
-	samplerInfo.borderColor = vk::BorderColor::eIntOpaqueBlack;
-	//specifies coordinate system to use in addressing texels. 
-		//VK_TRUE - use coordinates [0, texWidth) and [0, texHeight]
-		//VK_FALSE - use [0, 1)
-	samplerInfo.unnormalizedCoordinates = VK_FALSE;
-
-	//if comparing, the texels will first compare to a value, the result of the comparison is used in filtering operations (percentage-closer filtering on shadow maps)
-	samplerInfo.compareEnable = VK_FALSE;
-	samplerInfo.compareOp = vk::CompareOp::eAlways;
-
-	//following apply to mipmapping -- not using here
-	samplerInfo.mipmapMode = vk::SamplerMipmapMode::eLinear;
-	samplerInfo.mipLodBias = 0.0f;
-	samplerInfo.minLod = 0.0f;
-	samplerInfo.maxLod = 0.0f;
-	samplerInfo.anisotropyEnable = VK_FALSE;
-
-	this->textureSampler = this->starDevice->getDevice().createSampler(samplerInfo);
-	if (!this->textureSampler) {
-		throw std::runtime_error("failed to create texture sampler!");
 	}
 }
 

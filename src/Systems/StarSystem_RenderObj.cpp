@@ -8,13 +8,13 @@ RenderSysObj::~RenderSysObj() {
 		this->starDevice->getDevice().destroyPipelineLayout(this->pipelineLayout);
 }
 
-void RenderSysObj::registerShader(vk::ShaderStageFlagBits stage, common::Shader* newShader, common::Handle newShaderHandle) {
+void RenderSysObj::registerShader(vk::ShaderStageFlagBits stage, common::Shader& newShader, common::Handle newShaderHandle) {
 	if (stage & vk::ShaderStageFlagBits::eVertex) {
-		this->vertShader = newShader; 
+		this->vertShader = &newShader; 
 		this->vertShaderHandle = newShaderHandle; 
 	}
 	else {
-		this->fragShader = newShader; 
+		this->fragShader = &newShader; 
 		this->fragShaderHandle = newShaderHandle; 
 	}
 }
@@ -30,9 +30,13 @@ void RenderSysObj::registerShader(vk::ShaderStageFlagBits stage, common::Shader*
 //}
 
 void RenderSysObj::addObject(std::unique_ptr<RenderObject> newRenderObject) {
-	this->totalNumVerticies += newRenderObject->getGameObject()->getVerticies()->size(); 
-	this->totalNumIndicies += newRenderObject->getGameObject()->getIndicies()->size(); 
+	//this->totalNumVerticies += newRenderObject->getGameObject().getVerticies()->size(); 
+	//this->totalNumIndicies += newRenderObject->getGameObject().getIndicies()->size(); 
 
+	for (auto& mesh : newRenderObject->getGameObject().getMeshes()) {
+		this->totalNumVerticies += mesh->getVerticies().size(); 
+		this->totalNumIndicies += mesh->getIndicies().size(); 
+	}
 	this->renderObjects.push_back(std::move(newRenderObject)); 
 }
 
@@ -78,8 +82,8 @@ void star::core::RenderSysObj::updateBuffers(uint32_t currentImage) {
 	std::vector<UniformBufferObject> bufferObjects(this->renderObjects.size());
 
 	for (size_t i = 0; i < this->renderObjects.size(); i++) {
-		newBufferObject.modelMatrix = this->renderObjects.at(i)->getGameObject()->getDisplayMatrix(); 
-		newBufferObject.normalMatrix = this->renderObjects.at(i)->getGameObject()->getNormalMatrix(); 
+		newBufferObject.modelMatrix = this->renderObjects.at(i)->getGameObject().getDisplayMatrix(); 
+		newBufferObject.normalMatrix = this->renderObjects.at(i)->getGameObject().getNormalMatrix(); 
 
 		bufferObjects.at(i) = newBufferObject; 
 	}
@@ -96,12 +100,14 @@ void star::core::RenderSysObj::render(vk::CommandBuffer& commandBuffer, int swap
 	int vertexCount = 0; 
 	RenderObject* currRenderObject = nullptr; 
 	for (size_t i = 0; i < this->renderObjects.size(); i++) {
-		currRenderObject = this->renderObjects.at(i).get();
-		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, this->pipelineLayout, 1, 1, &this->renderObjects.at(i)->getDefaultDescriptorSets()->at(swapChainImageIndex), 0, nullptr);
-		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, this->pipelineLayout, 2, 1, &this->renderObjects.at(i)->getStaticDescriptorSet(), 0, nullptr);
-		auto numToDraw = currRenderObject->getNumVerticies(); 
-		commandBuffer.drawIndexed(numToDraw, 1, 0, vertexCount, 0); 
-		vertexCount += currRenderObject->getNumIndicies(); 
+		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, this->pipelineLayout, 1, 1, &this->renderObjects.at(i)->getDefaultDescriptorSets().at(swapChainImageIndex), 0, nullptr);
+		for (auto& meshInfo : this->renderObjects.at(i)->getMeshRenderInfos()) {
+			commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, this->pipelineLayout, 2, 1, &meshInfo->staticDescriptorSet, 0, nullptr);
+
+			auto numToDraw = meshInfo->mesh.getVerticies().size(); 
+			commandBuffer.drawIndexed(numToDraw, 1, 0, vertexCount, 0); 
+			vertexCount += meshInfo->mesh.getVerticies().size(); 
+		}
 	}
 }
 
@@ -124,18 +130,21 @@ void RenderSysObj::createVertexBuffer() {
 
 	//TODO: ensure that more objects can be drawn 
 	common::GameObject* currObject = nullptr;
-	std::vector<common::Vertex>* currObjectVerticies = nullptr; 
 	std::vector<common::Vertex> vertexList(this->totalNumVerticies);
 	size_t vertexCounter = 0;
 
+
 	for (auto& object : this->renderObjects) {
-		//go through all objects in object list and generate the vertex indicies -- only works with 1 object at the moment 
-		currObjectVerticies = object->getGameObject()->getVerticies();
+		const std::vector<std::unique_ptr<common::Mesh>>& currObjectMeshes = object->getGameObject().getMeshes(); 
 
 		//copy verticies from the render object into the total vertex list for the vulkan object
-		for (size_t j = 0; j < currObjectVerticies->size(); j++) {
-			vertexList.at(vertexCounter) = currObjectVerticies->at(j);
-			vertexCounter++;
+		for (size_t i = 0; i < currObjectMeshes.size(); i++) {
+			std::vector<common::Vertex>& verticies = currObjectMeshes.at(i)->getVerticies();
+
+			for (size_t j = 0; j < verticies.size(); j++) {
+				vertexList.at(vertexCounter) = verticies.at(j);
+				vertexCounter++;
+			}
 		}
 	}
 
@@ -188,9 +197,9 @@ void RenderSysObj::createObjectMaterialBuffer() {
 		currObject = this->renderObjects.at(i).get();
 
 		newBufferObject = std::make_unique<MaterialBufferObject>(MaterialBufferObject{
-			currObject->getGameObject()->getMaterial()->surfaceColor,
-			currObject->getGameObject()->getMaterial()->highlightColor,
-			currObject->getGameObject()->getMaterial()->shinyCoefficient}); 
+			currObject->getGameObject().getMaterial()->surfaceColor,
+			currObject->getGameObject().getMaterial()->highlightColor,
+			currObject->getGameObject().getMaterial()->shinyCoefficient}); 
 		stagingBuffer.writeToBuffer(newBufferObject.get(), sizeof(MaterialBufferObject), stagingBuffer.getAlignmentSize() * i);
 	}
 
@@ -210,26 +219,26 @@ void RenderSysObj::createIndexBuffer() {
 
 	//TODO: will only support one object at the moment
 	std::vector<uint32_t> indiciesList(this->totalNumIndicies);
-	std::vector<uint32_t>* currRenderObjectIndicies = nullptr;
 	RenderObject* currRenderObject = nullptr; 
 	common::GameObject* currObject = nullptr;
 	size_t indexCounter = 0; //used to keep track of index offsets 
 
-	for (size_t i = 0; i < this->renderObjects.size(); i++) {
-		currRenderObject = this->renderObjects.at(i).get();
-		currRenderObjectIndicies = currRenderObject->getGameObject()->getIndicies();
+	for (auto& object : this->renderObjects){
+		for (size_t j = 0; j < object->getGameObject().getMeshes().size(); j++) {
+			std::vector<uint32_t>& currRenderObjectIndicies = object->getGameObject().getMeshes().at(j)->getIndicies();
+			
+			for (size_t k = 0; k < currRenderObjectIndicies.size(); k++) {
+				if (j > 0) {
+					//not the first object 
+					//displace the index counter by the number of indicies previously used
+					indiciesList.at(indexCounter) = indexCounter + currRenderObjectIndicies.at(j);
+				}
+				else {
+					indiciesList.at(indexCounter) = indexCounter;
+				}
 
-		for (size_t j = 0; j < currRenderObjectIndicies->size(); j++) {
-			if (i > 0) {
-				//not the first object 
-				//displace the index counter by the number of indicies previously used
-				indiciesList.at(indexCounter) = indexCounter + currRenderObjectIndicies->at(j);
+				indexCounter++;
 			}
-			else {
-				indiciesList.at(indexCounter) = indexCounter;
-			}
-
-			indexCounter++;
 		}
 	}
 
@@ -258,7 +267,7 @@ void RenderSysObj::createIndexBuffer() {
 void RenderSysObj::createDescriptorPool() {
 	//create descriptor pools 
 	this->descriptorPool = StarDescriptorPool::Builder(*this->starDevice)
-		.setMaxSets(this->numSwapChainImages * this->renderObjects.size() + this->renderObjects.size())
+		.setMaxSets(50)																								//allocate large number of descriptor sets 
 		.addPoolSize(vk::DescriptorType::eUniformBuffer, this->numSwapChainImages * this->renderObjects.size())
 		.addPoolSize(vk::DescriptorType::eStorageBuffer, this->numSwapChainImages)
 		.build();
@@ -281,16 +290,17 @@ void RenderSysObj::createStaticDescriptors() {
 			this->objectMaterialBuffer->getAlignmentSize()* i,
 			sizeof(MaterialBufferObject)
 		};
-		imageInfo = vk::DescriptorImageInfo{
-			this->renderObjects.at(i)->getTexture().getSampler(),
-			this->renderObjects.at(i)->getTexture().getImageView(),
-			vk::ImageLayout::eShaderReadOnlyOptimal
-		};
-
-		StarDescriptorWriter(*this->starDevice, *this->staticDescriptorSetLayout, *this->descriptorPool)
-			.writeBuffer(0, &bufferInfo)
-			.writeImage(1, &imageInfo)
-			.build(this->renderObjects.at(i)->getStaticDescriptorSet());
+		for (auto& meshInfo : this->renderObjects.at(i)->getMeshRenderInfos()) {
+			imageInfo = vk::DescriptorImageInfo{
+				meshInfo->starTexture->getSampler(),
+				meshInfo->starTexture->getImageView(),
+				vk::ImageLayout::eShaderReadOnlyOptimal
+			};
+			StarDescriptorWriter(*this->starDevice, *this->staticDescriptorSetLayout, *this->descriptorPool)
+				.writeBuffer(0, &bufferInfo)
+				.writeImage(1, &imageInfo)
+				.build(meshInfo->staticDescriptorSet);
+		}
 	}
 }
 
@@ -316,7 +326,7 @@ void RenderSysObj::createDescriptors() {
 
 			StarDescriptorWriter(*this->starDevice, *this->descriptorSetLayout, *this->descriptorPool)
 				.writeBuffer(0, &bufferInfo)
-				.build(this->renderObjects.at(j)->getDefaultDescriptorSets()->at(i));
+				.build(this->renderObjects.at(j)->getDefaultDescriptorSets().at(i));
 		}
 	}
 }

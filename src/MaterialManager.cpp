@@ -8,7 +8,7 @@ namespace core {
 		defaultHandle.type = common::Handle_Type::material;
 
 		this->addResource(std::move(defaultMaterial), defaultHandle);
-		this->defaultMaterial = this->getResource(defaultHandle); 
+		this->defaultMaterial = &this->getResource(defaultHandle); 
 	}
 
 	common::Handle MaterialManager::add(const glm::vec4& surfaceColor, const glm::vec4& highlightColor, const int& shinyCoefficient) {
@@ -20,7 +20,7 @@ namespace core {
 		return newHandle; 
 	}
 
-	common::Material* MaterialManager::get(const common::Handle& handle) {
+	common::Material& MaterialManager::get(const common::Handle& handle) {
 		return this->getResource(handle); 
 	}
 }

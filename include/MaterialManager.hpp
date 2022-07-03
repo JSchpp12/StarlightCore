@@ -13,7 +13,7 @@ namespace core {
 
 		common::Handle add(const glm::vec4& surfaceColor, const glm::vec4& highlightColor, const int& shinyCoefficient);
 
-		common::Material* get(const common::Handle& handle); 
+		common::Material& get(const common::Handle& handle); 
 
 		common::Material* getDefault() { 
 			if (this->defaultMaterial != nullptr)
@@ -21,11 +21,12 @@ namespace core {
 			throw std::runtime_error("Default material is null");
 		}
 
+		size_t size() { return this->MemoryManager::size(); }
+
 	protected:
 		common::Material* defaultMaterial = nullptr; 
 
 	private:
-
 
 	};
 }

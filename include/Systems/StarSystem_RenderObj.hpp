@@ -65,7 +65,7 @@ namespace star {
 
 			virtual void init(std::vector<vk::DescriptorSetLayout> globalDescriptorSets);
 
-			virtual void registerShader(vk::ShaderStageFlagBits stage, common::Shader* newShader, common::Handle newShaderHandle);
+			virtual void registerShader(vk::ShaderStageFlagBits stage, common::Shader& newShader, common::Handle newShaderHandle);
 
 			/// <summary>
 			/// Add a new rendering object which will be rendered with the pipeline contained in this vulkan object.
