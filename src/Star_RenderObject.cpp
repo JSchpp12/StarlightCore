@@ -28,10 +28,6 @@ namespace core {
 		}
 	}
 
-	void render(vk::CommandBuffer& commandBuffer) {
-
-	}
-
 	common::Handle RenderObject::getHandle() {
 		return this->objectHandle;
 	}

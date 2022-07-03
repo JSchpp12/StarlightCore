@@ -21,13 +21,13 @@ namespace star {
 			
 			vk::ImageView getImageView() { return this->textureImageView; }
 			vk::Sampler getSampler() { return this->textureSampler; }
+
 		private:
 			StarDevice& starDevice;
-			vk::DeviceSize storageBufferOffset;
 			vk::Image textureImage;
-			vk::ImageView textureImageView;
-			vk::Sampler textureSampler;
-			vk::DeviceMemory imageMemory;
+			vk::ImageView textureImageView;				//image view: describe to vulkan how to access an image
+			vk::Sampler textureSampler;					//using sampler to apply filtering or other improvements over raw texel access
+			vk::DeviceMemory imageMemory;				//device memory where image will be stored
 			vk::DescriptorSet descriptorSet; 
 
 			void createTextureImage(common::Texture& texture);

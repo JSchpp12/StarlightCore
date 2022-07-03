@@ -9,7 +9,11 @@ namespace star {
 		}
 
 		StarTexture::~StarTexture() {
+			this->starDevice.getDevice().destroySampler(this->textureSampler);
+			this->starDevice.getDevice().destroyImageView(this->textureImageView);
 			this->starDevice.getDevice().destroyImage(this->textureImage);
+
+			this->starDevice.getDevice().freeMemory(this->imageMemory);
 		}
 
 		void StarTexture::createTextureImage(common::Texture& texture) {
@@ -188,6 +192,7 @@ namespace star {
 			}
 		}
 
+		//TODO: allow for more formats 
 		void StarTexture::createTextureImageView() {
 			this->textureImageView = createImageView(textureImage, vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor);
 		}

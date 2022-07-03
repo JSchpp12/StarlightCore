@@ -50,9 +50,9 @@ namespace core {
 
 		RenderObject(StarDevice& starDevice, common::GameObject& gameObject, std::vector<std::pair<std::reference_wrapper<common::Mesh>, std::reference_wrapper<common::Texture>>> meshInfos,
 			size_t numImages = 0);
-		//~RenderObject(); 
 
-		void render(vk::CommandBuffer& commandBuffer); 
+		//TODO: might want to create render function for each mesh as they get more complicated
+		//void render(vk::CommandBuffer& commandBuffer); 
 		
 		common::Handle getHandle(); 
 		common::GameObject& getGameObject() { return this->gameObject; }
