@@ -8,7 +8,7 @@ namespace core {
 	void RenderSysPointLight::addLight(common::Light* newLight, common::GameObject* linkedObject, size_t numSwapChainImages) {
 		this->lightList.push_back(newLight); 
 
-		this->RenderSysObj::addObject(newLight->getLinkedObjectHandle(), linkedObject, numSwapChainImages);
+		//this->RenderSysObj::addObject(newLight->getLinkedObjectHandle(), linkedObject, numSwapChainImages);
 	}
 
 	void RenderSysPointLight::updateBuffers(uint32_t currentImage) {
@@ -19,8 +19,8 @@ namespace core {
 		auto minAlignmentOfUBOElements = StarBuffer::getAlignment(sizeof(UniformBufferObject), deviceProperties.limits.minUniformBufferOffsetAlignment);
 
 		for (size_t i = 0; i < this->renderObjects.size(); i++) {
-			newBufferObject.modelMatrix = this->renderObjects.at(i)->getGameObject()->getDisplayMatrix();
-			newBufferObject.normalMatrix = this->renderObjects.at(i)->getGameObject()->getNormalMatrix();
+			newBufferObject.modelMatrix = this->renderObjects.at(i)->getGameObject().getDisplayMatrix();
+			newBufferObject.normalMatrix = this->renderObjects.at(i)->getGameObject().getNormalMatrix();
 			newBufferObject.color = this->lightList.at(i)->getColor(); 
 
 			this->uniformBuffers[currentImage]->writeToBuffer(&newBufferObject, sizeof(UniformBufferObject), minAlignmentOfUBOElements * i);
@@ -59,7 +59,7 @@ namespace core {
 
 				StarDescriptorWriter(*this->starDevice, *this->descriptorSetLayout, *this->descriptorPool)
 					.writeBuffer(0, &bufferInfo)
-					.build(this->renderObjects.at(j)->getDefaultDescriptorSets()->at(i));
+					.build(this->renderObjects.at(j)->getDefaultDescriptorSets().at(i));
 			}
 		}
 	}

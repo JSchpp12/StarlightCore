@@ -5,6 +5,14 @@ star::core::ObjectManager::~ObjectManager(){
 
 }
 
+star::common::Handle star::core::ObjectManager::add(std::unique_ptr<common::GameObject> gameObject) {
+	common::Handle newHandle; 
+	newHandle.type = common::Handle_Type::object; 
+
+	this->addResource(std::move(gameObject), newHandle);
+	return newHandle; 
+}
+
 star::common::Handle star::core::ObjectManager::add(const std::string& pathToFile){
     //TODO: verify file type
 	//TODO: have object manager register callbacks for objects -- if needed
@@ -14,46 +22,46 @@ star::common::Handle star::core::ObjectManager::add(const std::string& pathToFil
 	if (!hasBeenLoaded){
 		std::unique_ptr<std::vector<common::Vertex>> readVertexList(new std::vector<common::Vertex>);
 		std::unique_ptr<std::vector<uint32_t>> readIndiciesList(new std::vector<uint32_t>);
-		std::unique_ptr<common::GameObject> newObject(this->create(pathToFile, nullptr)); 
+		//std::unique_ptr<common::GameObject> newObject(this->create(pathToFile, nullptr)); 
 		
 		common::Handle newHandle;
 		newHandle.type = common::Handle_Type::object;
 		//record callbacks for object
-		this->addResource(pathToFile, std::move(newObject), newHandle); 
+		//this->addResource(pathToFile, std::move(newObject), newHandle); 
 		return newHandle; 
 	}else{
 		throw std::runtime_error("This object is already loaded"); 
 	}
 }
 
-star::common::Handle star::core::ObjectManager::Add(const std::string& pathToFile, common::Material* material, glm::vec3 position, glm::vec3 scaleAmt, common::Handle texture, common::Handle vertShader, common::Handle fragShader) {
-	bool hasBeenLoaded = false; 
-	if (!hasBeenLoaded) {
-		std::unique_ptr<std::vector<common::Vertex>> readVertexList(new std::vector<common::Vertex>);
-		std::unique_ptr<std::vector<uint32_t>> readIndiciesList(new std::vector<uint32_t>);
-
-		std::unique_ptr<common::GameObject> newObject(this->create(pathToFile, material, position, scaleAmt, texture, vertShader, fragShader));
-		common::Handle newHandle; 
-		newHandle.type = common::Handle_Type::object; 
-		this->addResource(pathToFile, std::move(newObject), newHandle);
-		return newHandle; 
-	}
-	else {
-		throw std::runtime_error("This object is already loaded"); 
-	}
-}
-
-star::common::Handle star::core::ObjectManager::Add(std::unique_ptr<std::vector<common::Vertex>> verticies, std::unique_ptr<std::vector<uint32_t>> indicies,
-	glm::vec3 position, glm::vec3 scaleAmt, common::Material* material,
-	common::Handle texture, common::Handle vertShader,
-	common::Handle fragShader) {
-
-	std::unique_ptr<common::GameObject> newObject = std::make_unique<common::GameObject>(std::move(verticies), std::move(indicies), position, scaleAmt, material, texture, vertShader, fragShader);
-	common::Handle newHandle; 
-	newHandle.type = common::Handle_Type::object;
-	this->addResource(std::move(newObject), newHandle); 
-	return newHandle; 
-}
+//star::common::Handle star::core::ObjectManager::Add(const std::string& pathToFile, common::Material* material, glm::vec3 position, glm::vec3 scaleAmt, common::Handle texture, common::Handle vertShader, common::Handle fragShader) {
+//	bool hasBeenLoaded = false; 
+//	if (!hasBeenLoaded) {
+//		std::unique_ptr<std::vector<common::Vertex>> readVertexList(new std::vector<common::Vertex>);
+//		std::unique_ptr<std::vector<uint32_t>> readIndiciesList(new std::vector<uint32_t>);
+//
+//		//std::unique_ptr<common::GameObject> newObject(this->create(pathToFile, material, position, scaleAmt, texture, vertShader, fragShader));
+//		common::Handle newHandle; 
+//		newHandle.type = common::Handle_Type::object; 
+//		//this->addResource(pathToFile, std::move(newObject), newHandle);
+//		return newHandle; 
+//	}
+//	else {
+//		throw std::runtime_error("This object is already loaded"); 
+//	}
+//}
+//
+//star::common::Handle star::core::ObjectManager::Add(std::unique_ptr<std::vector<common::Vertex>> verticies, std::unique_ptr<std::vector<uint32_t>> indicies,
+//	glm::vec3 position, glm::vec3 scaleAmt, common::Material* material,
+//	common::Handle texture, common::Handle vertShader,
+//	common::Handle fragShader) {
+//
+//	std::unique_ptr<common::GameObject> newObject = std::make_unique<common::GameObject>(std::move(verticies), std::move(indicies), position, scaleAmt, material, texture, vertShader, fragShader);
+//	common::Handle newHandle; 
+//	newHandle.type = common::Handle_Type::object;
+//	this->addResource(std::move(newObject), newHandle); 
+//	return newHandle; 
+//}
 
 void star::core::ObjectManager::load(const std::string& pathToFile, std::vector<common::Vertex>* vertexList, std::vector<uint32_t>* indiciesList) {
 	/* Load Object From File */
@@ -62,7 +70,10 @@ void star::core::ObjectManager::load(const std::string& pathToFile, std::vector<
 	std::vector<tinyobj::material_t> materials;
 	std::string warn, err;
 
-	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, pathToFile.c_str())) {
+	//get base directory
+	auto baseDir = common::FileHelpers::GetBaseFileDirectory(pathToFile); 
+
+	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, pathToFile.c_str(), baseDir.c_str())) {
 		throw std::runtime_error(warn + err);
 	}
 
@@ -125,12 +136,12 @@ void star::core::ObjectManager::load(const std::string& pathToFile, std::vector<
 	}
 	std::cout << "Loaded: " << pathToFile << std::endl; 
 }
-
-star::common::GameObject* star::core::ObjectManager::create(const std::string& pathToFile, common::Material* material, glm::vec3 position, glm::vec3 scaleAmt, common::Handle texture, common::Handle vertShader, common::Handle fragShader) {
-	std::unique_ptr<std::vector<common::Vertex>> readVertexList(new std::vector<common::Vertex>);
-	std::unique_ptr<std::vector<uint32_t>> readIndiciesList(new std::vector<uint32_t>);
-
-	//load object 
-	this->load(pathToFile, readVertexList.get(), readIndiciesList.get());
-	return new common::GameObject(std::move(readVertexList), std::move(readIndiciesList), position, scaleAmt, material, vertShader, fragShader, texture);
-}
+//
+//star::common::GameObject* star::core::ObjectManager::create(const std::string& pathToFile, common::Material* material, glm::vec3 position, glm::vec3 scaleAmt, common::Handle texture, common::Handle vertShader, common::Handle fragShader) {
+//	std::unique_ptr<std::vector<common::Vertex>> readVertexList(new std::vector<common::Vertex>);
+//	std::unique_ptr<std::vector<uint32_t>> readIndiciesList(new std::vector<uint32_t>);
+//
+//	//load object 
+//	this->load(pathToFile, readVertexList.get(), readIndiciesList.get());
+//	return new common::GameObject(position, scaleAmt, material, vertShader, fragShader, texture);
+//}

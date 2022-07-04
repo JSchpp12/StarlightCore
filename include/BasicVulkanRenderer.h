@@ -183,30 +183,6 @@ namespace star {
             void createFramebuffers();
 
             /// <summary>
-            /// Create an image for use as a texture by vulkan
-            /// </summary>
-            void createTextureImage();
-
-            /// <summary>
-            /// Transition VKimage object from old layout to new layout 
-            /// </summary>
-            /// <param name="image"></param>
-            /// <param name="format"></param>
-            /// <param name="oldLayout"></param>
-            /// <param name="newLayout"></param>
-            void transitionImageLayout(vk::Image image, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout);
-
-            /// <summary>
-            /// Create the image view for the texture image
-            /// </summary>
-            void createTextureImageView();
-
-            /// <summary>
-            /// Create a sampler for the texture image that will be used by the shader to address the colors in the texture.
-            /// </summary>
-            void createTextureSampler();
-
-            /// <summary>
             /// Create a buffer to hold the UBO data for each shader. Create a buffer for each swap chain image
             /// </summary>
             void createRenderingBuffers();

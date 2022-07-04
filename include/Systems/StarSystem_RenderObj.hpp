@@ -65,16 +65,17 @@ namespace star {
 
 			virtual void init(std::vector<vk::DescriptorSetLayout> globalDescriptorSets);
 
-			virtual void registerShader(vk::ShaderStageFlagBits stage, common::Shader* newShader, common::Handle newShaderHandle);
+			virtual void registerShader(vk::ShaderStageFlagBits stage, common::Shader& newShader, common::Handle newShaderHandle);
 
 			/// <summary>
 			/// Add a new rendering object which will be rendered with the pipeline contained in this vulkan object.
 			/// </summary>
 			/// <param name="newObjectHandle"></param>
-			virtual void addObject(common::Handle newObjectHandle, common::GameObject* newObject, size_t numSwapChainImages);
+			//virtual void addObject(common::Handle newObjectHandle, common::GameObject* newObject, size_t numSwapChainImages);
 			/// <summary>
 			/// Register a light color and location for rendering light effects on objects
 			/// </summary>
+			virtual void addObject(std::unique_ptr<RenderObject> newRenderObject);
 			virtual void addLight(common::Light* newLight) { this->lights.push_back(newLight); }
 			/// <summary>
 			/// Check if the object has a shader for the requestd stage
