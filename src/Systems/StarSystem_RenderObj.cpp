@@ -100,14 +100,9 @@ void star::core::RenderSysObj::render(vk::CommandBuffer& commandBuffer, int swap
 	int vertexCount = 0; 
 	RenderObject* currRenderObject = nullptr; 
 	for (size_t i = 0; i < this->renderObjects.size(); i++) {
+		//TODO: move per gameobject binding to the renderObjects class 
 		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, this->pipelineLayout, 1, 1, &this->renderObjects.at(i)->getDefaultDescriptorSets().at(swapChainImageIndex), 0, nullptr);
-		for (auto& meshInfo : this->renderObjects.at(i)->getMeshRenderInfos()) {
-			commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, this->pipelineLayout, 2, 1, &meshInfo->staticDescriptorSet, 0, nullptr);
-
-			auto numToDraw = meshInfo->mesh.getVerticies().size(); 
-			commandBuffer.drawIndexed(numToDraw, 1, 0, vertexCount, 0); 
-			vertexCount += meshInfo->mesh.getVerticies().size(); 
-		}
+		this->renderObjects.at(i)->render(commandBuffer, this->pipelineLayout, swapChainImageIndex); 
 	}
 }
 
@@ -196,10 +191,11 @@ void RenderSysObj::createObjectMaterialBuffer() {
 	for (size_t i = 0; i < this->renderObjects.size(); i++) {
 		currObject = this->renderObjects.at(i).get();
 
+		//TODO: assuming that all meshes have the same material
 		newBufferObject = std::make_unique<MaterialBufferObject>(MaterialBufferObject{
-			currObject->getGameObject().getMaterial()->surfaceColor,
-			currObject->getGameObject().getMaterial()->highlightColor,
-			currObject->getGameObject().getMaterial()->shinyCoefficient}); 
+			currObject->getMeshes().at(0)->getMaterial().getMaterial().surfaceColor,
+			currObject->getMeshes().at(0)->getMaterial().getMaterial().highlightColor,
+			currObject->getMeshes().at(0)->getMaterial().getMaterial().shinyCoefficient });
 		stagingBuffer.writeToBuffer(newBufferObject.get(), sizeof(MaterialBufferObject), stagingBuffer.getAlignmentSize() * i);
 	}
 
@@ -290,17 +286,10 @@ void RenderSysObj::createStaticDescriptors() {
 			this->objectMaterialBuffer->getAlignmentSize()* i,
 			sizeof(MaterialBufferObject)
 		};
-		for (auto& meshInfo : this->renderObjects.at(i)->getMeshRenderInfos()) {
-			imageInfo = vk::DescriptorImageInfo{
-				meshInfo->starTexture->getSampler(),
-				meshInfo->starTexture->getImageView(),
-				vk::ImageLayout::eShaderReadOnlyOptimal
-			};
-			StarDescriptorWriter(*this->starDevice, *this->staticDescriptorSetLayout, *this->descriptorPool)
-				.writeBuffer(0, &bufferInfo)
-				.writeImage(1, &imageInfo)
-				.build(meshInfo->staticDescriptorSet);
-		}
+		StarDescriptorWriter meshDescriptorWriter(*this->starDevice, *this->staticDescriptorSetLayout, *this->descriptorPool);
+		meshDescriptorWriter.writeBuffer(0, &bufferInfo);
+
+		this->renderObjects.at(i)->buildConstantDescriptors(meshDescriptorWriter); 
 	}
 }
 

@@ -1,4 +1,5 @@
 #include "MaterialManager.hpp"
+#include "MaterialManager.hpp"
 
 namespace star {
 namespace core {
@@ -8,7 +9,15 @@ namespace core {
 		defaultHandle.type = common::Handle_Type::material;
 
 		this->addResource(std::move(defaultMaterial), defaultHandle);
-		this->defaultMaterial = &this->getResource(defaultHandle); 
+		this->defaultResource = &this->getResource(defaultHandle); 
+	}
+
+	common::Handle MaterialManager::add(std::unique_ptr<common::Material> newMaterial) {
+		common::Handle newHandle; 
+		newHandle.type = common::Handle_Type::material; 
+
+		this->addResource(std::move(newMaterial), newHandle); 
+		return newHandle; 
 	}
 
 	common::Handle MaterialManager::add(const glm::vec4& surfaceColor, const glm::vec4& highlightColor, const int& shinyCoefficient) {
@@ -17,6 +26,15 @@ namespace core {
 
 		std::unique_ptr<common::Material> newMaterial(new common::Material(surfaceColor, highlightColor, shinyCoefficient)); 
 		this->addResource(std::move(newMaterial), newHandle); 
+		return newHandle; 
+	}
+
+	common::Handle MaterialManager::add(const glm::vec4& surfaceColor, const glm::vec4& highlightColor, const int& shinyCoefficient, common::Handle texture)
+	{
+		common::Handle newHandle; 
+		newHandle.type = common::Handle_Type::material; 
+
+		this->addResource(std::make_unique<common::Material>(surfaceColor, highlightColor, shinyCoefficient, texture), newHandle); 
 		return newHandle; 
 	}
 

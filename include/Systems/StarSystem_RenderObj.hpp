@@ -111,7 +111,7 @@ namespace star {
 			virtual StarDescriptorSetLayout* getSetLayout() { return this->descriptorSetLayout.get(); }
 			virtual StarDescriptorPool* getDescriptorPool() { return this->descriptorPool.get(); }
 			virtual StarBuffer* getBufferAt(int i) { return this->uniformBuffers.at(i).get(); }
-			
+			uint32_t getNumVerticies() { return this->totalNumVerticies; }
 		protected:
 			bool ownerOfSetLayout = true; 
 			StarDevice* starDevice;
@@ -159,7 +159,7 @@ namespace star {
 			/// Create buffers needed for render operations. Such as those used by descriptors
 			/// </summary>
 			virtual void createRenderBuffers(); 
-			virtual void createStaticDescriptors(); 
+			virtual void createStaticDescriptors();
 			/// <summary>
 			/// Create descriptors for binding render buffers to shaders.
 			/// </summary>

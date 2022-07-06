@@ -5,10 +5,10 @@ namespace core {
 
 	RenderSysPointLight::~RenderSysPointLight() {}
 
-	void RenderSysPointLight::addLight(common::Light* newLight, common::GameObject* linkedObject, size_t numSwapChainImages) {
+	void RenderSysPointLight::addLight(common::Light* newLight, std::unique_ptr<RenderObject> linkedRenderObject, size_t numSwapChainImages) {
 		this->lightList.push_back(newLight); 
 
-		//this->RenderSysObj::addObject(newLight->getLinkedObjectHandle(), linkedObject, numSwapChainImages);
+		this->RenderSysObj::addObject(std::move(linkedRenderObject)); 
 	}
 
 	void RenderSysPointLight::updateBuffers(uint32_t currentImage) {
@@ -60,6 +60,31 @@ namespace core {
 				StarDescriptorWriter(*this->starDevice, *this->descriptorSetLayout, *this->descriptorPool)
 					.writeBuffer(0, &bufferInfo)
 					.build(this->renderObjects.at(j)->getDefaultDescriptorSets().at(i));
+			}
+		}
+	}
+
+	void RenderSysPointLight::createStaticDescriptors() {
+		this->staticDescriptorSetLayout = StarDescriptorSetLayout::Builder(*this->starDevice)
+			.addBinding(0, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eAllGraphics)
+			.build();
+
+		//create descritptor sets 
+		vk::DescriptorBufferInfo bufferInfo{};
+		vk::DescriptorImageInfo imageInfo{};
+		auto test = this->objectMaterialBuffer->getAlignmentSize();
+
+		for (int i = 0; i < this->renderObjects.size(); i++) {
+			bufferInfo = vk::DescriptorBufferInfo{
+				this->objectMaterialBuffer->getBuffer(),
+				this->objectMaterialBuffer->getAlignmentSize() * i,
+				sizeof(MaterialBufferObject)
+			};
+			//todo: move this creation to the renderObject class since this is PER OBJECT 
+			for (auto& meshInfo : this->renderObjects.at(i)->getMeshes()) {
+				StarDescriptorWriter(*this->starDevice, *this->staticDescriptorSetLayout, *this->descriptorPool)
+					.writeBuffer(0, &bufferInfo)
+					.build(meshInfo->getDescriptor());
 			}
 		}
 	}

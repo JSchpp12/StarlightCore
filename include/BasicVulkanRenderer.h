@@ -9,12 +9,21 @@
 #include "SC/Camera.hpp"
 #include "SC/Enums.h"
 #include "SC/Light.hpp"
+#include "SC/MemoryManager.hpp"
+//managers
+#include "MaterialManager.hpp"
+#include "TextureManager.h"
+//vulkan wrappers
 #include "VulkanVertex.hpp"
 #include "Star_Descriptors.hpp"
 #include "Star_Device.hpp"
 #include "Star_Buffer.hpp"
-#include "StarSystem_RenderObj.hpp"
+#include "Star_RenderMesh.hpp"
+#include "Star_RenderMaterial.hpp"
+
+//render systems
 #include "StarSystem_RenderPointLight.hpp"
+#include "StarSystem_RenderObj.hpp"
 
 #include <stb_image.h>
 
@@ -32,9 +41,9 @@ namespace star {
             std::unique_ptr<const char**> glfwRequiredExtensions;
             std::unique_ptr<uint32_t> glfwRequiredExtensionsCount;
 
-            VulkanRenderer(common::ConfigFile* configFile, common::FileResourceManager<common::Shader>* shaderManager, common::FileResourceManager<common::GameObject>* objectManager,
-                common::FileResourceManager<common::Texture>* textureManager, common::Camera* inCamera,
-                std::vector<common::Handle>* objectHandleList, std::vector<common::Light*>& listHandleList,
+            VulkanRenderer(common::ConfigFile& configFile, common::FileResourceManager<common::Shader>& shaderManager, common::FileResourceManager<common::GameObject>& objectManager,
+               TextureManager& textureManager, MaterialManager& materialManager, common::Camera& inCamera,
+                std::vector<common::Handle>& objectHandleList, std::vector<common::Light*>& listHandleList,
                 StarWindow& window);
 
             ~VulkanRenderer();
@@ -48,6 +57,9 @@ namespace star {
             void cleanup();
 
         protected:
+            MaterialManager& materialManager; 
+            TextureManager& textureManager; 
+            
             std::unique_ptr<StarDevice> starDevice{};
 
             std::vector<common::Light*> pointLights;

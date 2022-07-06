@@ -6,6 +6,7 @@
 #include "SC/Mesh.hpp"
 #include "Star_Texture.hpp"
 #include "Star_Device.hpp"
+#include "Star_RenderMesh.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -17,18 +18,11 @@ namespace star {
 namespace core {
 	class RenderObject {
 	public:
-		struct MeshRenderInfo {
-			common::Mesh& mesh;
-			std::unique_ptr<StarTexture> starTexture;
-			vk::DescriptorSet staticDescriptorSet;			//descriptor set to contain descrptors for ubo and texture for draw
-		};
-
 		//eventually use for adding new buffers and shader data to the object which will be queried before draw time
 		class Builder {
 		public:
-			Builder(StarDevice& starDevice, common::GameObject& gameObject) 
-				: starDevice(starDevice), gameObject(gameObject) { }
-			Builder& addMesh(common::Mesh& mesh, common::Texture& texture); 
+			Builder(StarDevice& starDevice, common::GameObject& gameObject);
+			Builder& addMesh(std::unique_ptr<RenderMesh> renderMesh); 
 
 			/// <summary>
 			/// Record the number of images in the swapchain. This will be used to resize the descriptor bindings. 
@@ -45,11 +39,20 @@ namespace core {
 			StarDevice& starDevice; 
 			common::GameObject& gameObject; 
 			size_t numSwapChainImages; 
-			std::vector<std::pair<std::reference_wrapper<common::Mesh>, std::reference_wrapper<common::Texture>>> meshInfos; 
+			std::vector<std::unique_ptr<RenderMesh>> meshes; 
 		};
 
-		RenderObject(StarDevice& starDevice, common::GameObject& gameObject, std::vector<std::pair<std::reference_wrapper<common::Mesh>, std::reference_wrapper<common::Texture>>> meshInfos,
-			size_t numImages = 0);
+		RenderObject(StarDevice& starDevice, common::GameObject& gameObject, std::vector<std::unique_ptr<RenderMesh>> meshes,
+			size_t numImages = 0) : starDevice(starDevice), objectHandle(objectHandle), meshes(std::move(meshes)),
+			gameObject(gameObject), uboDescriptorSets(numImages) { }
+
+		void render(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainIndexNum); 
+
+		/// <summary>
+		/// Build descriptors which will only be written to once during renderer init
+		/// </summary>
+		/// <param name="descriptorWriter">Descriptor writer to use when creating new descriptors</param>
+		void buildConstantDescriptors(StarDescriptorWriter& descriptorWriter);
 
 		//TODO: might want to create render function for each mesh as they get more complicated
 		//void render(vk::CommandBuffer& commandBuffer); 
@@ -57,19 +60,18 @@ namespace core {
 		common::Handle getHandle(); 
 		common::GameObject& getGameObject() { return this->gameObject; }
 		std::vector<vk::DescriptorSet>& getDefaultDescriptorSets(); 
-		const std::vector<std::unique_ptr<MeshRenderInfo>>& getMeshRenderInfos() { return this->meshRenderInfos; }
-
+		//TODO: remove this
+		const std::vector<std::unique_ptr<RenderMesh>>& getMeshes() { return this->meshes; }
 	protected:
 
 
 	private: 
-
 		StarDevice& starDevice; 
 		common::GameObject& gameObject; 
 		//TODO: I would like to make the descriptor sets a unique_ptr
 		common::Handle objectHandle;
 		std::vector<vk::DescriptorSet> uboDescriptorSets;
-		std::vector<std::unique_ptr<MeshRenderInfo>> meshRenderInfos; 
+		std::vector<std::unique_ptr<RenderMesh>> meshes; 
 
 	};
 }

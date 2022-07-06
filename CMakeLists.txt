@@ -72,6 +72,8 @@ SET(${PROJECT_NAME}_SOURCES
 	"src/Star_Pipeline.cpp"
 	"src/Star_Window.cpp"
 	"src/Star_Swapchain.cpp"
+	"src/Star_RenderMesh.cpp"
+	"src/Star_RenderMaterial.cpp"
 	#rendering sytems
 	"src/Systems/StarSystem_RenderObj.cpp"
 	"src/Systems/StarSystem_RenderPointLight.cpp"
@@ -93,15 +95,18 @@ SET(${PROJECT_NAME}_HEADERS
 	"include/Windowing.h"
 	"include/MemoryDescriptor.h"
 	"include/BasicVulkanRenderer.h"
+	"include/RenderMaterial"
 	#composite files
 	"include/Star_Descriptors.hpp"
 	"include/Star_Texture.hpp"
 	"include/Star_RenderObject.hpp"
+	"include/Star_RenderMesh.hpp"
 	"include/Star_Buffer.hpp"
 	"include/Star_Device.hpp"
 	"include/Star_Pipeline.hpp"
 	"include/Star_Window.hpp"
 	"include/Star_Swapchain.hpp"
+	"include/Star_RenderMaterial.hpp"
 	#rendering systems 
 	"include/Systems/StarSystem_RenderObj.hpp"
 	"include/Systems/RenderPointLight.hpp"
