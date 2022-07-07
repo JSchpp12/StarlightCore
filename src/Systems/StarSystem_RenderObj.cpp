@@ -1,7 +1,6 @@
 #include "StarSystem_RenderObj.hpp"
 
-namespace star {
-namespace core {
+namespace star::core{
 
 RenderSysObj::~RenderSysObj() {
 	if (this->ownerOfSetLayout)
@@ -471,6 +470,5 @@ void RenderSysObj::createPipeline() {
 	config.renderPass = this->renderPass;
 
 	this->starPipeline = std::make_unique<StarPipeline>(this->starDevice, this->vertShader, this->fragShader, config);
-}
 }
 }
