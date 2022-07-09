@@ -2,12 +2,14 @@
 
 #include "SC/Light.hpp"
 #include "StarSystem_RenderObj.hpp"
+#include "Star_RenderObject.hpp"
+#include "Star_RenderObject.hpp"
 
 #include <iostream>
 #include <vector>
+#include <memory>
 
-namespace star {
-namespace core {
+namespace star::core{
 	class RenderSysPointLight : private RenderSysObj{
 	public:
 		struct UniformBufferObject{
@@ -26,7 +28,7 @@ namespace core {
 
 		virtual void init(std::vector<vk::DescriptorSetLayout> globalSets) override { this->RenderSysObj::init(globalSets); }
 
-		virtual void addLight(common::Light* newLight, common::GameObject* linkedObject, size_t numSwapChainImages);
+		virtual void addLight(common::Light* newLight, std::unique_ptr<RenderObject> linkedRenderObject, size_t numSwapChainImages);
 
 		virtual void registerShader(vk::ShaderStageFlagBits stage, common::Shader& newShader, common::Handle newShaderHandle) override {
 			this->RenderSysObj::registerShader(stage, newShader, newShaderHandle);
@@ -50,6 +52,7 @@ namespace core {
 
 		virtual void createDescriptors() override; 
 
+		virtual void createStaticDescriptors() override; 
+
 	};
-}
 }

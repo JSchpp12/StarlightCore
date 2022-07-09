@@ -58,10 +58,10 @@ namespace star {
 				starDevice(device), numSwapChainImages(numSwapChainImages), 
 				globalSetLayout(globalSetLayout), swapChainExtent(swapChainExtent),
 				renderPass(renderPass) {};
-			virtual ~RenderSysObj();
 
-			//no copy
-			RenderSysObj(const RenderSysObj&) = delete;
+			RenderSysObj(const RenderSysObj& baseObject); 
+
+			virtual ~RenderSysObj();
 
 			virtual void init(std::vector<vk::DescriptorSetLayout> globalDescriptorSets);
 
@@ -111,7 +111,7 @@ namespace star {
 			virtual StarDescriptorSetLayout* getSetLayout() { return this->descriptorSetLayout.get(); }
 			virtual StarDescriptorPool* getDescriptorPool() { return this->descriptorPool.get(); }
 			virtual StarBuffer* getBufferAt(int i) { return this->uniformBuffers.at(i).get(); }
-			
+			uint32_t getNumVerticies() { return this->totalNumVerticies; }
 		protected:
 			bool ownerOfSetLayout = true; 
 			StarDevice* starDevice;
@@ -153,13 +153,12 @@ namespace star {
 			virtual void createIndexBuffer();
 
 			virtual void createDescriptorPool(); 
-
-			virtual void createObjectMaterialBuffer();
 			/// <summary>
 			/// Create buffers needed for render operations. Such as those used by descriptors
 			/// </summary>
-			virtual void createRenderBuffers(); 
-			virtual void createStaticDescriptors(); 
+			virtual void createRenderBuffers();
+			virtual void createObjectMaterialBuffer();
+			virtual void createStaticDescriptors();
 			/// <summary>
 			/// Create descriptors for binding render buffers to shaders.
 			/// </summary>

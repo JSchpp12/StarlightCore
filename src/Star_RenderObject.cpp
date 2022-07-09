@@ -2,29 +2,35 @@
 
 namespace star{
 namespace core {
+#pragma region Builder
+	RenderObject::Builder::Builder(StarDevice& starDevice, common::GameObject& gameObject)
+		: starDevice(starDevice), gameObject(gameObject) {
+	}
 	RenderObject::Builder& RenderObject::Builder::setNumFrames(size_t numImages) {
 		this->numSwapChainImages = numImages; 
 		return *this; 
 	}
-
-	RenderObject::Builder& RenderObject::Builder::addMesh(common::Mesh& mesh, common::Texture& texture) {
-		this->meshInfos.push_back(std::make_pair<std::reference_wrapper<common::Mesh>, std::reference_wrapper<common::Texture>>(mesh, texture)); 
+	RenderObject::Builder& RenderObject::Builder::addMesh(std::unique_ptr<RenderMesh> renderMesh) {
+		this->meshes.push_back(std::move(renderMesh)); 
 		return *this; 
 	}
-
 	std::unique_ptr<RenderObject> RenderObject::Builder::build() {
-		return std::make_unique<RenderObject>(this->starDevice, this->gameObject, this->meshInfos, this->numSwapChainImages); 
+		assert(this->meshes.size() != 0 && "At least one mesh must be assigned to a render object");
+		assert(this->numSwapChainImages > 0 && "Number of swap chain images must be set");
+
+		return std::make_unique<RenderObject>(this->starDevice, this->gameObject, std::move(this->meshes), this->numSwapChainImages); 
+	}
+#pragma endregion 
+
+	void RenderObject::render(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainIndexNum) {
+		for (auto& mesh : this->meshes) {
+			mesh->render(commandBuffer, pipelineLayout, swapChainIndexNum);
+		}
 	}
 
-	RenderObject::RenderObject(StarDevice& starDevice, common::GameObject& gameObject, std::vector<std::pair<std::reference_wrapper<common::Mesh>, std::reference_wrapper<common::Texture>>> meshInfos,
-		size_t numImages) 
-		: starDevice(starDevice), objectHandle(objectHandle),
-		gameObject(gameObject), uboDescriptorSets(numImages) {
-		//create a texture for each mesh
-		this->meshRenderInfos.resize(meshInfos.size());
-		for (size_t i = 0; i < meshInfos.size(); i++) {
-			auto& info = meshInfos.at(i); 
-			this->meshRenderInfos.at(i) = std::make_unique<MeshRenderInfo>(info.first, std::make_unique<StarTexture>(this->starDevice, info.second));
+	void RenderObject::buildConstantDescriptors(StarDescriptorWriter& descriptorWriter) {
+		for (auto& mesh : this->meshes) {
+			mesh->buildConstantDescriptors(descriptorWriter); 
 		}
 	}
 

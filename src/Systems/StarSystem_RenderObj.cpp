@@ -1,7 +1,6 @@
 #include "StarSystem_RenderObj.hpp"
 
-namespace star {
-namespace core {
+namespace star::core{
 
 RenderSysObj::~RenderSysObj() {
 	if (this->ownerOfSetLayout)
@@ -100,14 +99,9 @@ void star::core::RenderSysObj::render(vk::CommandBuffer& commandBuffer, int swap
 	int vertexCount = 0; 
 	RenderObject* currRenderObject = nullptr; 
 	for (size_t i = 0; i < this->renderObjects.size(); i++) {
+		//TODO: move per gameobject binding to the renderObjects class 
 		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, this->pipelineLayout, 1, 1, &this->renderObjects.at(i)->getDefaultDescriptorSets().at(swapChainImageIndex), 0, nullptr);
-		for (auto& meshInfo : this->renderObjects.at(i)->getMeshRenderInfos()) {
-			commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, this->pipelineLayout, 2, 1, &meshInfo->staticDescriptorSet, 0, nullptr);
-
-			auto numToDraw = meshInfo->mesh.getVerticies().size(); 
-			commandBuffer.drawIndexed(numToDraw, 1, 0, vertexCount, 0); 
-			vertexCount += meshInfo->mesh.getVerticies().size(); 
-		}
+		this->renderObjects.at(i)->render(commandBuffer, this->pipelineLayout, swapChainImageIndex); 
 	}
 }
 
@@ -172,6 +166,17 @@ void RenderSysObj::createVertexBuffer() {
 	this->starDevice->copyBuffer(stagingBuffer.getBuffer(), this->vertexBuffer->getBuffer(), bufferSize); 
 }
 
+void RenderSysObj::createRenderBuffers() {
+	this->uniformBuffers.resize(this->numSwapChainImages);
+
+	auto minUniformSize = this->starDevice->getPhysicalDevice().getProperties().limits.minUniformBufferOffsetAlignment;
+	for (size_t i = 0; i < numSwapChainImages; i++) {
+		this->uniformBuffers[i] = std::make_unique<StarBuffer>(*this->starDevice, this->renderObjects.size(), sizeof(UniformBufferObject),
+			vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, minUniformSize);
+		this->uniformBuffers[i]->map();
+	}
+}
+
 void RenderSysObj::createObjectMaterialBuffer() {
 	std::unique_ptr<MaterialBufferObject> newBufferObject;
 	std::vector<MaterialBufferObject> bufferInfo(this->renderObjects.size());
@@ -196,10 +201,11 @@ void RenderSysObj::createObjectMaterialBuffer() {
 	for (size_t i = 0; i < this->renderObjects.size(); i++) {
 		currObject = this->renderObjects.at(i).get();
 
+		//TODO: assuming that all meshes have the same material
 		newBufferObject = std::make_unique<MaterialBufferObject>(MaterialBufferObject{
-			currObject->getGameObject().getMaterial()->surfaceColor,
-			currObject->getGameObject().getMaterial()->highlightColor,
-			currObject->getGameObject().getMaterial()->shinyCoefficient}); 
+			currObject->getMeshes().at(0)->getMaterial().getMaterial().surfaceColor,
+			currObject->getMeshes().at(0)->getMaterial().getMaterial().highlightColor,
+			currObject->getMeshes().at(0)->getMaterial().getMaterial().shinyCoefficient });
 		stagingBuffer.writeToBuffer(newBufferObject.get(), sizeof(MaterialBufferObject), stagingBuffer.getAlignmentSize() * i);
 	}
 
@@ -213,6 +219,7 @@ void RenderSysObj::createObjectMaterialBuffer() {
 
 	this->starDevice->copyBuffer(stagingBuffer.getBuffer(), this->objectMaterialBuffer->getBuffer(), stagingBuffer.getBufferSize());
 }
+
 
 void RenderSysObj::createIndexBuffer() {
 	vk::DeviceSize bufferSize;
@@ -274,15 +281,16 @@ void RenderSysObj::createDescriptorPool() {
 }
 
 void RenderSysObj::createStaticDescriptors() {
-	this->staticDescriptorSetLayout = StarDescriptorSetLayout::Builder(*this->starDevice)
+		this->staticDescriptorSetLayout = StarDescriptorSetLayout::Builder(*this->starDevice)
 		.addBinding(0, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eAllGraphics)
 		.addBinding(1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
 		.build();
-
+		
 	//create descritptor sets 
 	vk::DescriptorBufferInfo bufferInfo{};
 	vk::DescriptorImageInfo imageInfo{}; 
 	auto test = this->objectMaterialBuffer->getAlignmentSize(); 
+
 
 	for (int i = 0; i < this->renderObjects.size(); i++) {
 		bufferInfo = vk::DescriptorBufferInfo{
@@ -290,17 +298,10 @@ void RenderSysObj::createStaticDescriptors() {
 			this->objectMaterialBuffer->getAlignmentSize()* i,
 			sizeof(MaterialBufferObject)
 		};
-		for (auto& meshInfo : this->renderObjects.at(i)->getMeshRenderInfos()) {
-			imageInfo = vk::DescriptorImageInfo{
-				meshInfo->starTexture->getSampler(),
-				meshInfo->starTexture->getImageView(),
-				vk::ImageLayout::eShaderReadOnlyOptimal
-			};
-			StarDescriptorWriter(*this->starDevice, *this->staticDescriptorSetLayout, *this->descriptorPool)
-				.writeBuffer(0, &bufferInfo)
-				.writeImage(1, &imageInfo)
-				.build(meshInfo->staticDescriptorSet);
-		}
+		StarDescriptorWriter meshDescriptorWriter(*this->starDevice, *this->staticDescriptorSetLayout, *this->descriptorPool);
+		meshDescriptorWriter.writeBuffer(0, &bufferInfo);
+
+		this->renderObjects.at(i)->buildConstantDescriptors(meshDescriptorWriter); 
 	}
 }
 
@@ -328,17 +329,6 @@ void RenderSysObj::createDescriptors() {
 				.writeBuffer(0, &bufferInfo)
 				.build(this->renderObjects.at(j)->getDefaultDescriptorSets().at(i));
 		}
-	}
-}
-
-void RenderSysObj::createRenderBuffers() {
-	this->uniformBuffers.resize(this->numSwapChainImages);
-
-	auto minUniformSize = this->starDevice->getPhysicalDevice().getProperties().limits.minUniformBufferOffsetAlignment;
-	for (size_t i = 0; i < numSwapChainImages; i++) {
-		this->uniformBuffers[i] = std::make_unique<StarBuffer>(*this->starDevice, this->renderObjects.size(), sizeof(UniformBufferObject), 
-			vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, minUniformSize);
-		this->uniformBuffers[i]->map();
 	}
 }
 
@@ -482,6 +472,5 @@ void RenderSysObj::createPipeline() {
 	config.renderPass = this->renderPass;
 
 	this->starPipeline = std::make_unique<StarPipeline>(this->starDevice, this->vertShader, this->fragShader, config);
-}
 }
 }

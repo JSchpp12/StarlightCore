@@ -55,6 +55,7 @@ namespace core {
 			createInfo.enabledLayerCount = 0;
 		}
 
+
 		/*
 		All vulkan objects follow this pattern of creation :
 		1.pointer to a struct with creation info
@@ -508,7 +509,5 @@ namespace core {
 
 		return details;
 	}
-
-
 }
 }
