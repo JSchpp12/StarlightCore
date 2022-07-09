@@ -12,6 +12,8 @@ namespace star{
     namespace core{
         class TextureManager : public common::FileResourceManager<common::Texture> {
         public: 
+            TextureManager(const std::string& pathToDefault); 
+
             ~TextureManager(); 
             
             common::Handle add(const std::string& pathToFile); 

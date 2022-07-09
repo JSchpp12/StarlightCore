@@ -118,9 +118,7 @@ namespace core {
 		this->starDevice.getDevice().resetDescriptorPool(this->descriptorPool);
 	}
 
-
 	/* Descriptor Writer */
-
 
 	StarDescriptorWriter::StarDescriptorWriter(StarDevice& device, StarDescriptorSetLayout& setLayout, StarDescriptorPool& pool) :
 		starDevice(device),

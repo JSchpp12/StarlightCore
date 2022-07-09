@@ -166,6 +166,17 @@ void RenderSysObj::createVertexBuffer() {
 	this->starDevice->copyBuffer(stagingBuffer.getBuffer(), this->vertexBuffer->getBuffer(), bufferSize); 
 }
 
+void RenderSysObj::createRenderBuffers() {
+	this->uniformBuffers.resize(this->numSwapChainImages);
+
+	auto minUniformSize = this->starDevice->getPhysicalDevice().getProperties().limits.minUniformBufferOffsetAlignment;
+	for (size_t i = 0; i < numSwapChainImages; i++) {
+		this->uniformBuffers[i] = std::make_unique<StarBuffer>(*this->starDevice, this->renderObjects.size(), sizeof(UniformBufferObject),
+			vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, minUniformSize);
+		this->uniformBuffers[i]->map();
+	}
+}
+
 void RenderSysObj::createObjectMaterialBuffer() {
 	std::unique_ptr<MaterialBufferObject> newBufferObject;
 	std::vector<MaterialBufferObject> bufferInfo(this->renderObjects.size());
@@ -208,6 +219,7 @@ void RenderSysObj::createObjectMaterialBuffer() {
 
 	this->starDevice->copyBuffer(stagingBuffer.getBuffer(), this->objectMaterialBuffer->getBuffer(), stagingBuffer.getBufferSize());
 }
+
 
 void RenderSysObj::createIndexBuffer() {
 	vk::DeviceSize bufferSize;
@@ -269,15 +281,16 @@ void RenderSysObj::createDescriptorPool() {
 }
 
 void RenderSysObj::createStaticDescriptors() {
-	this->staticDescriptorSetLayout = StarDescriptorSetLayout::Builder(*this->starDevice)
+		this->staticDescriptorSetLayout = StarDescriptorSetLayout::Builder(*this->starDevice)
 		.addBinding(0, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eAllGraphics)
 		.addBinding(1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
 		.build();
-
+		
 	//create descritptor sets 
 	vk::DescriptorBufferInfo bufferInfo{};
 	vk::DescriptorImageInfo imageInfo{}; 
 	auto test = this->objectMaterialBuffer->getAlignmentSize(); 
+
 
 	for (int i = 0; i < this->renderObjects.size(); i++) {
 		bufferInfo = vk::DescriptorBufferInfo{
@@ -316,17 +329,6 @@ void RenderSysObj::createDescriptors() {
 				.writeBuffer(0, &bufferInfo)
 				.build(this->renderObjects.at(j)->getDefaultDescriptorSets().at(i));
 		}
-	}
-}
-
-void RenderSysObj::createRenderBuffers() {
-	this->uniformBuffers.resize(this->numSwapChainImages);
-
-	auto minUniformSize = this->starDevice->getPhysicalDevice().getProperties().limits.minUniformBufferOffsetAlignment;
-	for (size_t i = 0; i < numSwapChainImages; i++) {
-		this->uniformBuffers[i] = std::make_unique<StarBuffer>(*this->starDevice, this->renderObjects.size(), sizeof(UniformBufferObject), 
-			vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, minUniformSize);
-		this->uniformBuffers[i]->map();
 	}
 }
 

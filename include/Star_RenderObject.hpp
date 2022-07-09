@@ -14,8 +14,7 @@
 #include <vector>
 #include <string>
 
-namespace star {
-namespace core {
+namespace star::core{
 	class RenderObject {
 	public:
 		//eventually use for adding new buffers and shader data to the object which will be queried before draw time
@@ -74,5 +73,4 @@ namespace core {
 		std::vector<std::unique_ptr<RenderMesh>> meshes; 
 
 	};
-}
 }

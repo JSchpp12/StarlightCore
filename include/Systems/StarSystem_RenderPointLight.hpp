@@ -9,8 +9,7 @@
 #include <vector>
 #include <memory>
 
-namespace star {
-namespace core {
+namespace star::core{
 	class RenderSysPointLight : private RenderSysObj{
 	public:
 		struct UniformBufferObject{
@@ -56,5 +55,4 @@ namespace core {
 		virtual void createStaticDescriptors() override; 
 
 	};
-}
 }

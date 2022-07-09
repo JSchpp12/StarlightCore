@@ -1,14 +1,12 @@
 #include "StarSystem_RenderPointLight.hpp"
 
-namespace star {
-namespace core {
-
+namespace star::core {
 	RenderSysPointLight::~RenderSysPointLight() {}
 
 	void RenderSysPointLight::addLight(common::Light* newLight, std::unique_ptr<RenderObject> linkedRenderObject, size_t numSwapChainImages) {
-		this->lightList.push_back(newLight); 
+		this->lightList.push_back(newLight);
 
-		this->RenderSysObj::addObject(std::move(linkedRenderObject)); 
+		this->RenderSysObj::addObject(std::move(linkedRenderObject));
 	}
 
 	void RenderSysPointLight::updateBuffers(uint32_t currentImage) {
@@ -21,7 +19,7 @@ namespace core {
 		for (size_t i = 0; i < this->renderObjects.size(); i++) {
 			newBufferObject.modelMatrix = this->renderObjects.at(i)->getGameObject().getDisplayMatrix();
 			newBufferObject.normalMatrix = this->renderObjects.at(i)->getGameObject().getNormalMatrix();
-			newBufferObject.color = this->lightList.at(i)->getColor(); 
+			newBufferObject.color = this->lightList.at(i)->getColor();
 
 			this->uniformBuffers[currentImage]->writeToBuffer(&newBufferObject, sizeof(UniformBufferObject), minAlignmentOfUBOElements * i);
 		}
@@ -29,7 +27,7 @@ namespace core {
 
 	void RenderSysPointLight::createRenderBuffers() {
 		this->uniformBuffers.resize(this->numSwapChainImages);
-		auto test = sizeof(UniformBufferObject); 
+		auto test = sizeof(UniformBufferObject);
 		auto minUniformSize = this->starDevice->getPhysicalDevice().getProperties().limits.minUniformBufferOffsetAlignment;
 		for (size_t i = 0; i < numSwapChainImages; i++) {
 			this->uniformBuffers[i] = std::make_unique<StarBuffer>(*this->starDevice, this->renderObjects.size(), sizeof(UniformBufferObject),
@@ -42,7 +40,7 @@ namespace core {
 		this->descriptorSetLayout = StarDescriptorSetLayout::Builder(*this->starDevice)
 			.addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
 			.build();
-
+			
 		auto deviceProperties = this->starDevice->getPhysicalDevice().getProperties();
 		auto minAlignmentOfUBOElements = StarBuffer::getAlignment(sizeof(UniformBufferObject), deviceProperties.limits.minUniformBufferOffsetAlignment);
 
@@ -67,6 +65,7 @@ namespace core {
 	void RenderSysPointLight::createStaticDescriptors() {
 		this->staticDescriptorSetLayout = StarDescriptorSetLayout::Builder(*this->starDevice)
 			.addBinding(0, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eAllGraphics)
+			.addBinding(1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
 			.build();
 
 		//create descritptor sets 
@@ -88,5 +87,4 @@ namespace core {
 			}
 		}
 	}
-}
 }
