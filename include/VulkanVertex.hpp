@@ -39,8 +39,8 @@ namespace star{
             /// </summary>
             /// <returns>Array containing attribute descriptions</returns>
 
-            static std::array<vk::VertexInputAttributeDescription, 4> getAttributeDescriptions() {
-                std::array<vk::VertexInputAttributeDescription, 4> attributeDescriptions{};
+            static std::array<vk::VertexInputAttributeDescription, 8> getAttributeDescriptions() {
+                std::array<vk::VertexInputAttributeDescription, 8> attributeDescriptions{};
 
                 /* Struct */
                     //1. binding - which binding the per-vertex data comes in 
@@ -80,6 +80,26 @@ namespace star{
                 attributeDescriptions[3].format = vk::Format::eR32G32Sfloat; 
                 attributeDescriptions[3].offset = offsetof(common::Vertex, texCoord); 
 
+                //material bindings 
+                attributeDescriptions[4].binding = 0;
+                attributeDescriptions[4].location = 4;
+                attributeDescriptions[4].format = vk::Format::eR32G32B32Sfloat; 
+                attributeDescriptions[4].offset = offsetof(common::Vertex, matAmbient);
+
+                attributeDescriptions[5].binding = 0;
+                attributeDescriptions[5].location = 5;
+                attributeDescriptions[5].format = vk::Format::eR32G32B32Sfloat;
+                attributeDescriptions[5].offset = offsetof(common::Vertex, matDiffuse);
+
+                attributeDescriptions[6].binding = 0;
+                attributeDescriptions[6].location = 6;
+                attributeDescriptions[6].format = vk::Format::eR32G32B32Sfloat;
+                attributeDescriptions[6].offset = offsetof(common::Vertex, matDiffuse);
+
+                attributeDescriptions[7].binding = 0;
+                attributeDescriptions[7].location = 7;
+                attributeDescriptions[7].format = vk::Format::eR32Sfloat;
+                attributeDescriptions[7].offset = offsetof(common::Vertex, matShininess);
                 return attributeDescriptions;
             }
         };
