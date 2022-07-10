@@ -1,8 +1,6 @@
 #include "MaterialManager.hpp"
-#include "MaterialManager.hpp"
 
-namespace star {
-namespace core {
+namespace star::core{
 	MaterialManager::MaterialManager(const glm::vec4& surfaceColor, const glm::vec4& highlightColor, const int& shinyCoefficient) {
 		std::unique_ptr<common::Material> defaultMaterial(new common::Material(surfaceColor, highlightColor, shinyCoefficient)); 
 		common::Handle defaultHandle;
@@ -41,5 +39,4 @@ namespace core {
 	common::Material& MaterialManager::get(const common::Handle& handle) {
 		return this->getResource(handle); 
 	}
-}
 }

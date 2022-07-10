@@ -7,8 +7,7 @@
 
 #include <memory>
 
-namespace star {
-namespace core {
+namespace star::core{
 	class MaterialManager : public common::MemoryManager<common::Material>{
 	public:
 		MaterialManager(const glm::vec4& surfaceColor, const glm::vec4& highlightColor, const int& shinyCoefficient); 
@@ -28,5 +27,4 @@ namespace core {
 	private:
 
 	};
-}
 }
