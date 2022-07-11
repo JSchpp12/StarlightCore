@@ -1,8 +1,12 @@
 #include "MaterialManager.hpp"
 
 namespace star::core{
-	MaterialManager::MaterialManager(const glm::vec4& surfaceColor, const glm::vec4& highlightColor, const int& shinyCoefficient) {
-		std::unique_ptr<common::Material> defaultMaterial(new common::Material(surfaceColor, highlightColor, shinyCoefficient)); 
+	MaterialManager::MaterialManager(std::unique_ptr<common::Material> defaultMaterial) {
+		std::unique_ptr<common::Material> defaultMaterial;
+		defaultMaterial->highlightColor = highlightColor; 
+		defaultMaterial->shinyCoefficient = shinyCoefficient; 
+		defaultMaterial->ambient = ;
+		defaultMaterial->diffuse = ; 
 		common::Handle defaultHandle;
 		defaultHandle.type = common::Handle_Type::material;
 
