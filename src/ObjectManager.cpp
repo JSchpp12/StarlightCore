@@ -1,15 +1,6 @@
 #include "ObjectManager.hpp"
 
 namespace star::core {
-
-	star::common::Handle ObjectManager::add(std::unique_ptr<common::GameObject> gameObject) {
-		common::Handle newHandle;
-		newHandle.type = common::Handle_Type::object;
-
-		this->addResource(std::move(gameObject), newHandle);
-		return newHandle;
-	}
-
 	star::common::Handle ObjectManager::add(const std::string& pathToFile) {
 		//TODO: verify file type
 		//TODO: have object manager register callbacks for objects -- if needed
@@ -104,5 +95,11 @@ namespace star::core {
 			currVertex->pos.z /= maxVal;
 		}
 		std::cout << "Loaded: " << pathToFile << std::endl;
+	}
+
+	common::Handle ObjectManager::createAppropriateHandle() {
+		common::Handle newHandle; 
+		newHandle.type = common::Handle_Type::object; 
+		return newHandle; 
 	}
 }

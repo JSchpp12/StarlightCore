@@ -19,6 +19,7 @@ namespace star{
             common::Handle add(const std::string& pathToFile); 
 
         protected: 
+            virtual common::Handle createAppropriateHandle() override; 
 
         private: 
             unsigned char* loadImage(const std::string& path, int& texWidth, int& texHeight, int& texChannel); 

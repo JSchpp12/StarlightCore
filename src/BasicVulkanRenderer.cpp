@@ -122,9 +122,9 @@ void star::core::VulkanRenderer::prepare() {
 							.setMesh(*mesh)
 							.setRenderSettings(object->getNumVerticies() + meshVertCounter)
 							.setMaterial(RenderMaterial::Builder(*this->starDevice, this->materialManager, this->textureManager)
-							.setMaterial(mesh->getMaterial())
-							.build())
-						.build());
+								.setMaterial(mesh->getMaterial())
+								.build())
+							.build());
 					meshVertCounter += mesh->getVerticies().size(); 
 				}
 				object->addObject(std::move(builder.build()));

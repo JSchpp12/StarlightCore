@@ -22,11 +22,7 @@ namespace star::core {
         if (!hasBeenLoaded && (fileType == common::Shader_File_Type::glsl)) {
             std::unique_ptr<common::Shader> newShader(GLSLShader::New(pathToFile));
             std::cout << "Completed compilation of: " << pathToFile << std::endl;
-            common::Handle newHandle;
-            newHandle.type = common::Handle_Type::shader;
-            newHandle.shaderStage = stage;
-            this->addResource(pathToFile, std::move(newShader), newHandle);
-            return newHandle;
+            return this->addResource(pathToFile, std::move(newShader));
         }
         else if (hasBeenLoaded) {
             std::cout << "Shader has already been loaded. Returning shared object." << std::endl;
