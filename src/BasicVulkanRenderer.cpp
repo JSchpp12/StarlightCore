@@ -125,7 +125,7 @@ void star::core::VulkanRenderer::prepare() {
 								.setMaterial(mesh->getMaterial())
 								.build())
 							.build());
-					meshVertCounter += mesh->getVerticies().size(); 
+					meshVertCounter += mesh->getTriangles()->size() * 3; 
 				}
 				object->addObject(std::move(builder.build()));
 			}
@@ -153,7 +153,7 @@ void star::core::VulkanRenderer::prepare() {
 							.setMaterial(mesh->getMaterial())
 							.build())
 						.build());
-					meshVertCounter += mesh->getVerticies().size(); 
+					meshVertCounter += mesh->getTriangles()->size() * 3;
 				}
 				object->addObject(builder.build());
 			}

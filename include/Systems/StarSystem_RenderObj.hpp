@@ -50,7 +50,6 @@ namespace star::core{
 
 		};
 		uint32_t totalNumVerticies = 0; 
-		uint32_t totalNumIndicies = 0;
 
 		RenderSysObj(StarDevice* device, size_t numSwapChainImages, vk::DescriptorSetLayout globalSetLayout, 
 			vk::Extent2D swapChainExtent, vk::RenderPass renderPass) :

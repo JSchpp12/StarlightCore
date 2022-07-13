@@ -33,8 +33,8 @@ void RenderSysObj::addObject(std::unique_ptr<RenderObject> newRenderObject) {
 	//this->totalNumIndicies += newRenderObject->getGameObject().getIndicies()->size(); 
 
 	for (auto& mesh : newRenderObject->getGameObject().getMeshes()) {
-		this->totalNumVerticies += mesh->getVerticies().size(); 
-		this->totalNumIndicies += mesh->getIndicies().size(); 
+		this->totalNumVerticies += mesh->getTriangles()->size() * 3; 
+
 	}
 	this->renderObjects.push_back(std::move(newRenderObject)); 
 }
@@ -127,17 +127,18 @@ void RenderSysObj::createVertexBuffer() {
 	std::vector<common::Vertex> vertexList(this->totalNumVerticies);
 	size_t vertexCounter = 0;
 
-
 	for (auto& object : this->renderObjects) {
 		const std::vector<std::unique_ptr<common::Mesh>>& currObjectMeshes = object->getGameObject().getMeshes(); 
 
 		//copy verticies from the render object into the total vertex list for the vulkan object
 		for (size_t i = 0; i < currObjectMeshes.size(); i++) {
-			std::vector<common::Vertex>& verticies = currObjectMeshes.at(i)->getVerticies();
+			auto& triangles = currObjectMeshes.at(i)->getTriangles();
 
-			for (size_t j = 0; j < verticies.size(); j++) {
-				vertexList.at(vertexCounter) = verticies.at(j);
-				vertexCounter++;
+			for (size_t j = 0; j < triangles->size(); j++) {
+				for (int k = 0; k < 3; k++) {
+					vertexList.at(vertexCounter) = triangles->at(j).verticies[k]; 
+					vertexCounter++;
+				}
 			}
 		}
 	}
@@ -222,40 +223,33 @@ void RenderSysObj::createObjectMaterialBuffer() {
 
 
 void RenderSysObj::createIndexBuffer() {
-	vk::DeviceSize bufferSize;
-
 	//TODO: will only support one object at the moment
-	std::vector<uint32_t> indiciesList(this->totalNumIndicies);
+	std::vector<uint32_t> indiciesList(this->totalNumVerticies);
 	RenderObject* currRenderObject = nullptr; 
 	common::GameObject* currObject = nullptr;
 	size_t indexCounter = 0; //used to keep track of index offsets 
 
+	//ENSURE THIS IS COUNTING RIGHT -- draw triangles in order
 	for (auto& object : this->renderObjects){
 		for (size_t j = 0; j < object->getGameObject().getMeshes().size(); j++) {
-			std::vector<uint32_t>& currRenderObjectIndicies = object->getGameObject().getMeshes().at(j)->getIndicies();
-			
-			for (size_t k = 0; k < currRenderObjectIndicies.size(); k++) {
-				if (j > 0) {
-					//not the first object 
-					//displace the index counter by the number of indicies previously used
-					indiciesList.at(indexCounter) = indexCounter + currRenderObjectIndicies.at(j);
-				}
-				else {
-					indiciesList.at(indexCounter) = indexCounter;
-				}
-
-				indexCounter++;
+			auto& mesh = object->getGameObject().getMeshes().at(j); 
+			for (size_t k = 0; k < mesh->getTriangles()->size(); k++) {
+				indiciesList.at(indexCounter + 0) = indexCounter + 0; 
+				indiciesList.at(indexCounter + 1) = indexCounter + 1; 
+				indiciesList.at(indexCounter + 2) = indexCounter + 2; 
+				indexCounter += 3; 
 			}
 		}
 	}
 
-	bufferSize = sizeof(indiciesList.at(0)) * indiciesList.size();
+	vk::DeviceSize bufferSize = sizeof(indiciesList.at(0)) * indiciesList.size();
 	uint32_t indexSize = sizeof(indiciesList[0]);
+	uint32_t indexCount = indiciesList.size();
 
 	StarBuffer stagingBuffer{
 		*this->starDevice, 
-		indexSize, 
-		this->totalNumIndicies, 
+		indexSize,
+		indexCount,
 		vk::BufferUsageFlagBits::eTransferSrc, 
 		vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
 	};
@@ -265,7 +259,7 @@ void RenderSysObj::createIndexBuffer() {
 	this->indexBuffer = std::make_unique<StarBuffer>(
 		*this->starDevice, 
 		indexSize, 
-		this->totalNumIndicies, 
+		indexCount,
 		vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
 		vk::MemoryPropertyFlagBits::eDeviceLocal );
 	this->starDevice->copyBuffer(stagingBuffer.getBuffer(), this->indexBuffer->getBuffer(), bufferSize);
