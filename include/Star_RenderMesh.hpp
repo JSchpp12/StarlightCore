@@ -57,6 +57,7 @@ namespace star::core {
 		RenderMaterial& getMaterial() { return *this->renderMaterial; }
 		common::Mesh& getMesh() { return this->mesh; }
 		vk::DescriptorSet& getDescriptor() { return this->renderMaterial->getDescriptor(); }
+
 	private: 
 		StarDevice& starDevice; 
 		common::Mesh& mesh; 

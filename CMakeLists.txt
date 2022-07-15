@@ -55,10 +55,8 @@ SET(${PROJECT_NAME}_SOURCES
 	"src/Compiler.cpp" 
 	"src/GLSLShader.cpp" 
 	"src/ShaderManager.cpp"
-	"src/EntityManager.cpp"
 	"src/LightManager.cpp"
 	"src/MaterialManager.cpp"
-	"src/Entity.cpp"
 	"src/ObjectManager.cpp"
 	"src/Object.cpp"
 	"src/TextureManager.cpp"
@@ -77,17 +75,14 @@ SET(${PROJECT_NAME}_SOURCES
 	#rendering sytems
 	"src/Systems/StarSystem_RenderObj.cpp"
 	"src/Systems/StarSystem_RenderPointLight.cpp"
-
 )
   
 SET(${PROJECT_NAME}_HEADERS
 	"include/Compiler.h"
 	"include/GLSLShader.h"
 	"include/ShaderManager.h"
-	"include/EntityManager.h"
 	"include/LightManager.hpp"
 	"include/MaterialManager.hpp"
-	"include/Entity.h"
 	"include/ObjectManager.hpp"
 	"include/Object.h"
 	"include/TextureManager.h"
@@ -135,7 +130,7 @@ add_subdirectory("external/shaderc")
 
 add_subdirectory("external/tinyobjloader")
 
-add_library(${PROJECT_NAME} STATIC "${${PROJECT_NAME}_SOURCES}" "include/Image.h" "src/Image.cpp")
+add_library(${PROJECT_NAME} STATIC "${${PROJECT_NAME}_SOURCES}"  )
 
 #ensure all needed external dependencies are available
 if (DEFINED StarlightCommon_SOURCE_DIR)

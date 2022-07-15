@@ -2,7 +2,6 @@
 
 #include "SC/FileResourceManager.hpp"
 #include "SC/Handle.hpp"
-#include "SC/RenderObject.hpp"
 #include "SC/GameObject.hpp"
 #include "SC/Vertex.hpp"
 #include "SC/Material.hpp"

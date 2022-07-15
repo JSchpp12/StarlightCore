@@ -8,8 +8,7 @@
 
 #include <iostream> 
 
-namespace star {
-namespace core {
+namespace star::core{
 	struct PipelineConfigSettings {
 		PipelineConfigSettings() = default; 
 		//no copy 
@@ -54,5 +53,4 @@ namespace core {
 
 		vk::ShaderModule createShaderModule(const std::vector<uint32_t>& sourceCode); 
 	};
-}
 }

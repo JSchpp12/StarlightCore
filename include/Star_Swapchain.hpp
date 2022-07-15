@@ -9,8 +9,7 @@
 #include <memory>
 #include <vector>
 
-namespace star {
-namespace core {
+namespace star::core{
 	class StarSwapChain {
 	public:
 		static const int MAX_FRAMES_IN_FLIGHT = 2;
@@ -58,5 +57,4 @@ namespace core {
 		void createFramebuffers();
 		void createSyncObjects();
 	};
-}
 }

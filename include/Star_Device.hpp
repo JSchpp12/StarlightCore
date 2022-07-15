@@ -17,8 +17,7 @@
 #include <set>
 #include <unordered_set>
 
-namespace star {
-namespace core {
+namespace star::core{
 	struct SwapChainSupportDetails {
 		vk::SurfaceCapabilitiesKHR capabilities;
 		std::vector<vk::SurfaceFormatKHR> formats;
@@ -191,5 +190,4 @@ namespace core {
 		/// </summary>
 		SwapChainSupportDetails querySwapChainSupport(vk::PhysicalDevice device); 
 	};
-}
 }

@@ -1,7 +1,6 @@
 #include "Star_Swapchain.hpp"
 
-namespace star {
-namespace core {
+namespace star::core{
 	StarSwapChain::StarSwapChain(StarDevice& device, vk::Extent2D extent) 
 		: starDevice{ device }, windowExtent{ extent }{
 		init(); 
@@ -26,5 +25,4 @@ namespace core {
 
 		vk::SurfaceFormatKHR surfaceFormat;
 	}
-}
 }

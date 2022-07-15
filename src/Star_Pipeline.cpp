@@ -1,7 +1,6 @@
 #include "Star_Pipeline.hpp"
 
-namespace star {
-namespace core {
+namespace star::core{
 	StarPipeline::StarPipeline(StarDevice* device, common::Shader* vertShader, common::Shader* fragShader, PipelineConfigSettings& configSettings) :
 		starDevice(device) {
         createGraphicsPipeline(vertShader, fragShader, configSettings); 
@@ -236,5 +235,4 @@ namespace core {
 		}
         return shaderModule;
 	}
-}
 }

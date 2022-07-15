@@ -7,8 +7,7 @@
 
 #include <string>
 
-namespace star {
-namespace core {
+namespace star::core{
 	class StarWindow {
 	public:
 		StarWindow(int width, int height, std::string name, 
@@ -39,5 +38,4 @@ namespace core {
 
 		void initWindow(GLFWkeyfun keyboardCallbackFunction, GLFWmousebuttonfun mouseButtonCallback, GLFWcursorposfun cursorPositionCallback, GLFWscrollfun scrollCallback);
 	};
-}
 }

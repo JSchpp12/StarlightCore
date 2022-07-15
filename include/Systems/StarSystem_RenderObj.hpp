@@ -40,15 +40,6 @@ namespace star::core{
 			alignas(16) glm::mat4 modelMatrix;
 			alignas(16) glm::mat4 normalMatrix;
 		};
-
-		class Builder {
-		public:
-
-		protected:
-
-		private: 
-
-		};
 		uint32_t totalNumVerticies = 0; 
 
 		RenderSysObj(StarDevice* device, size_t numSwapChainImages, vk::DescriptorSetLayout globalSetLayout, 

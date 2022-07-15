@@ -57,8 +57,6 @@ namespace star::core {
             throw std::runtime_error("Unable to load image");
         }
 
-
         return pixels;
     }
-
 }

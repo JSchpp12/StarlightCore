@@ -2,8 +2,7 @@
 #include "Star_Descriptors.hpp"
 #include "Star_Descriptors.hpp"
 
-namespace star {
-namespace core {
+namespace star::core{
 	StarDescriptorSetLayout::Builder& StarDescriptorSetLayout::Builder::addBinding(uint32_t binding,
 			vk::DescriptorType descriptorType, 
 			vk::ShaderStageFlags stageFlags, uint32_t count) {
@@ -173,5 +172,4 @@ namespace core {
 		}
 		this->starDevice.getDevice().updateDescriptorSets(this->writeSets, nullptr);
 	}
-}
 }

@@ -1,6 +1,4 @@
 #pragma once 
-#include "Image.h"
-
 #include "SC/FileResourceManager.hpp"
 #include "SC/Texture.hpp"
 #include "SC/Handle.hpp"
