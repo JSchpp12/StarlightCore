@@ -94,7 +94,7 @@ namespace star{
                 attributeDescriptions[6].binding = 0;
                 attributeDescriptions[6].location = 6;
                 attributeDescriptions[6].format = vk::Format::eR32G32B32Sfloat;
-                attributeDescriptions[6].offset = offsetof(common::Vertex, matDiffuse);
+                attributeDescriptions[6].offset = offsetof(common::Vertex, matSpecular);
 
                 attributeDescriptions[7].binding = 0;
                 attributeDescriptions[7].location = 7;
