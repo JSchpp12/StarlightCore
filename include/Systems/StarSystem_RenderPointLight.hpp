@@ -52,7 +52,5 @@ namespace star::core{
 
 		virtual void createDescriptors() override; 
 
-		virtual void createStaticDescriptors() override; 
-
 	};
 }

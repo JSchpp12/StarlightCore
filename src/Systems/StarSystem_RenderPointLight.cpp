@@ -61,30 +61,4 @@ namespace star::core {
 			}
 		}
 	}
-
-	void RenderSysPointLight::createStaticDescriptors() {
-		this->staticDescriptorSetLayout = StarDescriptorSetLayout::Builder(*this->starDevice)
-			.addBinding(0, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eAllGraphics)
-			.addBinding(1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
-			.build();
-
-		//create descritptor sets 
-		vk::DescriptorBufferInfo bufferInfo{};
-		vk::DescriptorImageInfo imageInfo{};
-		auto test = this->objectMaterialBuffer->getAlignmentSize();
-
-		for (int i = 0; i < this->renderObjects.size(); i++) {
-			bufferInfo = vk::DescriptorBufferInfo{
-				this->objectMaterialBuffer->getBuffer(),
-				this->objectMaterialBuffer->getAlignmentSize() * i,
-				sizeof(MaterialBufferObject)
-			};
-			//todo: move this creation to the renderObject class since this is PER OBJECT 
-			for (auto& meshInfo : this->renderObjects.at(i)->getMeshes()) {
-				StarDescriptorWriter(*this->starDevice, *this->staticDescriptorSetLayout, *this->descriptorPool)
-					.writeBuffer(0, &bufferInfo)
-					.build(meshInfo->getDescriptor());
-			}
-		}
-	}
 }

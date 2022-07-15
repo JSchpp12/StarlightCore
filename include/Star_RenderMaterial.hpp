@@ -22,8 +22,8 @@ namespace star::core {
 	public:
 		class Builder {
 		public:
-			Builder(StarDevice& starDevice, MaterialManager& materialManager, TextureManager& textureManager)
-				: starDevice(starDevice), materialManager(materialManager), textureManager(textureManager) { }
+			Builder(StarDevice& starDevice, MaterialManager& materialManager, TextureManager& textureManager): starDevice(starDevice), 
+				materialManager(materialManager), textureManager(textureManager){ }
 			Builder& setMaterial(common::Handle material);
 			std::unique_ptr<RenderMaterial> build();
 
@@ -31,11 +31,14 @@ namespace star::core {
 			StarDevice& starDevice;
 			MaterialManager& materialManager;
 			TextureManager& textureManager;
-
 			common::Material* material = nullptr;
 			common::Texture* texture = nullptr;
-
 		};
+		/// <summary>
+		/// Init Render Material with proper descriptors
+		/// </summary>
+		/// <param name="staticDescriptorSetLayout">DescriptorSetLayout to be used when creating object descriptors which are updated once (during init)</param>
+		void init(StarDescriptorSetLayout& staticDescriptorSetLayout, StarDescriptorPool& staticDescriptorPool); 
 
 		//need to gather refs to base materials
 		std::unique_ptr<StarTexture> texture;
@@ -43,6 +46,8 @@ namespace star::core {
 		RenderMaterial(StarDevice& starDevice, common::Material& material) : starDevice(starDevice), material(material) { }
 
 		RenderMaterial(StarDevice& starDevice, common::Material& material, common::Texture& texture);
+
+		void bind(vk::CommandBuffer& commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex); 
 
 		//todo: might want to move all descriptor creation to individual classes
 		//void addRequiredBindings();
@@ -53,7 +58,7 @@ namespace star::core {
 		/// <param name="writer"></param>
 		/// <param name="binding"></param>
 		/// <param name="layout"></param>
-		void buildTextureDescriptor(StarDescriptorWriter writer, int binding, vk::ImageLayout layout);
+		void buildTextureDescriptor(StarDescriptorSetLayout& staticLayout, StarDescriptorPool& staticPool, int binding, vk::ImageLayout layout);
 
 		//get 
 		common::Material& getMaterial() { return this->material; }

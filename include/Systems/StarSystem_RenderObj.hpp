@@ -26,14 +26,6 @@ namespace star::core{
 	class RenderSysObj {
 	public:
 		/// <summary>
-		/// Object type containing per render object information updated only once on scene init
-		/// </summary>
-		struct MaterialBufferObject {
-			glm::vec4 surfaceColor; 
-			glm::vec4 highlightColor; 
-			int shinyCoefficient; 
-		};
-		/// <summary>
 		/// Object type to be used per render object, updated each frame
 		/// </summary>
 		struct UniformBufferObject {
@@ -125,7 +117,6 @@ namespace star::core{
 		std::unique_ptr<StarDescriptorPool> descriptorPool; 
 		std::unique_ptr<StarPipeline> starPipeline;
 		vk::PipelineLayout pipelineLayout;
-		std::unique_ptr<StarBuffer> objectMaterialBuffer;						//buffer which contains object information updated on scene init
 		std::vector<std::unique_ptr<StarBuffer>> uniformBuffers;
 
 		std::unique_ptr<StarDescriptorSetLayout> staticDescriptorSetLayout;		//descriptor set layout for object data updated once
@@ -146,7 +137,6 @@ namespace star::core{
 		/// Create buffers needed for render operations. Such as those used by descriptors
 		/// </summary>
 		virtual void createRenderBuffers();
-		virtual void createObjectMaterialBuffer();
 		virtual void createStaticDescriptors();
 		/// <summary>
 		/// Create descriptors for binding render buffers to shaders.

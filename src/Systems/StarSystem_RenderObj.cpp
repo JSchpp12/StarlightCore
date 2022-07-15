@@ -18,23 +18,9 @@ void RenderSysObj::registerShader(vk::ShaderStageFlagBits stage, common::Shader&
 	}
 }
 
-//void RenderSysObj::addObject(common::Handle newObjectHandle, common::GameObject* newObject, size_t numSwapChainImages) {
-//	auto numIndicies = newObject->getIndicies()->size();
-//	auto numVerticies = newObject->getVerticies()->size();
-//
-//	this->totalNumIndicies += numIndicies;
-//	this->totalNumVerticies += numVerticies;
-//
-//	this->renderObjects.push_back(std::move(RenderObject::Builder().setFromObject(newObjectHandle, newObject).setNumFrames(numSwapChainImages).build())); 
-//}
-
 void RenderSysObj::addObject(std::unique_ptr<RenderObject> newRenderObject) {
-	//this->totalNumVerticies += newRenderObject->getGameObject().getVerticies()->size(); 
-	//this->totalNumIndicies += newRenderObject->getGameObject().getIndicies()->size(); 
-
 	for (auto& mesh : newRenderObject->getGameObject().getMeshes()) {
 		this->totalNumVerticies += mesh->getTriangles()->size() * 3; 
-
 	}
 	this->renderObjects.push_back(std::move(newRenderObject)); 
 }
@@ -109,7 +95,6 @@ void star::core::RenderSysObj::init(std::vector<vk::DescriptorSetLayout> globalD
 	//create needed buffers 
 	createVertexBuffer();
 	createIndexBuffer();
-	createObjectMaterialBuffer(); 
 	createRenderBuffers(); 
 	createDescriptorPool();
 	createStaticDescriptors(); 
@@ -178,50 +163,6 @@ void RenderSysObj::createRenderBuffers() {
 	}
 }
 
-void RenderSysObj::createObjectMaterialBuffer() {
-	std::unique_ptr<MaterialBufferObject> newBufferObject;
-	std::vector<MaterialBufferObject> bufferInfo(this->renderObjects.size());
-	RenderObject* currObject = nullptr; 
-
-	auto testone = sizeof(MaterialBufferObject); 
-	auto minProp = this->starDevice->getPhysicalDevice().getProperties().limits.minStorageBufferOffsetAlignment;
-	auto alignmentOfElements = StarBuffer::getAlignment(sizeof(MaterialBufferObject), minProp);
-
-	vk::DeviceSize bufferSize = alignmentOfElements * bufferInfo.size();
-	uint32_t objectSize = sizeof(MaterialBufferObject);
-	uint32_t objectCount = bufferInfo.size();
-
-	StarBuffer stagingBuffer{
-		*this->starDevice,
-		objectSize,
-		objectCount,
-		vk::BufferUsageFlagBits::eTransferSrc,
-		vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, minProp };
-	stagingBuffer.map();
-
-	for (size_t i = 0; i < this->renderObjects.size(); i++) {
-		currObject = this->renderObjects.at(i).get();
-
-		//TODO: assuming that all meshes have the same material
-		newBufferObject = std::make_unique<MaterialBufferObject>(MaterialBufferObject{
-			currObject->getMeshes().at(0)->getMaterial().getMaterial().surfaceColor,
-			currObject->getMeshes().at(0)->getMaterial().getMaterial().highlightColor,
-			currObject->getMeshes().at(0)->getMaterial().getMaterial().shinyCoefficient });
-		stagingBuffer.writeToBuffer(newBufferObject.get(), sizeof(MaterialBufferObject), stagingBuffer.getAlignmentSize() * i);
-	}
-
-	//this will eventually be used to store object textures, need a large buffer (storage buffer)
-	this->objectMaterialBuffer = std::make_unique<StarBuffer>(
-		*this->starDevice,
-		objectSize,
-		objectCount, 
-		vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
-		vk::MemoryPropertyFlagBits::eDeviceLocal, minProp);
-
-	this->starDevice->copyBuffer(stagingBuffer.getBuffer(), this->objectMaterialBuffer->getBuffer(), stagingBuffer.getBufferSize());
-}
-
-
 void RenderSysObj::createIndexBuffer() {
 	//TODO: will only support one object at the moment
 	std::vector<uint32_t> indiciesList(this->totalNumVerticies);
@@ -275,27 +216,13 @@ void RenderSysObj::createDescriptorPool() {
 }
 
 void RenderSysObj::createStaticDescriptors() {
-		this->staticDescriptorSetLayout = StarDescriptorSetLayout::Builder(*this->starDevice)
-		.addBinding(0, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eAllGraphics)
-		.addBinding(1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
-		.build();
-		
-	//create descritptor sets 
-	vk::DescriptorBufferInfo bufferInfo{};
-	vk::DescriptorImageInfo imageInfo{}; 
-	auto test = this->objectMaterialBuffer->getAlignmentSize(); 
+	this->staticDescriptorSetLayout = StarDescriptorSetLayout::Builder(*this->starDevice)
+	.addBinding(0, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
+	.build();
 
-
-	for (int i = 0; i < this->renderObjects.size(); i++) {
-		bufferInfo = vk::DescriptorBufferInfo{
-			this->objectMaterialBuffer->getBuffer(),
-			this->objectMaterialBuffer->getAlignmentSize()* i,
-			sizeof(MaterialBufferObject)
-		};
-		StarDescriptorWriter meshDescriptorWriter(*this->starDevice, *this->staticDescriptorSetLayout, *this->descriptorPool);
-		meshDescriptorWriter.writeBuffer(0, &bufferInfo);
-
-		this->renderObjects.at(i)->buildConstantDescriptors(meshDescriptorWriter); 
+	//create const descriptors and layouts
+	for (auto& obj : this->renderObjects) {
+		obj->init(*this->staticDescriptorSetLayout, *this->descriptorPool); 
 	}
 }
 
