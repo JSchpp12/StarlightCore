@@ -1,6 +1,4 @@
 #pragma once 
-#include "Image.h"
-
 #include "SC/FileResourceManager.hpp"
 #include "SC/Texture.hpp"
 #include "SC/Handle.hpp"
@@ -19,6 +17,7 @@ namespace star{
             common::Handle add(const std::string& pathToFile); 
 
         protected: 
+            virtual common::Handle createAppropriateHandle() override; 
 
         private: 
             unsigned char* loadImage(const std::string& path, int& texWidth, int& texHeight, int& texChannel); 

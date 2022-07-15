@@ -45,18 +45,18 @@ namespace star::core {
 			: starDevice(starDevice), mesh(mesh), renderMaterial(std::move(material)) {
 			this->startIndex = vbOffset;
 		}
-
-		void render(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainImageIndex); 
 		/// <summary>
-		/// Build desriptor sets which will only be written to once during renderer init
+		/// Init object with needed structures such as descriptors
 		/// </summary>
-		/// <param name="descriptorWriter"></param>
-		void buildConstantDescriptors(StarDescriptorWriter& descriptorWriter); 
+		/// <param name="staticDescriptorWriter">Writer to use when creating static descriptors (those updated once on init)</param>
+		void init(StarDescriptorSetLayout& staticLayout, StarDescriptorPool& staticPool);
+		void render(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainImageIndex); 
 
 		void setVBOffset(uint32_t offset) { this->startIndex = offset; }
 		RenderMaterial& getMaterial() { return *this->renderMaterial; }
 		common::Mesh& getMesh() { return this->mesh; }
 		vk::DescriptorSet& getDescriptor() { return this->renderMaterial->getDescriptor(); }
+
 	private: 
 		StarDevice& starDevice; 
 		common::Mesh& mesh; 

@@ -1,7 +1,6 @@
 #include "Star_Window.hpp"
 
-namespace star {
-namespace core {
+namespace star::core{
 	StarWindow::StarWindow(int width, int height, std::string name, 
         GLFWkeyfun keyboardCallbackFunction, GLFWmousebuttonfun mouseButtonCallback, 
         GLFWcursorposfun cursorPositionCallback, GLFWscrollfun scrollCallback) : 
@@ -52,5 +51,4 @@ namespace core {
         // this->glfwRequiredExtensions = std::make_unique<std::vector<vk::ExtensionProperties>>(new std::vector<vk::ExtensionProperties>(**requiredExtensions)); 
         //this->glfwRequiredExtensions = std::make_unique<const char**>(glfwGetRequiredInstanceExtensions(this->glfwRequiredExtensionsCount.get()));
     }
-}
 }

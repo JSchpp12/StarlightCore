@@ -18,23 +18,9 @@ void RenderSysObj::registerShader(vk::ShaderStageFlagBits stage, common::Shader&
 	}
 }
 
-//void RenderSysObj::addObject(common::Handle newObjectHandle, common::GameObject* newObject, size_t numSwapChainImages) {
-//	auto numIndicies = newObject->getIndicies()->size();
-//	auto numVerticies = newObject->getVerticies()->size();
-//
-//	this->totalNumIndicies += numIndicies;
-//	this->totalNumVerticies += numVerticies;
-//
-//	this->renderObjects.push_back(std::move(RenderObject::Builder().setFromObject(newObjectHandle, newObject).setNumFrames(numSwapChainImages).build())); 
-//}
-
 void RenderSysObj::addObject(std::unique_ptr<RenderObject> newRenderObject) {
-	//this->totalNumVerticies += newRenderObject->getGameObject().getVerticies()->size(); 
-	//this->totalNumIndicies += newRenderObject->getGameObject().getIndicies()->size(); 
-
 	for (auto& mesh : newRenderObject->getGameObject().getMeshes()) {
-		this->totalNumVerticies += mesh->getVerticies().size(); 
-		this->totalNumIndicies += mesh->getIndicies().size(); 
+		this->totalNumVerticies += mesh->getTriangles()->size() * 3; 
 	}
 	this->renderObjects.push_back(std::move(newRenderObject)); 
 }
@@ -109,7 +95,6 @@ void star::core::RenderSysObj::init(std::vector<vk::DescriptorSetLayout> globalD
 	//create needed buffers 
 	createVertexBuffer();
 	createIndexBuffer();
-	createObjectMaterialBuffer(); 
 	createRenderBuffers(); 
 	createDescriptorPool();
 	createStaticDescriptors(); 
@@ -127,17 +112,18 @@ void RenderSysObj::createVertexBuffer() {
 	std::vector<common::Vertex> vertexList(this->totalNumVerticies);
 	size_t vertexCounter = 0;
 
-
 	for (auto& object : this->renderObjects) {
 		const std::vector<std::unique_ptr<common::Mesh>>& currObjectMeshes = object->getGameObject().getMeshes(); 
 
 		//copy verticies from the render object into the total vertex list for the vulkan object
 		for (size_t i = 0; i < currObjectMeshes.size(); i++) {
-			std::vector<common::Vertex>& verticies = currObjectMeshes.at(i)->getVerticies();
+			auto& triangles = currObjectMeshes.at(i)->getTriangles();
 
-			for (size_t j = 0; j < verticies.size(); j++) {
-				vertexList.at(vertexCounter) = verticies.at(j);
-				vertexCounter++;
+			for (size_t j = 0; j < triangles->size(); j++) {
+				for (int k = 0; k < 3; k++) {
+					vertexList.at(vertexCounter) = triangles->at(j).verticies[k]; 
+					vertexCounter++;
+				}
 			}
 		}
 	}
@@ -177,85 +163,34 @@ void RenderSysObj::createRenderBuffers() {
 	}
 }
 
-void RenderSysObj::createObjectMaterialBuffer() {
-	std::unique_ptr<MaterialBufferObject> newBufferObject;
-	std::vector<MaterialBufferObject> bufferInfo(this->renderObjects.size());
-	RenderObject* currObject = nullptr; 
-
-	auto testone = sizeof(MaterialBufferObject); 
-	auto minProp = this->starDevice->getPhysicalDevice().getProperties().limits.minStorageBufferOffsetAlignment;
-	auto alignmentOfElements = StarBuffer::getAlignment(sizeof(MaterialBufferObject), minProp);
-
-	vk::DeviceSize bufferSize = alignmentOfElements * bufferInfo.size();
-	uint32_t objectSize = sizeof(MaterialBufferObject);
-	uint32_t objectCount = bufferInfo.size();
-
-	StarBuffer stagingBuffer{
-		*this->starDevice,
-		objectSize,
-		objectCount,
-		vk::BufferUsageFlagBits::eTransferSrc,
-		vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, minProp };
-	stagingBuffer.map();
-
-	for (size_t i = 0; i < this->renderObjects.size(); i++) {
-		currObject = this->renderObjects.at(i).get();
-
-		//TODO: assuming that all meshes have the same material
-		newBufferObject = std::make_unique<MaterialBufferObject>(MaterialBufferObject{
-			currObject->getMeshes().at(0)->getMaterial().getMaterial().surfaceColor,
-			currObject->getMeshes().at(0)->getMaterial().getMaterial().highlightColor,
-			currObject->getMeshes().at(0)->getMaterial().getMaterial().shinyCoefficient });
-		stagingBuffer.writeToBuffer(newBufferObject.get(), sizeof(MaterialBufferObject), stagingBuffer.getAlignmentSize() * i);
-	}
-
-	//this will eventually be used to store object textures, need a large buffer (storage buffer)
-	this->objectMaterialBuffer = std::make_unique<StarBuffer>(
-		*this->starDevice,
-		objectSize,
-		objectCount, 
-		vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
-		vk::MemoryPropertyFlagBits::eDeviceLocal, minProp);
-
-	this->starDevice->copyBuffer(stagingBuffer.getBuffer(), this->objectMaterialBuffer->getBuffer(), stagingBuffer.getBufferSize());
-}
-
-
 void RenderSysObj::createIndexBuffer() {
-	vk::DeviceSize bufferSize;
-
 	//TODO: will only support one object at the moment
-	std::vector<uint32_t> indiciesList(this->totalNumIndicies);
+	std::vector<uint32_t> indiciesList(this->totalNumVerticies);
 	RenderObject* currRenderObject = nullptr; 
 	common::GameObject* currObject = nullptr;
 	size_t indexCounter = 0; //used to keep track of index offsets 
 
+	//ENSURE THIS IS COUNTING RIGHT -- draw triangles in order
 	for (auto& object : this->renderObjects){
 		for (size_t j = 0; j < object->getGameObject().getMeshes().size(); j++) {
-			std::vector<uint32_t>& currRenderObjectIndicies = object->getGameObject().getMeshes().at(j)->getIndicies();
-			
-			for (size_t k = 0; k < currRenderObjectIndicies.size(); k++) {
-				if (j > 0) {
-					//not the first object 
-					//displace the index counter by the number of indicies previously used
-					indiciesList.at(indexCounter) = indexCounter + currRenderObjectIndicies.at(j);
-				}
-				else {
-					indiciesList.at(indexCounter) = indexCounter;
-				}
-
-				indexCounter++;
+			auto& mesh = object->getGameObject().getMeshes().at(j); 
+			for (size_t k = 0; k < mesh->getTriangles()->size(); k++) {
+				indiciesList.at(indexCounter + 0) = indexCounter + 0; 
+				indiciesList.at(indexCounter + 1) = indexCounter + 1; 
+				indiciesList.at(indexCounter + 2) = indexCounter + 2; 
+				indexCounter += 3; 
 			}
 		}
 	}
 
-	bufferSize = sizeof(indiciesList.at(0)) * indiciesList.size();
+	vk::DeviceSize bufferSize = sizeof(indiciesList.at(0)) * indiciesList.size();
 	uint32_t indexSize = sizeof(indiciesList[0]);
+	uint32_t indexCount = indiciesList.size();
 
 	StarBuffer stagingBuffer{
 		*this->starDevice, 
-		indexSize, 
-		this->totalNumIndicies, 
+		indexSize,
+		indexCount,
 		vk::BufferUsageFlagBits::eTransferSrc, 
 		vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
 	};
@@ -265,7 +200,7 @@ void RenderSysObj::createIndexBuffer() {
 	this->indexBuffer = std::make_unique<StarBuffer>(
 		*this->starDevice, 
 		indexSize, 
-		this->totalNumIndicies, 
+		indexCount,
 		vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
 		vk::MemoryPropertyFlagBits::eDeviceLocal );
 	this->starDevice->copyBuffer(stagingBuffer.getBuffer(), this->indexBuffer->getBuffer(), bufferSize);
@@ -281,27 +216,13 @@ void RenderSysObj::createDescriptorPool() {
 }
 
 void RenderSysObj::createStaticDescriptors() {
-		this->staticDescriptorSetLayout = StarDescriptorSetLayout::Builder(*this->starDevice)
-		.addBinding(0, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eAllGraphics)
-		.addBinding(1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
-		.build();
-		
-	//create descritptor sets 
-	vk::DescriptorBufferInfo bufferInfo{};
-	vk::DescriptorImageInfo imageInfo{}; 
-	auto test = this->objectMaterialBuffer->getAlignmentSize(); 
+	this->staticDescriptorSetLayout = StarDescriptorSetLayout::Builder(*this->starDevice)
+	.addBinding(0, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
+	.build();
 
-
-	for (int i = 0; i < this->renderObjects.size(); i++) {
-		bufferInfo = vk::DescriptorBufferInfo{
-			this->objectMaterialBuffer->getBuffer(),
-			this->objectMaterialBuffer->getAlignmentSize()* i,
-			sizeof(MaterialBufferObject)
-		};
-		StarDescriptorWriter meshDescriptorWriter(*this->starDevice, *this->staticDescriptorSetLayout, *this->descriptorPool);
-		meshDescriptorWriter.writeBuffer(0, &bufferInfo);
-
-		this->renderObjects.at(i)->buildConstantDescriptors(meshDescriptorWriter); 
+	//create const descriptors and layouts
+	for (auto& obj : this->renderObjects) {
+		obj->init(*this->staticDescriptorSetLayout, *this->descriptorPool); 
 	}
 }
 

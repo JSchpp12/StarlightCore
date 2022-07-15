@@ -1,45 +1,37 @@
 #include "MaterialManager.hpp"
-#include "MaterialManager.hpp"
 
-namespace star {
-namespace core {
-	MaterialManager::MaterialManager(const glm::vec4& surfaceColor, const glm::vec4& highlightColor, const int& shinyCoefficient) {
-		std::unique_ptr<common::Material> defaultMaterial(new common::Material(surfaceColor, highlightColor, shinyCoefficient)); 
-		common::Handle defaultHandle;
-		defaultHandle.type = common::Handle_Type::material;
-
-		this->addResource(std::move(defaultMaterial), defaultHandle);
-		this->defaultResource = &this->getResource(defaultHandle); 
-	}
-
+namespace star::core{
 	common::Handle MaterialManager::add(std::unique_ptr<common::Material> newMaterial) {
 		common::Handle newHandle; 
 		newHandle.type = common::Handle_Type::material; 
 
-		this->addResource(std::move(newMaterial), newHandle); 
+		this->addResource(std::move(newMaterial)); 
 		return newHandle; 
 	}
 
-	common::Handle MaterialManager::add(const glm::vec4& surfaceColor, const glm::vec4& highlightColor, const int& shinyCoefficient) {
+	common::Handle MaterialManager::add(const glm::vec4& surfaceColor, const glm::vec4& highlightColor, const glm::vec4& ambient,
+		const glm::vec4& diffuse, const glm::vec4& specular, const int& shinyCoefficient) {
 		common::Handle newHandle; 
 		newHandle.type = common::Handle_Type::material; 
 
-		std::unique_ptr<common::Material> newMaterial(new common::Material(surfaceColor, highlightColor, shinyCoefficient)); 
-		this->addResource(std::move(newMaterial), newHandle); 
+		std::unique_ptr<common::Material> newMaterial(new common::Material(surfaceColor, highlightColor, ambient, diffuse, specular, shinyCoefficient)); 
+		this->addResource(std::move(newMaterial)); 
 		return newHandle; 
 	}
-
-	common::Handle MaterialManager::add(const glm::vec4& surfaceColor, const glm::vec4& highlightColor, const int& shinyCoefficient, common::Handle texture)
+	common::Handle MaterialManager::add(const glm::vec4& surfaceColor, const glm::vec4& highlightColor, const glm::vec4& ambient, 
+		const glm::vec4& diffuse, const glm::vec4& specular, 
+		const int& shinyCoefficient, common::Handle texture)
 	{
-		common::Handle newHandle; 
-		newHandle.type = common::Handle_Type::material; 
-
-		this->addResource(std::make_unique<common::Material>(surfaceColor, highlightColor, shinyCoefficient, texture), newHandle); 
-		return newHandle; 
+		return this->addResource(std::make_unique<common::Material>(surfaceColor, highlightColor, ambient, diffuse, specular, shinyCoefficient, texture));
 	}
 
 	common::Material& MaterialManager::get(const common::Handle& handle) {
 		return this->getResource(handle); 
 	}
-}
+
+	common::Handle MaterialManager::createAppropriateHandle() {
+		common::Handle newHandle; 
+		newHandle.type = common::Handle_Type::material; 
+		return newHandle; 
+	}
 }

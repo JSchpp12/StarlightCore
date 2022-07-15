@@ -10,11 +10,9 @@ namespace star::core {
         int texChannels = 0; 
 
         std::unique_ptr<unsigned char> imageData(loadImage(path, texWidth, texHeight, texChannels)); 
-        common::Handle newHandle; 
-        newHandle.type = common::Handle_Type::texture; 
 
         std::unique_ptr<common::Texture> newImage(new common::Texture(path, std::move(imageData), texWidth, texHeight, texChannels)); 
-        this->addResource(path, std::move(newImage), newHandle); 
+        common::Handle newHandle = this->addResource(path, std::move(newImage)); 
         this->defaultResource = &this->getResource(newHandle); 
     }
 
@@ -38,15 +36,19 @@ namespace star::core {
 
             std::unique_ptr<common::Texture> newImage(new common::Texture(pathToFile, std::move(imageData), texWidth, texHeight, texChannels));
 
-            common::Handle newHandle;
-            newHandle.type = common::Handle_Type::texture;
+            common::Handle newHandle = this->addResource(pathToFile, std::move(newImage));
 
-            this->addResource(pathToFile, std::move(newImage), newHandle);
             return newHandle;
         }
         else {
             throw std::runtime_error("Previously loaded files are not yet permitted.");
         }
+    }
+
+    common::Handle TextureManager::createAppropriateHandle() {
+        common::Handle newHandle; 
+        newHandle.type = common::Handle_Type::texture; 
+        return newHandle; 
     }
 
     unsigned char* star::core::TextureManager::loadImage(const std::string& path, int& texWidth, int& texHeight, int& texChannel) {
@@ -55,8 +57,6 @@ namespace star::core {
             throw std::runtime_error("Unable to load image");
         }
 
-
         return pixels;
     }
-
 }

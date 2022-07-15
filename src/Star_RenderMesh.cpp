@@ -20,13 +20,13 @@ namespace star::core {
 		return std::make_unique<RenderMesh>(this->starDevice, *this->mesh, std::move(this->renderMaterial), this->beginIndex); 
 	}
 #pragma endregion 
-	void RenderMesh::render(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainImageIndex) {
-		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 2, 1, &this->renderMaterial->getDescriptor(), 0, nullptr);
-
-		commandBuffer.drawIndexed(this->mesh.getVerticies().size(), 1, 0, this->startIndex, 0); 
+	void RenderMesh::init(StarDescriptorSetLayout& staticLayout, StarDescriptorPool& staticPool) {
+		this->renderMaterial->init(staticLayout, staticPool); 
 	}
+	void RenderMesh::render(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainImageIndex) {
+		this->renderMaterial->bind(commandBuffer, pipelineLayout, swapChainImageIndex);
 
-	void RenderMesh::buildConstantDescriptors(StarDescriptorWriter& descriptorWriter) {
-		this->renderMaterial->buildTextureDescriptor(descriptorWriter, 1, vk::ImageLayout::eShaderReadOnlyOptimal); 
+		auto testTriangle = this->mesh.getTriangles()->size() * 3; 
+		commandBuffer.drawIndexed(testTriangle, 1, 0, this->startIndex, 0);
 	}
 }

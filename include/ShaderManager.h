@@ -31,6 +31,7 @@ namespace star{
 
             //common::Shader* Get(const common::Handle& handle) override; 
         protected: 
+            common::Handle createAppropriateHandle(); 
 
         private: 
             common::Handle defaultVertShader, defaultFragShader; 

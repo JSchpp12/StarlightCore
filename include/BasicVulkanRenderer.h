@@ -34,197 +34,195 @@
 #include <set>
 #include <chrono>
 
-namespace star {
-    namespace core {
-        class VulkanRenderer : public common::Renderer {
-        public:
-            std::unique_ptr<const char**> glfwRequiredExtensions;
-            std::unique_ptr<uint32_t> glfwRequiredExtensionsCount;
+namespace star::core{
+    class VulkanRenderer : public common::Renderer {
+    public:
+        std::unique_ptr<const char**> glfwRequiredExtensions;
+        std::unique_ptr<uint32_t> glfwRequiredExtensionsCount;
 
-            VulkanRenderer(common::ConfigFile& configFile, common::FileResourceManager<common::Shader>& shaderManager, common::FileResourceManager<common::GameObject>& objectManager,
-               TextureManager& textureManager, MaterialManager& materialManager, common::Camera& inCamera,
-                std::vector<common::Handle>& objectHandleList, std::vector<common::Light*>& listHandleList,
-                StarWindow& window);
+        VulkanRenderer(common::ConfigFile& configFile, common::FileResourceManager<common::Shader>& shaderManager, common::FileResourceManager<common::GameObject>& objectManager,
+            TextureManager& textureManager, MaterialManager& materialManager, common::Camera& inCamera,
+            std::vector<common::Handle>& objectHandleList, std::vector<common::Light*>& listHandleList,
+            StarWindow& window);
 
-            ~VulkanRenderer();
+        ~VulkanRenderer();
 
-            void pollEvents();
+        void pollEvents();
 
-            void prepare();
+        void prepare();
 
-            void draw();
+        void draw();
 
-            void cleanup();
+        void cleanup();
 
-        protected:
-            MaterialManager& materialManager; 
-            TextureManager& textureManager; 
+    protected:
+        MaterialManager& materialManager; 
+        TextureManager& textureManager; 
             
-            std::unique_ptr<StarDevice> starDevice{};
+        std::unique_ptr<StarDevice> starDevice{};
 
-            std::vector<common::Light*> pointLights;
-            common::Light* ambientLight = nullptr;
-
-
-            //std::vector<std::unique_ptr<StarBuffer>> uniformBuffers;
-
-            std::vector<std::unique_ptr<RenderSysObj>> RenderSysObjs;
-            std::unique_ptr<RenderSysPointLight> lightRenderSys;
-
-            bool frameBufferResized = false; //explicit declaration of resize, used if driver does not trigger VK_ERROR_OUT_OF_DATE
-
-            //how many frames will be sent through the pipeline
-            const int MAX_FRAMES_IN_FLIGHT = 2;
-
-            //tracker for which frame is being processed of the available permitted frames
-            size_t currentFrame = 0;
-
-            //texture information
-            vk::ImageView textureImageView;
-            vk::Sampler textureSampler;
-            vk::Image textureImage;
-            vk::DeviceMemory textureImageMemory;
-
-            //Sync obj storage 
-            std::vector<vk::Semaphore> imageAvailableSemaphores;
-            std::vector<vk::Semaphore> renderFinishedSemaphores;
+        std::vector<common::Light*> pointLights;
+        common::Light* ambientLight = nullptr;
 
 
-            //storage for multiple buffers for each swap chain image  
-            std::vector<std::unique_ptr<StarBuffer>> globalUniformBuffers;
-            std::vector<std::unique_ptr<StarBuffer>> pointLightLocationBuffers;
-            std::vector<std::unique_ptr<StarBuffer>> pointLightColorBuffers; 
-            std::vector<vk::DescriptorSet> globalDescriptorSets;
-            //std::vector<vk::DescriptorSet> pointLightDescriptorSets;
-            std::unique_ptr<StarDescriptorSetLayout> pointLightLocationSetLayout;
+        //std::vector<std::unique_ptr<StarBuffer>> uniformBuffers;
 
-            //pipeline and dependency storage
-            vk::RenderPass renderPass;
+        std::vector<std::unique_ptr<RenderSysObj>> RenderSysObjs;
+        std::unique_ptr<RenderSysPointLight> lightRenderSys;
 
-            //more swapchain info 
-            vk::SwapchainKHR swapChain;
-            std::vector<vk::Image> swapChainImages;
-            vk::Format swapChainImageFormat;
-            vk::Extent2D swapChainExtent;
+        bool frameBufferResized = false; //explicit declaration of resize, used if driver does not trigger VK_ERROR_OUT_OF_DATE
 
-            std::vector<vk::ImageView> swapChainImageViews;
-            std::vector<vk::Framebuffer> swapChainFramebuffers;
-            std::vector<vk::Fence> inFlightFences;
-            std::vector<vk::Fence> imagesInFlight;
+        //how many frames will be sent through the pipeline
+        const int MAX_FRAMES_IN_FLIGHT = 2;
 
-            std::unique_ptr<StarDescriptorPool> globalPool{};
-            //std::unique_ptr<StarDescriptorPool> perObjectDynamicPool{}; 
-            //std::unique_ptr<StarDescriptorPool> perObjectStaticPool{}; 
-            std::unique_ptr<StarDescriptorSetLayout> globalSetLayout{};
-            //std::unique_ptr<StarDescriptorSetLayout> perObjectStaticLayout{};
+        //tracker for which frame is being processed of the available permitted frames
+        size_t currentFrame = 0;
 
-            //depth testing storage 
-            vk::Image depthImage;
-            vk::DeviceMemory depthImageMemory;
-            vk::ImageView depthImageView;
+        //texture information
+        vk::ImageView textureImageView;
+        vk::Sampler textureSampler;
+        vk::Image textureImage;
+        vk::DeviceMemory textureImageMemory;
 
-            void updateUniformBuffer(uint32_t currentImage);
+        //Sync obj storage 
+        std::vector<vk::Semaphore> imageAvailableSemaphores;
+        std::vector<vk::Semaphore> renderFinishedSemaphores;
 
-            void cleanupSwapChain();
 
-            /// <summary>
-            /// Create a swap chain that will be used in rendering images
-            /// </summary>
-            void createSwapChain();
+        //storage for multiple buffers for each swap chain image  
+        std::vector<std::unique_ptr<StarBuffer>> globalUniformBuffers;
+        std::vector<std::unique_ptr<StarBuffer>> pointLightLocationBuffers;
+        std::vector<std::unique_ptr<StarBuffer>> pointLightColorBuffers; 
+        std::vector<vk::DescriptorSet> globalDescriptorSets;
+        //std::vector<vk::DescriptorSet> pointLightDescriptorSets;
+        std::unique_ptr<StarDescriptorSetLayout> pointLightLocationSetLayout;
 
-            /// <summary>
-            /// If the swapchain is no longer compatible, it must be recreated.
-            /// </summary>
-            void recreateSwapChain();
+        //pipeline and dependency storage
+        vk::RenderPass renderPass;
 
-            vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats);
+        //more swapchain info 
+        vk::SwapchainKHR swapChain;
+        std::vector<vk::Image> swapChainImages;
+        vk::Format swapChainImageFormat;
+        vk::Extent2D swapChainExtent;
 
-            //Look through givent present modes and pick the "best" one
-            vk::PresentModeKHR chooseSwapPresentMode(const std::vector<vk::PresentModeKHR>& availablePresentModes);
+        std::vector<vk::ImageView> swapChainImageViews;
+        std::vector<vk::Framebuffer> swapChainFramebuffers;
+        std::vector<vk::Fence> inFlightFences;
+        std::vector<vk::Fence> imagesInFlight;
 
-            vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities);
+        std::unique_ptr<StarDescriptorPool> globalPool{};
+        //std::unique_ptr<StarDescriptorPool> perObjectDynamicPool{}; 
+        //std::unique_ptr<StarDescriptorPool> perObjectStaticPool{}; 
+        std::unique_ptr<StarDescriptorSetLayout> globalSetLayout{};
+        //std::unique_ptr<StarDescriptorSetLayout> perObjectStaticLayout{};
 
-            /// <summary>
-            /// Create an image view object for use in the rendering pipeline
-            /// 'Image View': describes how to access an image and what part of an image to access
-            /// </summary>
-            void createImageViews();
+        //depth testing storage 
+        vk::Image depthImage;
+        vk::DeviceMemory depthImageMemory;
+        vk::ImageView depthImageView;
 
-            vk::ImageView createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlagBits aspectFlags);
+        void updateUniformBuffer(uint32_t currentImage);
 
-            /// <summary>
-            /// Create a rendering pass object which will tell vulkan information about framebuffer attachments:
-            /// number of color and depth buffers, how many samples to use for each, how to handle contents
-            /// </summary>
-            void createRenderPass();
+        void cleanupSwapChain();
 
-            /// <summary>
-            /// Helper function -- TODO 
-            /// </summary>
-            /// <returns></returns>
-            vk::Format findDepthFormat();
+        /// <summary>
+        /// Create a swap chain that will be used in rendering images
+        /// </summary>
+        void createSwapChain();
 
-            /// <summary>
-            /// Create a shader module from bytecode. The shader module is a wrapper around the shader code with function definitions. 
-            /// </summary>
-            /// <param name="code">bytecode for the shader program</param>
-            /// <returns></returns>
-            vk::ShaderModule createShaderModule(const std::vector<uint32_t>& code);
+        /// <summary>
+        /// If the swapchain is no longer compatible, it must be recreated.
+        /// </summary>
+        void recreateSwapChain();
 
-            /// <summary>
-            /// Create the depth images that will be used by vulkan to run depth tests on fragments. 
-            /// </summary>
-            void createDepthResources();
+        vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats);
 
-            /// <summary>
-            /// Create Vulkan Image object with properties provided in function arguments. 
-            /// </summary>
-            /// <param name="width">Width of the image being created</param>
-            /// <param name="height">Height of the image being created</param>
-            /// <param name="format"></param>
-            /// <param name="tiling"></param>
-            /// <param name="usage"></param>
-            /// <param name="properties"></param>
-            /// <param name="image"></param>
-            /// <param name="imageMemory"></param>
-            void createImage(uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlagBits properties, vk::Image& image, vk::DeviceMemory& imageMemory);
+        //Look through givent present modes and pick the "best" one
+        vk::PresentModeKHR chooseSwapPresentMode(const std::vector<vk::PresentModeKHR>& availablePresentModes);
 
-            /// <summary>
-            /// Create framebuffers that will hold representations of the images in the swapchain
-            /// </summary>
-            void createFramebuffers();
+        vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities);
 
-            /// <summary>
-            /// Create a buffer to hold the UBO data for each shader. Create a buffer for each swap chain image
-            /// </summary>
-            void createRenderingBuffers();
+        /// <summary>
+        /// Create an image view object for use in the rendering pipeline
+        /// 'Image View': describes how to access an image and what part of an image to access
+        /// </summary>
+        void createImageViews();
 
-            /// <summary>
-            /// Allocate and record the commands for each swapchain image
-            /// </summary>
-            void createCommandBuffers();
+        vk::ImageView createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlagBits aspectFlags);
 
-            /// <summary>
-            /// Create semaphores that are going to be used to sync rendering and presentation queues
-            /// </summary>
-            void createSemaphores();
+        /// <summary>
+        /// Create a rendering pass object which will tell vulkan information about framebuffer attachments:
+        /// number of color and depth buffers, how many samples to use for each, how to handle contents
+        /// </summary>
+        void createRenderPass();
 
-            /// <summary>
-            /// Fences are needed for CPU-GPU sync. Creates these required objects
-            /// </summary>
-            void createFences();
+        /// <summary>
+        /// Helper function -- TODO 
+        /// </summary>
+        /// <returns></returns>
+        vk::Format findDepthFormat();
 
-            /// <summary>
-            /// Create tracking information in order to link fences with the swap chain images using 
-            /// </summary>
-            void createFenceImageTracking();
+        /// <summary>
+        /// Create a shader module from bytecode. The shader module is a wrapper around the shader code with function definitions. 
+        /// </summary>
+        /// <param name="code">bytecode for the shader program</param>
+        /// <returns></returns>
+        vk::ShaderModule createShaderModule(const std::vector<uint32_t>& code);
+
+        /// <summary>
+        /// Create the depth images that will be used by vulkan to run depth tests on fragments. 
+        /// </summary>
+        void createDepthResources();
+
+        /// <summary>
+        /// Create Vulkan Image object with properties provided in function arguments. 
+        /// </summary>
+        /// <param name="width">Width of the image being created</param>
+        /// <param name="height">Height of the image being created</param>
+        /// <param name="format"></param>
+        /// <param name="tiling"></param>
+        /// <param name="usage"></param>
+        /// <param name="properties"></param>
+        /// <param name="image"></param>
+        /// <param name="imageMemory"></param>
+        void createImage(uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlagBits properties, vk::Image& image, vk::DeviceMemory& imageMemory);
+
+        /// <summary>
+        /// Create framebuffers that will hold representations of the images in the swapchain
+        /// </summary>
+        void createFramebuffers();
+
+        /// <summary>
+        /// Create a buffer to hold the UBO data for each shader. Create a buffer for each swap chain image
+        /// </summary>
+        void createRenderingBuffers();
+
+        /// <summary>
+        /// Allocate and record the commands for each swapchain image
+        /// </summary>
+        void createCommandBuffers();
+
+        /// <summary>
+        /// Create semaphores that are going to be used to sync rendering and presentation queues
+        /// </summary>
+        void createSemaphores();
+
+        /// <summary>
+        /// Fences are needed for CPU-GPU sync. Creates these required objects
+        /// </summary>
+        void createFences();
+
+        /// <summary>
+        /// Create tracking information in order to link fences with the swap chain images using 
+        /// </summary>
+        void createFenceImageTracking();
 
 #pragma region HelperFunctions 
 #pragma endregion
-        private:
-            StarWindow& starWindow;
-            std::vector<common::Handle>* objectHandles;
+    private:
+        StarWindow& starWindow;
+        std::vector<common::Handle>* objectHandles;
 
-        };
-    }
+    };
 }

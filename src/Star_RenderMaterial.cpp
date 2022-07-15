@@ -1,6 +1,7 @@
 #include "Star_RenderMaterial.hpp"
 
 namespace star::core {
+#pragma region Builder
 	RenderMaterial::Builder& RenderMaterial::Builder::setMaterial(common::Handle material) {
 		assert(this->material == nullptr && "A material has already been applied to this object");
 
@@ -18,7 +19,7 @@ namespace star::core {
 
 		return std::make_unique<RenderMaterial>(this->starDevice, *this->material, *this->texture);
 	}
-
+#pragma endregion
 	RenderMaterial::RenderMaterial(StarDevice& starDevice, common::Material& material, common::Texture& texture) 
 		: starDevice(starDevice), material(material) {
 
@@ -26,14 +27,27 @@ namespace star::core {
 		this->texture = std::make_unique<StarTexture>(starDevice, texture); 
 	}
 
-	void RenderMaterial::buildTextureDescriptor (StarDescriptorWriter descriptorWriter, int binding, vk::ImageLayout imageLayout) {
+	void RenderMaterial::init(StarDescriptorSetLayout& staticDescriptorSetLayout, StarDescriptorPool& staticDescriptorPool) {
+		if (this->texture) {
+			buildTextureDescriptor(staticDescriptorSetLayout, staticDescriptorPool, 0, vk::ImageLayout::eShaderReadOnlyOptimal); 
+		}
+	}
+
+	void RenderMaterial::bind(vk::CommandBuffer& commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex) {
+		if (this->descriptor) {
+			commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 2, 1, &this->descriptor, 0, nullptr);
+		}
+	}
+
+	void RenderMaterial::buildTextureDescriptor(StarDescriptorSetLayout& staticLayout, StarDescriptorPool& staticPool, int binding, vk::ImageLayout imageLayout) {
+		StarDescriptorWriter starDescriptorWriter(this->starDevice, staticLayout, staticPool); 
 		vk::DescriptorImageInfo descriptorInfo{
 			this->texture->getSampler(),
 			this->texture->getImageView(),
 			imageLayout
 		};
 
-		descriptorWriter.writeImage(binding, &descriptorInfo);
-		descriptorWriter.build(this->descriptor);
+		starDescriptorWriter.writeImage(binding, &descriptorInfo);
+		starDescriptorWriter.build(this->descriptor);
 	}
 }

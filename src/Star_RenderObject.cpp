@@ -1,7 +1,6 @@
 #include "Star_RenderObject.hpp"
 
-namespace star{
-namespace core {
+namespace star::core{
 #pragma region Builder
 	RenderObject::Builder::Builder(StarDevice& starDevice, common::GameObject& gameObject)
 		: starDevice(starDevice), gameObject(gameObject) {
@@ -21,16 +20,15 @@ namespace core {
 		return std::make_unique<RenderObject>(this->starDevice, this->gameObject, std::move(this->meshes), this->numSwapChainImages); 
 	}
 #pragma endregion 
+	void RenderObject::init(StarDescriptorSetLayout& staticLayout, StarDescriptorPool& staticPool) {
+		for (auto& mesh : this->meshes) {
+			mesh->init(staticLayout, staticPool); 
+		}
+	}
 
 	void RenderObject::render(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainIndexNum) {
 		for (auto& mesh : this->meshes) {
 			mesh->render(commandBuffer, pipelineLayout, swapChainIndexNum);
-		}
-	}
-
-	void RenderObject::buildConstantDescriptors(StarDescriptorWriter& descriptorWriter) {
-		for (auto& mesh : this->meshes) {
-			mesh->buildConstantDescriptors(descriptorWriter); 
 		}
 	}
 
@@ -41,5 +39,4 @@ namespace core {
 	std::vector<vk::DescriptorSet>& RenderObject::getDefaultDescriptorSets() {
 		return this->uboDescriptorSets;
 	}
-}
 }
