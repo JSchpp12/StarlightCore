@@ -35,10 +35,15 @@ namespace star::core {
 			common::Texture* texture = nullptr;
 		};
 		/// <summary>
+		/// Initalize the const descriptor set layouts with needed descriptor slots
+		/// </summary>
+		/// <param name="constBuilder"></param>
+		void initDescriptorLayouts(StarDescriptorSetLayout::Builder& constBuilder); 
+		/// <summary>
 		/// Init Render Material with proper descriptors
 		/// </summary>
 		/// <param name="staticDescriptorSetLayout">DescriptorSetLayout to be used when creating object descriptors which are updated once (during init)</param>
-		void init(StarDescriptorSetLayout& staticDescriptorSetLayout, StarDescriptorPool& staticDescriptorPool); 
+		void buildConstDescriptor(StarDescriptorWriter writer);
 
 		//need to gather refs to base materials
 		std::unique_ptr<StarTexture> texture;
@@ -58,7 +63,7 @@ namespace star::core {
 		/// <param name="writer"></param>
 		/// <param name="binding"></param>
 		/// <param name="layout"></param>
-		void buildTextureDescriptor(StarDescriptorSetLayout& staticLayout, StarDescriptorPool& staticPool, int binding, vk::ImageLayout layout);
+		void buildTextureDescriptor(StarDescriptorWriter& constDescriptorWriter, int binding, vk::ImageLayout imageLayout);
 
 		//get 
 		common::Material& getMaterial() { return this->material; }

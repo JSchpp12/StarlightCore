@@ -13,29 +13,27 @@
 #include <string> 
 #include <memory>
 
-namespace star{
-    namespace core{
-        class ShaderManager : public common::FileResourceManager<common::Shader> {
-        public: 
-            /// <summary>
-            /// Create shader manager with default shaders to be used if objects are not explicitly provided shaders
-            /// </summary>
-            /// <param name="defaultVert"></param>
-            /// <param name="defaultFrag"></param>
-            ShaderManager(const std::string& defaultVert, const std::string& defaultFrag);
+namespace star::core{
+    class ShaderManager : public common::FileResourceManager<common::Shader> {
+    public: 
+        /// <summary>
+        /// Create shader manager with default shaders to be used if objects are not explicitly provided shaders
+        /// </summary>
+        /// <param name="defaultVert"></param>
+        /// <param name="defaultFrag"></param>
+        ShaderManager(const std::string& defaultVert, const std::string& defaultFrag);
 
-            ~ShaderManager(); 
+        ~ShaderManager(); 
 
-            ///add shader to manager, will return handle to compiled resource
-            virtual common::Handle add(const std::string& pathToFile); 
+        ///add shader to manager, will return handle to compiled resource
+        virtual common::Handle add(const std::string& pathToFile); 
 
-            //common::Shader* Get(const common::Handle& handle) override; 
-        protected: 
-            common::Handle createAppropriateHandle(); 
+        //common::Shader* Get(const common::Handle& handle) override; 
+    protected: 
+        common::Handle createAppropriateHandle(); 
 
-        private: 
-            common::Handle defaultVertShader, defaultFragShader; 
+    private: 
+        common::Handle defaultVertShader, defaultFragShader; 
 
-        };
-    }
+    };
 }

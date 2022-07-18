@@ -27,10 +27,24 @@ namespace star::core {
 		this->texture = std::make_unique<StarTexture>(starDevice, texture); 
 	}
 
-	void RenderMaterial::init(StarDescriptorSetLayout& staticDescriptorSetLayout, StarDescriptorPool& staticDescriptorPool) {
+	void RenderMaterial::initDescriptorLayouts(StarDescriptorSetLayout::Builder& constBuilder) {
 		if (this->texture) {
-			buildTextureDescriptor(staticDescriptorSetLayout, staticDescriptorPool, 0, vk::ImageLayout::eShaderReadOnlyOptimal); 
+			constBuilder.addBinding(1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment); 
 		}
+	}
+
+	void RenderMaterial::buildConstDescriptor(StarDescriptorWriter writer) {
+		if (this->texture) {
+			//buildTextureDescriptor(writer, 1, vk::ImageLayout::eShaderReadOnlyOptimal); 
+			vk::DescriptorImageInfo descriptorInfo{
+				this->texture->getSampler(),
+				this->texture->getImageView(),
+				vk::ImageLayout::eShaderReadOnlyOptimal
+			};
+
+			writer.writeImage(1, &descriptorInfo);
+		}
+		writer.build(this->descriptor); 
 	}
 
 	void RenderMaterial::bind(vk::CommandBuffer& commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex) {
@@ -39,15 +53,13 @@ namespace star::core {
 		}
 	}
 
-	void RenderMaterial::buildTextureDescriptor(StarDescriptorSetLayout& staticLayout, StarDescriptorPool& staticPool, int binding, vk::ImageLayout imageLayout) {
-		StarDescriptorWriter starDescriptorWriter(this->starDevice, staticLayout, staticPool); 
+	void RenderMaterial::buildTextureDescriptor(StarDescriptorWriter& constDescriptorWriter, int binding, vk::ImageLayout imageLayout) {
 		vk::DescriptorImageInfo descriptorInfo{
 			this->texture->getSampler(),
 			this->texture->getImageView(),
 			imageLayout
 		};
 
-		starDescriptorWriter.writeImage(binding, &descriptorInfo);
-		starDescriptorWriter.build(this->descriptor);
+		constDescriptorWriter.writeImage(binding, &descriptorInfo);
 	}
 }

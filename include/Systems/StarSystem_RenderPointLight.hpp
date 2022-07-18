@@ -12,15 +12,9 @@
 namespace star::core{
 	class RenderSysPointLight : private RenderSysObj{
 	public:
-		struct UniformBufferObject{
-			alignas(16) glm::mat4 modelMatrix;
-			alignas(16) glm::mat4 normalMatrix;
-			glm::vec4 color; 
-		};
-
 		RenderSysPointLight(const RenderSysObj&) = delete;
 
-		RenderSysPointLight(StarDevice* device, size_t numSwapChainImages, vk::DescriptorSetLayout globalSetLayout,
+		RenderSysPointLight(StarDevice& device, size_t numSwapChainImages, vk::DescriptorSetLayout globalSetLayout,
 			vk::Extent2D swapChainExtent, vk::RenderPass renderPass) :
 			RenderSysObj(device, numSwapChainImages, globalSetLayout, swapChainExtent, renderPass) { }
 
@@ -42,6 +36,9 @@ namespace star::core{
 
 		virtual void setPipelineLayout(vk::PipelineLayout newPipelineLayout) { this->RenderSysObj::setPipelineLayout(newPipelineLayout); }
 
+		virtual bool hasShader(vk::ShaderStageFlagBits stage) { return this->RenderSysObj::hasShader(stage); }
+
+		virtual common::Handle getBaseShader(vk::ShaderStageFlags stage) { return this->RenderSysObj::getBaseShader(stage); }
 	protected:
 
 	private:
