@@ -30,7 +30,6 @@ namespace star::core{
 	protected:
 		virtual common::Handle createAppropriateHandle() override;
 		
-
 	private:
 
 	};

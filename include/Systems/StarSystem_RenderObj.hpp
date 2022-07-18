@@ -34,7 +34,7 @@ namespace star::core{
 		};
 		uint32_t totalNumVerticies = 0; 
 
-		RenderSysObj(StarDevice* device, size_t numSwapChainImages, vk::DescriptorSetLayout globalSetLayout, 
+		RenderSysObj(StarDevice& device, size_t numSwapChainImages, vk::DescriptorSetLayout globalSetLayout, 
 			vk::Extent2D swapChainExtent, vk::RenderPass renderPass) :
 			starDevice(device), numSwapChainImages(numSwapChainImages), 
 			globalSetLayout(globalSetLayout), swapChainExtent(swapChainExtent),
@@ -84,9 +84,6 @@ namespace star::core{
 		/// </summary>
 		virtual void render(vk::CommandBuffer& commandBuffer, int swapChainImageIndex);
 
-		virtual void setAmbientLight(common::Light* newLight) { this->ambientLight = newLight; }
-		virtual bool hasAmbientLight() { return this->ambientLight == nullptr ? false : true; }
-
 		//TODO: remove
 		virtual vk::PipelineLayout getPipelineLayout() { return this->pipelineLayout; }
 		virtual StarDescriptorSetLayout* getSetLayout() { return this->descriptorSetLayout.get(); }
@@ -95,7 +92,7 @@ namespace star::core{
 		uint32_t getNumVerticies() { return this->totalNumVerticies; }
 	protected:
 		bool ownerOfSetLayout = true; 
-		StarDevice* starDevice;
+		StarDevice& starDevice;
 		int numSwapChainImages = 0;
 
 		vk::Extent2D swapChainExtent; 
@@ -137,7 +134,7 @@ namespace star::core{
 		/// Create buffers needed for render operations. Such as those used by descriptors
 		/// </summary>
 		virtual void createRenderBuffers();
-		virtual void createStaticDescriptors();
+		virtual void createDescriptorLayouts();
 		/// <summary>
 		/// Create descriptors for binding render buffers to shaders.
 		/// </summary>

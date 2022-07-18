@@ -4,7 +4,7 @@ namespace star::core{
 
 RenderSysObj::~RenderSysObj() {
 	if (this->ownerOfSetLayout)
-		this->starDevice->getDevice().destroyPipelineLayout(this->pipelineLayout);
+		this->starDevice.getDevice().destroyPipelineLayout(this->pipelineLayout);
 }
 
 void RenderSysObj::registerShader(vk::ShaderStageFlagBits stage, common::Shader& newShader, common::Handle newShaderHandle) {
@@ -97,7 +97,7 @@ void star::core::RenderSysObj::init(std::vector<vk::DescriptorSetLayout> globalD
 	createIndexBuffer();
 	createRenderBuffers(); 
 	createDescriptorPool();
-	createStaticDescriptors(); 
+	createDescriptorLayouts(); 
 	createDescriptors();
 	if (!this->pipelineLayout)
 		createPipelineLayout(globalDescriptorSets); 
@@ -133,7 +133,7 @@ void RenderSysObj::createVertexBuffer() {
 	uint32_t vertexCount = vertexList.size(); 
 
 	StarBuffer stagingBuffer{
-		*this->starDevice,
+		this->starDevice,
 		vertexSize,
 		vertexCount, 
 		vk::BufferUsageFlagBits::eTransferSrc,
@@ -143,21 +143,21 @@ void RenderSysObj::createVertexBuffer() {
 	stagingBuffer.writeToBuffer(vertexList.data()); 
 
 	this->vertexBuffer = std::make_unique<StarBuffer>(
-		*this->starDevice,
+		this->starDevice,
 		vertexSize,
 		vertexCount,
 		vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst, 
 		vk::MemoryPropertyFlagBits::eDeviceLocal);
 
-	this->starDevice->copyBuffer(stagingBuffer.getBuffer(), this->vertexBuffer->getBuffer(), bufferSize); 
+	this->starDevice.copyBuffer(stagingBuffer.getBuffer(), this->vertexBuffer->getBuffer(), bufferSize); 
 }
 
 void RenderSysObj::createRenderBuffers() {
 	this->uniformBuffers.resize(this->numSwapChainImages);
 
-	auto minUniformSize = this->starDevice->getPhysicalDevice().getProperties().limits.minUniformBufferOffsetAlignment;
+	auto minUniformSize = this->starDevice.getPhysicalDevice().getProperties().limits.minUniformBufferOffsetAlignment;
 	for (size_t i = 0; i < numSwapChainImages; i++) {
-		this->uniformBuffers[i] = std::make_unique<StarBuffer>(*this->starDevice, this->renderObjects.size(), sizeof(UniformBufferObject),
+		this->uniformBuffers[i] = std::make_unique<StarBuffer>(this->starDevice, this->renderObjects.size(), sizeof(UniformBufferObject),
 			vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, minUniformSize);
 		this->uniformBuffers[i]->map();
 	}
@@ -188,7 +188,7 @@ void RenderSysObj::createIndexBuffer() {
 	uint32_t indexCount = indiciesList.size();
 
 	StarBuffer stagingBuffer{
-		*this->starDevice, 
+		this->starDevice, 
 		indexSize,
 		indexCount,
 		vk::BufferUsageFlagBits::eTransferSrc, 
@@ -198,41 +198,45 @@ void RenderSysObj::createIndexBuffer() {
 	stagingBuffer.writeToBuffer(indiciesList.data()); 
 
 	this->indexBuffer = std::make_unique<StarBuffer>(
-		*this->starDevice, 
+		this->starDevice, 
 		indexSize, 
 		indexCount,
 		vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
 		vk::MemoryPropertyFlagBits::eDeviceLocal );
-	this->starDevice->copyBuffer(stagingBuffer.getBuffer(), this->indexBuffer->getBuffer(), bufferSize);
+	this->starDevice.copyBuffer(stagingBuffer.getBuffer(), this->indexBuffer->getBuffer(), bufferSize);
 }
 
 void RenderSysObj::createDescriptorPool() {
 	//create descriptor pools 
-	this->descriptorPool = StarDescriptorPool::Builder(*this->starDevice)
+	this->descriptorPool = StarDescriptorPool::Builder(this->starDevice)
 		.setMaxSets(50)																								//allocate large number of descriptor sets 
 		.addPoolSize(vk::DescriptorType::eUniformBuffer, this->numSwapChainImages * this->renderObjects.size())
 		.addPoolSize(vk::DescriptorType::eStorageBuffer, this->numSwapChainImages)
+		.addPoolSize(vk::DescriptorType::eCombinedImageSampler, this->renderObjects.size() * this->numSwapChainImages)
 		.build();
 }
 
-void RenderSysObj::createStaticDescriptors() {
-	this->staticDescriptorSetLayout = StarDescriptorSetLayout::Builder(*this->starDevice)
-	.addBinding(0, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
-	.build();
+//PER RENDER SYSTEM DESCRIPTORS
+void RenderSysObj::createDescriptorLayouts() {
+	RenderObject* currRenderObj = nullptr; 
 
-	//create const descriptors and layouts
+	this->staticDescriptorSetLayout = StarDescriptorSetLayout::Builder(this->starDevice)
+		.addBinding(0, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eFragment)				//lights
+		.addBinding(1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)		//texture 
+		.build(); 
+
 	for (auto& obj : this->renderObjects) {
-		obj->init(*this->staticDescriptorSetLayout, *this->descriptorPool); 
+		obj->initDescriptors(*this->staticDescriptorSetLayout, *this->descriptorPool); 
 	}
 }
 
 void RenderSysObj::createDescriptors() {
 	//create descriptor layouts
-	this->descriptorSetLayout = StarDescriptorSetLayout::Builder(*this->starDevice)
+	this->descriptorSetLayout = StarDescriptorSetLayout::Builder(this->starDevice)
 		.addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
 		.build();
 
-	auto minProp = this->starDevice->getPhysicalDevice().getProperties().limits.minUniformBufferOffsetAlignment;
+	auto minProp = this->starDevice.getPhysicalDevice().getProperties().limits.minUniformBufferOffsetAlignment;
 	auto minAlignmentOfUBOElements = StarBuffer::getAlignment(sizeof(UniformBufferObject), minProp);
 
 	//create descritptor sets 
@@ -246,9 +250,10 @@ void RenderSysObj::createDescriptors() {
 				sizeof(UniformBufferObject)
 			};
 
-			StarDescriptorWriter(*this->starDevice, *this->descriptorSetLayout, *this->descriptorPool)
-				.writeBuffer(0, &bufferInfo)
-				.build(this->renderObjects.at(j)->getDefaultDescriptorSets().at(i));
+			auto writer = StarDescriptorWriter(this->starDevice, *this->descriptorSetLayout, *this->descriptorPool)
+				.writeBuffer(0, &bufferInfo);
+
+			writer.build(this->renderObjects.at(j)->getDefaultDescriptorSets().at(i));
 		}
 	}
 }
@@ -266,7 +271,7 @@ void RenderSysObj::createPipelineLayout(std::vector<vk::DescriptorSetLayout> glo
 	pipelineLayoutInfo.pushConstantRangeCount = 0;
 	pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
-	this->pipelineLayout = this->starDevice->getDevice().createPipelineLayout(pipelineLayoutInfo);
+	this->pipelineLayout = this->starDevice.getDevice().createPipelineLayout(pipelineLayoutInfo);
 	if (!this->pipelineLayout) {
 		throw std::runtime_error("failed to create pipeline layout");
 	}
@@ -392,6 +397,6 @@ void RenderSysObj::createPipeline() {
 	config.pipelineLayout = this->pipelineLayout; 
 	config.renderPass = this->renderPass;
 
-	this->starPipeline = std::make_unique<StarPipeline>(this->starDevice, this->vertShader, this->fragShader, config);
+	this->starPipeline = std::make_unique<StarPipeline>(&this->starDevice, this->vertShader, this->fragShader, config);
 }
 }

@@ -45,15 +45,16 @@ namespace star::core {
 			: starDevice(starDevice), mesh(mesh), renderMaterial(std::move(material)) {
 			this->startIndex = vbOffset;
 		}
+		void initDescriptorLayouts(StarDescriptorSetLayout::Builder& constBuilder);
 		/// <summary>
 		/// Init object with needed structures such as descriptors
 		/// </summary>
-		/// <param name="staticDescriptorWriter">Writer to use when creating static descriptors (those updated once on init)</param>
-		void init(StarDescriptorSetLayout& staticLayout, StarDescriptorPool& staticPool);
+		/// <param name="constBuilder">Writer to use when creating static descriptors (those updated once on init)</param>
+		void initDescriptors(StarDescriptorSetLayout& constLayout, StarDescriptorPool& descriptorPool);
 		void render(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainImageIndex); 
 
 		void setVBOffset(uint32_t offset) { this->startIndex = offset; }
-		RenderMaterial& getMaterial() { return *this->renderMaterial; }
+		RenderMaterial& getRenderMaterial() { return *this->renderMaterial; }
 		common::Mesh& getMesh() { return this->mesh; }
 		vk::DescriptorSet& getDescriptor() { return this->renderMaterial->getDescriptor(); }
 
@@ -62,6 +63,7 @@ namespace star::core {
 		common::Mesh& mesh; 
 		std::unique_ptr<RenderMaterial> renderMaterial; 
 		uint32_t startIndex;								//index in vertex buffer where draw will begin             
+		vk::DescriptorSet constDescriptorSet; 
 
 	};
 }

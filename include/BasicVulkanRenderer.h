@@ -42,7 +42,7 @@ namespace star::core{
 
         VulkanRenderer(common::ConfigFile& configFile, common::FileResourceManager<common::Shader>& shaderManager, common::FileResourceManager<common::GameObject>& objectManager,
             TextureManager& textureManager, MaterialManager& materialManager, common::Camera& inCamera,
-            std::vector<common::Handle>& objectHandleList, std::vector<common::Light*>& listHandleList,
+            std::vector<common::Handle>& objectHandleList, std::vector<common::Light*>& inLightList,
             StarWindow& window);
 
         ~VulkanRenderer();
@@ -56,16 +56,17 @@ namespace star::core{
         void cleanup();
 
     protected:
+        struct LightBufferObject {
+            glm::vec4 position;
+            glm::vec4 ambient;
+            glm::vec4 diffuse;
+            glm::vec4 specular;
+        };
         MaterialManager& materialManager; 
         TextureManager& textureManager; 
-            
+        std::vector<common::Light*>& lightList;
+
         std::unique_ptr<StarDevice> starDevice{};
-
-        std::vector<common::Light*> pointLights;
-        common::Light* ambientLight = nullptr;
-
-
-        //std::vector<std::unique_ptr<StarBuffer>> uniformBuffers;
 
         std::vector<std::unique_ptr<RenderSysObj>> RenderSysObjs;
         std::unique_ptr<RenderSysPointLight> lightRenderSys;
@@ -91,11 +92,9 @@ namespace star::core{
 
         //storage for multiple buffers for each swap chain image  
         std::vector<std::unique_ptr<StarBuffer>> globalUniformBuffers;
-        std::vector<std::unique_ptr<StarBuffer>> pointLightLocationBuffers;
-        std::vector<std::unique_ptr<StarBuffer>> pointLightColorBuffers; 
         std::vector<vk::DescriptorSet> globalDescriptorSets;
-        //std::vector<vk::DescriptorSet> pointLightDescriptorSets;
-        std::unique_ptr<StarDescriptorSetLayout> pointLightLocationSetLayout;
+        std::vector<std::unique_ptr<StarBuffer>> lightBuffers; 
+        std::vector<vk::DescriptorSet> lightDescriptorSets; 
 
         //pipeline and dependency storage
         vk::RenderPass renderPass;

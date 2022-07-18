@@ -6,28 +6,16 @@ namespace star::core {
 	VulkanRenderer::VulkanRenderer(common::ConfigFile& configFile,
 		common::FileResourceManager<common::Shader>& shaderManager, common::FileResourceManager<common::GameObject>& objectManager,
 		TextureManager& textureManager, MaterialManager& materialManager, common::Camera& inCamera,
-		std::vector<common::Handle>& objectHandleList, std::vector<common::Light*>& lightList,
+		std::vector<common::Handle>& objectHandleList, std::vector<common::Light*>& inLightList,
 		StarWindow& window) :
 		materialManager(materialManager), textureManager(textureManager),
 		star::common::Renderer(configFile, shaderManager, objectManager, inCamera, objectHandleList),
-		glfwRequiredExtensionsCount(new uint32_t), starWindow(window)
+		glfwRequiredExtensionsCount(new uint32_t), starWindow(window),
+		lightList(inLightList)
 	{
 		common::GameObject* currentObject = nullptr;
 		common::Light* currLight = nullptr;
 		this->starDevice = std::unique_ptr<StarDevice>(new StarDevice(this->starWindow));
-
-		for (size_t i = 0; i < lightList.size(); i++) {
-			currLight = lightList.at(i);
-			if (currLight->getType() == common::Type::Light::point) {
-				this->pointLights.push_back(lightList.at(i));
-			}
-			else if (currLight->getType() == common::Type::Light::directional && this->ambientLight == nullptr) {
-				this->ambientLight = lightList.at(i);
-			}
-			else {
-				throw std::runtime_error("More than one ambient light source is not yet supported");
-			}
-		}
 	}
 
 	VulkanRenderer::~VulkanRenderer() {
@@ -48,20 +36,28 @@ namespace star::core {
 		globalUbo.proj[1][1] *= -1;
 		globalUbo.view = this->camera.getDisplayMatrix();
 		globalUbo.inverseView = this->camera.getInverseViewMatrix(); 
-		globalUbo.ambientLightColor = this->ambientLight->getColor();
-		globalUbo.numLights = static_cast<uint32_t>(this->pointLights.size()); 
+		globalUbo.numLights = static_cast<uint32_t>(this->lightList.size()); 
 
 		this->globalUniformBuffers[currentImage]->writeToBuffer(&globalUbo, sizeof(globalUbo));
 
 		//update buffer for light positions
-		std::vector<glm::vec4> lightPositions(this->pointLights.size()); 
-		std::vector<glm::vec4> lightColors(this->pointLights.size());
-		for (size_t i = 0; i < this->pointLights.size(); i++) {
-			lightPositions[i] = glm::vec4{ this->pointLights.at(i)->getPosition(), 1.0 };
-			lightColors[i] = this->pointLights.at(i)->getColor(); 
+		//std::vector<glm::vec4> lightPositions(this->lightList.size());
+		//std::vector<glm::vec4> lightColors(this->lightList.size());
+		std::vector<LightBufferObject> lightInformation(this->lightList.size()); 
+		LightBufferObject newBufferObject{};
+		common::Light* currLight = nullptr; 
+
+		//write buffer information
+		for (size_t i = 0; i < this->lightList.size(); i++) {
+			currLight = this->lightList.at(i); 
+			newBufferObject.position = glm::vec4{ currLight->getPosition(), 1.0f };
+			newBufferObject.specular = currLight->getSpecular();
+			newBufferObject.ambient = currLight->getAmbient();
+			newBufferObject.diffuse = currLight->getDiffuse();
+			newBufferObject.specular = currLight->getSpecular();
+			lightInformation[i] = newBufferObject; 
 		}
-		this->pointLightLocationBuffers[currentImage]->writeToBuffer(lightPositions.data(), sizeof(glm::vec4) * lightPositions.size()); 
-		this->pointLightColorBuffers[currentImage]->writeToBuffer(lightColors.data(), sizeof(glm::vec4) * lightPositions.size()); 
+		this->lightBuffers[currentImage]->writeToBuffer(lightInformation.data(), sizeof(LightBufferObject) * lightInformation.size());
 
 		for (size_t i = 0; i < this->RenderSysObjs.size(); i++) {
 			RenderSysObjs.at(i)->updateBuffers(currentImage);
@@ -83,14 +79,12 @@ namespace star::core {
 		this->globalPool = StarDescriptorPool::Builder(*this->starDevice.get())
 			.setMaxSets((this->swapChainImages.size()))
 			.addPoolSize(vk::DescriptorType::eUniformBuffer, this->swapChainImages.size())
-			.addPoolSize(vk::DescriptorType::eStorageBuffer, this->pointLights.size())				//add set for light positions
-			.addPoolSize(vk::DescriptorType::eStorageBuffer, this->pointLights.size())				//add set for light colors
+			.addPoolSize(vk::DescriptorType::eStorageBuffer, this->lightList.size())
 			.build();
 
 		this->globalSetLayout = StarDescriptorSetLayout::Builder(*this->starDevice.get())
 			.addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
 			.addBinding(1, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
-			.addBinding(2, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
 			.build();
 
 		this->globalDescriptorSets.resize(this->swapChainImages.size());
@@ -98,7 +92,7 @@ namespace star::core {
 
 		vk::ShaderStageFlagBits stages{};
 		vk::Device device = this->starDevice->getDevice();
-		this->RenderSysObjs.push_back(std::make_unique<RenderSysObj>(this->starDevice.get(), this->swapChainImages.size(), this->globalSetLayout->getDescriptorSetLayout(), this->swapChainExtent, this->renderPass));
+		this->RenderSysObjs.push_back(std::make_unique<RenderSysObj>(*this->starDevice, this->swapChainImages.size(), this->globalSetLayout->getDescriptorSetLayout(), this->swapChainExtent, this->renderPass));
 		RenderSysObj* tmpRenderSysObj = this->RenderSysObjs.at(0).get();
 		uint32_t meshVertCounter = 0; 
 
@@ -133,7 +127,7 @@ namespace star::core {
 				else if ((object->getBaseShader(vk::ShaderStageFlagBits::eVertex).containerIndex != currObject.getVertShader().containerIndex) ||
 					(object->getBaseShader(vk::ShaderStageFlagBits::eFragment).containerIndex != currObject.getFragShader().containerIndex)) {
 					//vulkan object has shaders but they are not the same as the shaders needed for current render object
-					this->RenderSysObjs.push_back(std::make_unique<RenderSysObj>(this->starDevice.get(), this->swapChainImages.size(), this->globalSetLayout->getDescriptorSetLayout(), this->swapChainExtent, this->renderPass));
+					this->RenderSysObjs.push_back(std::make_unique<RenderSysObj>(*this->starDevice, this->swapChainImages.size(), this->globalSetLayout->getDescriptorSetLayout(), this->swapChainExtent, this->renderPass));
 					RenderSysObj* newObject = this->RenderSysObjs.at(this->RenderSysObjs.size()).get();
 					newObject->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager.get(currObject.getVertShader()), currObject.getVertShader());
 					newObject->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager.get(currObject.getFragShader()), currObject.getFragShader());
@@ -163,26 +157,37 @@ namespace star::core {
 		std::vector<vk::DescriptorSetLayout> globalSets = { this->globalSetLayout->getDescriptorSetLayout() }; 
 		tmpRenderSysObj->init(globalSets);
 
-		this->lightRenderSys = std::make_unique<RenderSysPointLight>(this->starDevice.get(), this->swapChainImages.size(), this->globalSetLayout->getDescriptorSetLayout(), this->swapChainExtent, this->renderPass);
-		common::GameObject& lightLinkedObject = this->objectManager.get(this->pointLights.at(0)->getLinkedObjectHandle());
-		this->lightRenderSys->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager.get(lightLinkedObject.getVertShader()), lightLinkedObject.getVertShader());
-		this->lightRenderSys->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager.get(lightLinkedObject.getFragShader()), lightLinkedObject.getFragShader());
-		for (auto light : this->pointLights) {
-			if (light->getType() == common::Type::Light::point) {
-				common::GameObject& lightLinkedObject = this->objectManager.get(light->getLinkedObjectHandle());
-				RenderObject::Builder linkedObjectBuilder(*this->starDevice, lightLinkedObject);
-				linkedObjectBuilder.setNumFrames(this->swapChainImages.size()); 
-
-				for (auto& mesh : lightLinkedObject.getMeshes()) {
-					linkedObjectBuilder.addMesh(RenderMesh::Builder(*this->starDevice)
-						.setMaterial(RenderMaterial::Builder(*this->starDevice, this->materialManager, this->textureManager)
-							.setMaterial(mesh->getMaterial())
-							.build())
-						.setMesh(*mesh)
-						.build());
+		/* Init Point Light Render System */
+		this->lightRenderSys = std::make_unique<RenderSysPointLight>(*this->starDevice, this->swapChainImages.size(), this->globalSetLayout->getDescriptorSetLayout(), this->swapChainExtent, this->renderPass);
+		common::GameObject* currLinkedObj = nullptr; 
+		int vertexCounter = 0; 
+		for (auto light : this->lightList) {
+			if (light->hasLinkedObject()) {
+				currLinkedObj = &this->objectManager.get(light->getLinkedObjectHandle());
+				if (!this->lightRenderSys->hasShader(vk::ShaderStageFlagBits::eVertex) && !this->lightRenderSys->hasShader(vk::ShaderStageFlagBits::eFragment)) {
+					this->lightRenderSys->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager.getResource(currLinkedObj->getVertShader()), currLinkedObj->getVertShader()); 
+					this->lightRenderSys->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager.getResource(currLinkedObj->getFragShader()), currLinkedObj->getFragShader()); 
 				}
+				if ((lightRenderSys->getBaseShader(vk::ShaderStageFlagBits::eFragment).containerIndex == currLinkedObj->getFragShader().containerIndex)
+						|| (lightRenderSys->getBaseShader(vk::ShaderStageFlagBits::eVertex).containerIndex == currLinkedObj->getVertShader().containerIndex)) {
+					auto builder = RenderObject::Builder(*this->starDevice, this->objectManager.get(light->getLinkedObjectHandle()));
+					builder.setNumFrames(this->swapChainImages.size());
 
-				this->lightRenderSys->addLight(light, linkedObjectBuilder.build(), this->swapChainImages.size());
+					for (auto& mesh : currLinkedObj->getMeshes()) {
+						builder.addMesh(RenderMesh::Builder(*this->starDevice)
+							.setMesh(*mesh)
+							.setRenderSettings(vertexCounter)
+							.setMaterial(RenderMaterial::Builder(*this->starDevice, this->materialManager, this->textureManager)
+								.setMaterial(mesh->getMaterial())
+								.build())
+							.build());
+						vertexCounter += mesh->getTriangles()->size() * 3; 
+					}
+					lightRenderSys->addLight(light, builder.build(), this->swapChainImages.size());
+				}
+				else {
+					throw std::runtime_error("More than one shader type is not permitted for light linked object");
+				}
 			}
 		}
 		this->lightRenderSys->setPipelineLayout(this->RenderSysObjs.at(0)->getPipelineLayout()); 
@@ -197,27 +202,20 @@ namespace star::core {
 			//global
 			bufferInfos = std::make_unique<std::vector<vk::DescriptorBufferInfo>>();
 
-			bufferInfos->push_back(vk::DescriptorBufferInfo{
+			auto globalBufferInfo = vk::DescriptorBufferInfo{
 				this->globalUniformBuffers[i]->getBuffer(),
 				0,
-				sizeof(GlobalUniformBufferObject) });
+				sizeof(GlobalUniformBufferObject)};
 
 			//buffer descriptors for point light locations 
-			bufferInfos->push_back(vk::DescriptorBufferInfo{
-				this->pointLightLocationBuffers[i]->getBuffer(),
+			auto lightBufferInfo = vk::DescriptorBufferInfo{
+				this->lightBuffers[i]->getBuffer(),
 				0,
-				sizeof(glm::vec4) * this->pointLights.size()});
-
-			//buffer descriptors for point light colors 
-			bufferInfos->push_back(vk::DescriptorBufferInfo{
-				this->pointLightColorBuffers[i]->getBuffer(), 
-				0,
-				sizeof(glm::vec4) * this->pointLights.size()});
+				sizeof(LightBufferObject) * this->lightList.size()};
 
 			StarDescriptorWriter(*this->starDevice.get(), *this->globalSetLayout, *this->globalPool)
-				.writeBuffer(0, &bufferInfos.get()->at(0))
-				.writeBuffer(1, &bufferInfos.get()->at(1))
-				.writeBuffer(2, &bufferInfos.get()->at(2))
+				.writeBuffer(0, &globalBufferInfo)
+				.writeBuffer(1, &lightBufferInfo)
 				.build(this->globalDescriptorSets.at(i));
 		}
 
@@ -803,9 +801,8 @@ namespace star::core {
 		vk::DeviceSize globalBufferSize = sizeof(GlobalUniformBufferObject) * tmpRenderSysObj->getNumRenderObjects();
 
 		this->globalUniformBuffers.resize(this->swapChainImages.size());
-		if (this->pointLights.size() > 0) {
-			this->pointLightLocationBuffers.resize(this->swapChainImages.size());
-			this->pointLightColorBuffers.resize(this->swapChainImages.size());
+		if (this->lightList.size() > 0) {
+			this->lightBuffers.resize(this->swapChainImages.size()); 
 		}
 
 		for (size_t i = 0; i < swapChainImages.size(); i++) {
@@ -814,14 +811,10 @@ namespace star::core {
 			this->globalUniformBuffers[i]->map();
 
 			//create light buffers 
-			if (this->pointLights.size() > 0) {
-				this->pointLightLocationBuffers[i] = std::make_unique<StarBuffer>(*this->starDevice.get(), this->pointLights.size(), sizeof(glm::vec4) * this->pointLights.size(),
-					vk::BufferUsageFlagBits::eStorageBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-				this->pointLightLocationBuffers[i]->map();
-
-				this->pointLightColorBuffers[i] = std::make_unique<StarBuffer>(*this->starDevice.get(), this->pointLights.size(), sizeof(glm::vec4) * this->pointLights.size(),
-					vk::BufferUsageFlagBits::eStorageBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-				this->pointLightColorBuffers[i]->map();
+			if (this->lightList.size() > 0) {
+				this->lightBuffers[i] = std::make_unique<StarBuffer>(*this->starDevice, this->lightList.size(), sizeof(LightBufferObject) * this->lightList.size(),
+					vk::BufferUsageFlagBits::eStorageBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent); 
+				this->lightBuffers[i]->map();
 			}
 		}
 	}

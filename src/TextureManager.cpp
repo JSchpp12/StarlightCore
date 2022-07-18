@@ -31,18 +31,14 @@ namespace star::core {
 
         bool fileLoaded = this->fileContainer.fileLoaded(pathToFile);
 
-        if (!fileLoaded) {
-            std::unique_ptr<unsigned char> imageData(loadImage(pathToFile, texWidth, texHeight, texChannels));
+        //TODO: handle multiples
+        std::unique_ptr<unsigned char> imageData(loadImage(pathToFile, texWidth, texHeight, texChannels));
 
-            std::unique_ptr<common::Texture> newImage(new common::Texture(pathToFile, std::move(imageData), texWidth, texHeight, texChannels));
+        std::unique_ptr<common::Texture> newImage(new common::Texture(pathToFile, std::move(imageData), texWidth, texHeight, texChannels));
 
-            common::Handle newHandle = this->addResource(pathToFile, std::move(newImage));
+        common::Handle newHandle = this->addResource(pathToFile, std::move(newImage));
 
-            return newHandle;
-        }
-        else {
-            throw std::runtime_error("Previously loaded files are not yet permitted.");
-        }
+        return newHandle;
     }
 
     common::Handle TextureManager::createAppropriateHandle() {

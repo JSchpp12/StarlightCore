@@ -44,11 +44,13 @@ namespace star::core{
 		RenderObject(StarDevice& starDevice, common::GameObject& gameObject, std::vector<std::unique_ptr<RenderMesh>> meshes,
 			size_t numImages = 0) : starDevice(starDevice), objectHandle(objectHandle), meshes(std::move(meshes)),
 			gameObject(gameObject), uboDescriptorSets(numImages) { }
+		void initDescriptorLayouts(StarDescriptorSetLayout::Builder& constLayout); 
+
 		/// <summary>
 		/// Init object with needed descriptors
 		/// </summary>
 		/// <param name="descriptorWriter"></param>
-		void init(StarDescriptorSetLayout& staticLayout, StarDescriptorPool& staticPool); 
+		void initDescriptors(StarDescriptorSetLayout& constLayout, StarDescriptorPool& descriptorPool);
 		void render(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainIndexNum); 
 
 		//TODO: might want to create render function for each mesh as they get more complicated
@@ -59,6 +61,7 @@ namespace star::core{
 		std::vector<vk::DescriptorSet>& getDefaultDescriptorSets(); 
 		//TODO: remove this
 		const std::vector<std::unique_ptr<RenderMesh>>& getMeshes() { return this->meshes; }
+
 	protected:
 
 

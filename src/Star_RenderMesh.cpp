@@ -20,8 +20,16 @@ namespace star::core {
 		return std::make_unique<RenderMesh>(this->starDevice, *this->mesh, std::move(this->renderMaterial), this->beginIndex); 
 	}
 #pragma endregion 
-	void RenderMesh::init(StarDescriptorSetLayout& staticLayout, StarDescriptorPool& staticPool) {
-		this->renderMaterial->init(staticLayout, staticPool); 
+	void RenderMesh::initDescriptorLayouts(StarDescriptorSetLayout::Builder& constBuilder) {
+		this->renderMaterial->initDescriptorLayouts(constBuilder); 
+	}
+	void RenderMesh::initDescriptors(StarDescriptorSetLayout& constLayout, StarDescriptorPool& descriptorPool) {
+		auto writer = StarDescriptorWriter(this->starDevice, constLayout, descriptorPool); 
+
+		//add per object const descriptors
+
+		//build per mesh descriptors
+		this->renderMaterial->buildConstDescriptor(writer); 
 	}
 	void RenderMesh::render(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainImageIndex) {
 		this->renderMaterial->bind(commandBuffer, pipelineLayout, swapChainImageIndex);
