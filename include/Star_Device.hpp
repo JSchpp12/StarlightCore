@@ -29,8 +29,11 @@ namespace star::core{
 		std::optional<uint32_t> presentFamily;
 		std::optional<uint32_t> transferFamily;
 
-		bool isComplete() {
+		bool isFullySupported() {
 			return graphicsFamily.has_value() && presentFamily.has_value() && transferFamily.has_value();
+		}
+		bool isSuitable() {
+			return graphicsFamily.has_value() && presentFamily.has_value(); 
 		}
 	};
 
@@ -42,8 +45,8 @@ namespace star::core{
 #else
 		const bool enableValidationLayers = true;
 #endif    
-		StarDevice(StarWindow& window); 
-		~StarDevice(); 
+		StarDevice(StarWindow& window);
+		~StarDevice();
 
 		// Not copyable or movable
 		StarDevice(const StarDevice&) = delete;
@@ -70,7 +73,7 @@ namespace star::core{
 		/// <param name="typeFilter">Which bit field of memory types that are suitable</param>
 		/// <param name="properties"></param>
 		/// <returns></returns>
-		uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags propertyFlags); 
+		uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags propertyFlags);
 		QueueFamilyIndicies findPhysicalQueueFamilies() { return findQueueFamilies(this->physicalDevice); }
 		/// <summary>
 		/// Check the hardware to make sure that the supplied formats are compatible with the current system. 
@@ -79,21 +82,21 @@ namespace star::core{
 		/// <param name="tiling"></param>
 		/// <param name="features"></param>
 		/// <returns></returns>
-		vk::Format findSupportedFormat(const std::vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features); 
+		vk::Format findSupportedFormat(const std::vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
 
 #pragma region helperFunctions
 		void createPool(uint32_t queueFamilyIndex, vk::CommandPoolCreateFlagBits flags, vk::CommandPool& pool);
 		/// <summary>
 		/// Create a buffer with the given arguments
 		/// </summary>
-		void createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usageFlags, vk::MemoryPropertyFlags properties, 
+		void createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usageFlags, vk::MemoryPropertyFlags properties,
 			vk::Buffer& buffer, vk::DeviceMemory& bufferMemory);
 		/// <summary>
 		/// Helper function to execute single time use command buffers
 		/// </summary>
 		/// <param name="useTransferPool">Should command be submitted to the transfer command pool. Will be submitted to the graphics pool otherwise.</param>
 		/// <returns></returns>
-		vk::CommandBuffer beginSingleTimeCommands(bool useTransferPool = false); 
+		vk::CommandBuffer beginSingleTimeCommands(bool useTransferPool = false);
 		/// <summary>
 		/// Helper function to end execution of single time use command buffer
 		/// </summary>
@@ -101,7 +104,7 @@ namespace star::core{
 		/// <param name="useTransferPool">Was command buffer submitted to the transfer pool. Assumed graphics pool otherwise.</param>
 		void endSingleTimeCommands(vk::CommandBuffer commandBuffer, bool useTransferPool = false);
 
-		void copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size); 
+		void copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size);
 		/// <summary>
 		/// Copy a buffer to an image.
 		/// </summary>
@@ -116,19 +119,33 @@ namespace star::core{
 
 #pragma endregion
 
-	private: 
+	private:
 		const std::vector<const char*> validationLayers = {
 			"VK_LAYER_KHRONOS_validation"
 		};
 
-		const std::vector<const char*> deviceExtensions = {
-			VK_KHR_SWAPCHAIN_EXTENSION_NAME  //image presentation is not built into the vulkan core...need to enable it through an extension 
+		std::vector<const char*> deviceExtensions = {
+			VK_KHR_SWAPCHAIN_EXTENSION_NAME//image presentation is not built into the vulkan core...need to enable it through an extension
 		};
 
-		vk::Instance instance; 
+#if defined(WIN32) || defined(_WIN32) || defined(_WIN64) || defined(__WIN32__) || defined(__NT__)
+		bool isMac = false;
+		std::vector<const char*> platformInstanceRequiredExtensions = { };
+#elif __APPLE__
+		bool isMac = true;
+		std::vector<const char*> platformInstanceRequiredExtensions = {
+			VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
+			// VK_KHR_SURFACE_EXTENSION_NAME,
+			"VK_KHR_portability_enumeration"
+		};
+#endif
+
+		bool hasDedicatedTransferQueue = false; 
+
+		vk::Instance instance;
 		vk::Device vulkanDevice;
-		vk::PhysicalDevice physicalDevice = VK_NULL_HANDLE; 
-		vk::UniqueSurfaceKHR surface; 
+		vk::PhysicalDevice physicalDevice = VK_NULL_HANDLE;
+		vk::UniqueSurfaceKHR surface;
 		StarWindow& starWindow;
 
 		//vulkan command storage
@@ -138,24 +155,23 @@ namespace star::core{
 		std::vector<vk::CommandBuffer> transferCommandBuffers;
 		vk::CommandPool tempCommandPool; //command pool for temporary use in small operations
 
-
 		//queue family information
-		vk::Queue graphicsQueue, presentQueue, transferQueue;  
+		vk::Queue graphicsQueue, presentQueue, transferQueue;
 
 		//Create the vulkan instance machine 
-		void createInstance(); 
+		void createInstance();
 
 		//void setupDebugMessenger(); 
 
-		void createSurface(); 
+		void createSurface();
 		//Pick a proper physical GPU that matches the required extensions
-		void pickPhysicalDevice(); 
+		void pickPhysicalDevice();
 		//Create a logical device to communicate with the physical device 
-		void createLogicalDevice(); 
+		void createLogicalDevice();
 		/// <summary>
 		/// Create command pools which will contain all predefined draw commands for later use in vulkan main loop
 		/// </summary>
-		void createCommandPool(); 
+		void createCommandPool();
 
 		/* Helper Functions */
 
@@ -163,31 +179,31 @@ namespace star::core{
 		bool isDeviceSuitable(vk::PhysicalDevice physicalDevice);
 
 		//Get the extensions required by the system 
-		std::vector<const char*> getRequiredExtensions(); 
+		std::vector<const char*> getRequiredExtensions();
 
 		/// <summary>
 		/// Check if validation layers are supported and create the layers if needed. Will create layers for debugging builds only.
 		/// </summary>
 		/// <returns></returns>
-		bool checkValidationLayerSupport(); 
+		bool checkValidationLayerSupport();
 
 		/// <summary>
 		/// Find what queues are available for the device
 		/// Queues support different types of commands such as : processing compute commands or memory transfer commands
 		/// </summary>  
-		QueueFamilyIndicies findQueueFamilies(vk::PhysicalDevice device); 
+		QueueFamilyIndicies findQueueFamilies(vk::PhysicalDevice device);
 
 		//void populateDebugMessengerCreateInfo(vk::DebugUtilsMessengerCreateInfoEXT& createInfo);
 
-		void hasGlfwRequiredInstanceExtensions(); 
+		void hasGlfwRequiredInstanceExtensions();
 
 		/// <summary>
 		/// Check if the given device supports required extensions.
 		/// </summary>
-		bool checkDeviceExtensionSupport(vk::PhysicalDevice device); 
+		bool checkDeviceExtensionSupport(vk::PhysicalDevice device);
 		/// <summary>
 		/// Request specific details about swap chain support for a given device
 		/// </summary>
-		SwapChainSupportDetails querySwapChainSupport(vk::PhysicalDevice device); 
+		SwapChainSupportDetails querySwapChainSupport(vk::PhysicalDevice device);
 	};
 }

@@ -411,7 +411,11 @@ namespace star::core {
 		createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment; //how are these images going to be used? Color attachment since we are rendering to them (can change for postprocessing effects)
 
 		QueueFamilyIndicies indicies = this->starDevice->findPhysicalQueueFamilies();
-		uint32_t queueFamilyIndicies[] = { indicies.graphicsFamily.value(), indicies.transferFamily.value(), indicies.presentFamily.value() };
+		std::vector<uint32_t> queueFamilyIndicies;
+		if (indicies.transferFamily.has_value())
+			 queueFamilyIndicies = std::vector<uint32_t>{ indicies.graphicsFamily.value(), indicies.transferFamily.value(), indicies.presentFamily.value() };
+		else
+			 queueFamilyIndicies = std::vector<uint32_t>{ indicies.graphicsFamily.value(), indicies.presentFamily.value() };
 
 		if (indicies.graphicsFamily != indicies.presentFamily && indicies.presentFamily != indicies.transferFamily) {
 			/*need to handle how images will be transferred between different queues
@@ -423,13 +427,13 @@ namespace star::core {
 			//createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
 			createInfo.imageSharingMode = vk::SharingMode::eConcurrent;
 			createInfo.queueFamilyIndexCount = 3;
-			createInfo.pQueueFamilyIndices = queueFamilyIndicies;
+			createInfo.pQueueFamilyIndices = queueFamilyIndicies.data();
 		}
 		else if (indicies.graphicsFamily != indicies.presentFamily && indicies.presentFamily == indicies.transferFamily) {
 			uint32_t explicitQueueFamilyInd[] = { indicies.graphicsFamily.value(), indicies.presentFamily.value() };
 			createInfo.imageSharingMode = vk::SharingMode::eConcurrent;
 			createInfo.queueFamilyIndexCount = 2;
-			createInfo.pQueueFamilyIndices = queueFamilyIndicies;
+			createInfo.pQueueFamilyIndices = queueFamilyIndicies.data();
 		}
 		else {
 			//same family is used for graphics and presenting

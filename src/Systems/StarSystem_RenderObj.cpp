@@ -19,6 +19,7 @@ void RenderSysObj::registerShader(vk::ShaderStageFlagBits stage, common::Shader&
 }
 
 void RenderSysObj::addObject(std::unique_ptr<RenderObject> newRenderObject) {
+	this->numMeshes += newRenderObject->getMeshes().size(); 
 	for (auto& mesh : newRenderObject->getGameObject().getMeshes()) {
 		this->totalNumVerticies += mesh->getTriangles()->size() * 3; 
 	}
@@ -64,16 +65,16 @@ void star::core::RenderSysObj::bind(vk::CommandBuffer& commandBuffer) {
 
 void star::core::RenderSysObj::updateBuffers(uint32_t currentImage) {
 	UniformBufferObject newBufferObject{};
-	std::vector<UniformBufferObject> bufferObjects(this->renderObjects.size());
 
+    auto minProp = this->starDevice.getPhysicalDevice().getProperties().limits.minUniformBufferOffsetAlignment;
+    auto minAlignmentOfUBOElements = StarBuffer::getAlignment(sizeof(UniformBufferObject), minProp);
+    
 	for (size_t i = 0; i < this->renderObjects.size(); i++) {
 		newBufferObject.modelMatrix = this->renderObjects.at(i)->getGameObject().getDisplayMatrix(); 
 		newBufferObject.normalMatrix = this->renderObjects.at(i)->getGameObject().getNormalMatrix(); 
 
-		bufferObjects.at(i) = newBufferObject; 
+        this->uniformBuffers[currentImage]->writeToBuffer(&newBufferObject, sizeof(UniformBufferObject), minAlignmentOfUBOElements * i);
 	}
-
-	this->uniformBuffers[currentImage]->writeToBuffer(bufferObjects.data(), sizeof(UniformBufferObject) * bufferObjects.size()); 
 }
 
 void star::core::RenderSysObj::render(vk::CommandBuffer& commandBuffer, int swapChainImageIndex) {
@@ -209,10 +210,9 @@ void RenderSysObj::createIndexBuffer() {
 void RenderSysObj::createDescriptorPool() {
 	//create descriptor pools 
 	this->descriptorPool = StarDescriptorPool::Builder(this->starDevice)
-		.setMaxSets(50)																								//allocate large number of descriptor sets 
+		.setMaxSets(50)																								//allocate large number of  descriptor sets
 		.addPoolSize(vk::DescriptorType::eUniformBuffer, this->numSwapChainImages * this->renderObjects.size())
-		.addPoolSize(vk::DescriptorType::eStorageBuffer, this->numSwapChainImages)
-		.addPoolSize(vk::DescriptorType::eCombinedImageSampler, this->renderObjects.size() * this->numSwapChainImages)
+		.addPoolSize(vk::DescriptorType::eCombinedImageSampler, this->numMeshes * this->numSwapChainImages)
 		.build();
 }
 
@@ -221,8 +221,7 @@ void RenderSysObj::createDescriptorLayouts() {
 	RenderObject* currRenderObj = nullptr; 
 
 	this->staticDescriptorSetLayout = StarDescriptorSetLayout::Builder(this->starDevice)
-		.addBinding(0, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eFragment)				//lights
-		.addBinding(1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)		//texture 
+		.addBinding(0, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)		//texture 
 		.build(); 
 
 	for (auto& obj : this->renderObjects) {
