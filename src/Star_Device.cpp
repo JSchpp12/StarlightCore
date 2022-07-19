@@ -47,6 +47,8 @@ namespace core {
 		createInfo.enabledExtensionCount = static_cast<uint32_t>(requriedExtensions.size()); 
 		createInfo.ppEnabledExtensionNames = requriedExtensions.data();
 		createInfo.enabledLayerCount = 0;
+		if (isMac)
+			createInfo.flags = vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR; 
 		if (enableValidationLayers) {
 			createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
 			createInfo.ppEnabledLayerNames = validationLayers.data();
@@ -55,14 +57,12 @@ namespace core {
 			createInfo.enabledLayerCount = 0;
 		}
 
-
 		/*
 		All vulkan objects follow this pattern of creation :
 		1.pointer to a struct with creation info
 			2.pointer to custom allocator callbacks, (nullptr) here
 			3.pointer to the variable that stores the handle to the new object
 		*/
-		//TODO: PUT A TRY HERE
 		this->instance = vk::createInstance(createInfo);
 
 		hasGlfwRequiredInstanceExtensions(); 
@@ -94,7 +94,7 @@ namespace core {
 
 		//need multiple structs since we now have a seperate family for presenting and graphics 
 		std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
-		std::set<uint32_t> uniqueQueueFamilies = { indicies.graphicsFamily.value(), indicies.presentFamily.value(), indicies.transferFamily.value() };
+		std::set<uint32_t> uniqueQueueFamilies = indicies.isFullySupported() ? std::set<uint32_t>{ indicies.graphicsFamily.value(), indicies.presentFamily.value(), indicies.transferFamily.value() } : std::set<uint32_t>{indicies.graphicsFamily.value(), indicies.presentFamily.value()};
 
 		for (uint32_t queueFamily : uniqueQueueFamilies) {
 			//create a struct to contain the information required 
@@ -130,7 +130,9 @@ namespace core {
 
 		this->graphicsQueue = this->vulkanDevice.getQueue(indicies.graphicsFamily.value(), 0);
 		this->presentQueue = this->vulkanDevice.getQueue(indicies.presentFamily.value(), 0);
-		this->transferQueue = this->vulkanDevice.getQueue(indicies.transferFamily.value(), 0);
+
+		if (indicies.transferFamily.has_value())
+			this->transferQueue = this->vulkanDevice.getQueue(indicies.transferFamily.value(), 0);
 	}
 
 	void StarDevice::createCommandPool() {
@@ -140,7 +142,10 @@ namespace core {
 		createPool(queueFamilyIndicies.graphicsFamily.value(), vk::CommandPoolCreateFlagBits{}, graphicsCommandPool);
 
 		//command buffer for transfer queue 
-		createPool(queueFamilyIndicies.transferFamily.value(), vk::CommandPoolCreateFlagBits{}, transferCommandPool);
+		if (queueFamilyIndicies.transferFamily.has_value()){
+			this->hasDedicatedTransferQueue = true; 
+			createPool(queueFamilyIndicies.transferFamily.value(), vk::CommandPoolCreateFlagBits{}, transferCommandPool);
+		}
 	}
 
 	bool StarDevice::isDeviceSuitable(vk::PhysicalDevice device) {
@@ -153,16 +158,16 @@ namespace core {
 		}
 
 		vk::PhysicalDeviceFeatures supportedFeatures = device.getFeatures();
-
-		return indicies.isComplete() && extensionsSupported && swapChainAdequate && supportedFeatures.samplerAnisotropy;
+		if (indicies.isSuitable() && extensionsSupported && swapChainAdequate && supportedFeatures.samplerAnisotropy) {
+			return true; 
+		}
+		return false; 
 	}
 
 	bool StarDevice::checkValidationLayerSupport() {
-		uint32_t layerCount;
-		vk::enumerateInstanceLayerProperties(&layerCount, nullptr);
+		uint32_t layerCount = 0;
 
-		std::vector<vk::LayerProperties> availableLayers(layerCount);
-		vk::enumerateInstanceLayerProperties(&layerCount, availableLayers.data());
+		std::vector<vk::LayerProperties> availableLayers = vk::enumerateInstanceLayerProperties();
 
 		for (const char* layerName : validationLayers) {
 			bool layerFound = false;
@@ -189,6 +194,11 @@ namespace core {
 
 		std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
 
+		//add required extensions for platform dependencies
+		for (auto& extension : this->platformInstanceRequiredExtensions) {
+			extensions.push_back(extension); 
+		}
+
 		if (enableValidationLayers) {
 			extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 		}
@@ -202,17 +212,14 @@ namespace core {
 		std::vector<VkExtensionProperties> extensions(extensionCount);
 		vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data());
 
-		//std::cout << "available extensions:" << std::endl;
 		std::unordered_set<std::string> available;
 		for (const auto& extension : extensions) {
-			//std::cout << "\t" << extension.extensionName << std::endl;
 			available.insert(extension.extensionName);
 		}
 
 		//std::cout << "required extensions:" << std::endl;
 		auto requiredExtensions = getRequiredExtensions();
 		for (const auto& required : requiredExtensions) {
-			//std::cout << "\t" << required << std::endl;
 			if (available.find(required) == available.end()) {
 				throw std::runtime_error("Missing required glfw extension");
 			}
@@ -229,6 +236,8 @@ namespace core {
 
 		//iterate through extensions looking for those that are required
 		for (const auto& extension : availableExtensions) {
+			if (strcmp(extension.extensionName, "VK_KHR_portability_subset") == 0)
+				this->deviceExtensions.push_back("VK_KHR_portability_subset");
 			requiredExtensions.erase(extension.extensionName);
 		}
 
@@ -367,6 +376,8 @@ namespace core {
 
 	vk::CommandBuffer StarDevice::beginSingleTimeCommands(bool useTransferPool) {
 		//allocate using temporary command pool
+		if (!this->hasDedicatedTransferQueue)
+			useTransferPool = false; 
 		vk::CommandBufferAllocateInfo allocInfo{};
 		allocInfo.sType = vk::StructureType::eCommandBufferAllocateInfo;
 		allocInfo.level = vk::CommandBufferLevel::ePrimary;
@@ -388,6 +399,9 @@ namespace core {
 
 	void StarDevice::endSingleTimeCommands(vk::CommandBuffer commandBuff, bool useTransferPool) {
 		commandBuff.end();
+		if (!this->hasDedicatedTransferQueue)
+			useTransferPool = false; 
+
 		//submit the buffer for execution
 		vk::SubmitInfo submitInfo{};
 		submitInfo.sType = vk::StructureType::eSubmitInfo;
@@ -408,7 +422,7 @@ namespace core {
 	}
 
 	void StarDevice::copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size) {
-		bool useTransferPool = true;
+		bool useTransferPool = this->hasDedicatedTransferQueue;
 		vk::CommandBuffer commandBuffer = beginSingleTimeCommands(useTransferPool);
 
 		vk::BufferCopy copyRegion{};
@@ -423,7 +437,7 @@ namespace core {
 	}
 
 	void StarDevice::copyBufferToImage(vk::Buffer buffer, vk::Image image, uint32_t width, uint32_t height) {
-		bool useTransferPool = true;
+		bool useTransferPool = this->hasDedicatedTransferQueue;
 
 		vk::CommandBuffer commandBuffer = beginSingleTimeCommands(useTransferPool);
 
