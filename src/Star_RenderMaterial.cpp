@@ -42,7 +42,7 @@ namespace star::core {
 				vk::ImageLayout::eShaderReadOnlyOptimal
 			};
 
-			writer.writeImage(1, &descriptorInfo);
+			writer.writeImage(0, &descriptorInfo);
 		}
 		writer.build(this->descriptor); 
 	}

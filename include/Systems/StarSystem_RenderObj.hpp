@@ -29,8 +29,8 @@ namespace star::core{
 		/// Object type to be used per render object, updated each frame
 		/// </summary>
 		struct UniformBufferObject {
-			alignas(16) glm::mat4 modelMatrix;
-			alignas(16) glm::mat4 normalMatrix;
+			glm::mat4 modelMatrix;
+			glm::mat4 normalMatrix;
 		};
 		uint32_t totalNumVerticies = 0; 
 
@@ -94,6 +94,7 @@ namespace star::core{
 		bool ownerOfSetLayout = true; 
 		StarDevice& starDevice;
 		int numSwapChainImages = 0;
+		int numMeshes = 0; 
 
 		vk::Extent2D swapChainExtent; 
 		vk::RenderPass renderPass; 
