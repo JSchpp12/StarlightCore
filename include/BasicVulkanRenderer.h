@@ -10,6 +10,7 @@
 #include "SC/Enums.h"
 #include "SC/Light.hpp"
 #include "SC/MemoryManager.hpp"
+#include "SC/RenderOptions.hpp"
 //managers
 #include "MaterialManager.hpp"
 #include "TextureManager.h"
@@ -37,11 +38,9 @@
 namespace star::core{
     class VulkanRenderer : public common::Renderer {
     public:
-        std::unique_ptr<const char**> glfwRequiredExtensions;
-        std::unique_ptr<uint32_t> glfwRequiredExtensionsCount;
-
-        VulkanRenderer(common::ConfigFile& configFile, common::FileResourceManager<common::Shader>& shaderManager, common::FileResourceManager<common::GameObject>& objectManager,
-            TextureManager& textureManager, MaterialManager& materialManager, common::Camera& inCamera,
+        VulkanRenderer(common::ConfigFile& configFile, common::RenderOptions& renderOptions, common::FileResourceManager<common::Shader>& shaderManager, 
+            common::FileResourceManager<common::GameObject>& objectManager, TextureManager& textureManager, 
+            MaterialManager& materialManager, common::Camera& inCamera,
             std::vector<common::Handle>& objectHandleList, std::vector<common::Light*>& inLightList,
             StarWindow& window);
 
