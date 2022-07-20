@@ -3,15 +3,15 @@
 typedef std::chrono::high_resolution_clock Clock;
 
 namespace star::core {
-	VulkanRenderer::VulkanRenderer(common::ConfigFile& configFile,
+	VulkanRenderer::VulkanRenderer(common::ConfigFile& configFile, common::RenderOptions& renderOptions,
 		common::FileResourceManager<common::Shader>& shaderManager, common::FileResourceManager<common::GameObject>& objectManager,
-		TextureManager& textureManager, MaterialManager& materialManager, common::Camera& inCamera,
+		TextureManager& textureManager, 
+		MaterialManager& materialManager, common::Camera& inCamera,
 		std::vector<common::Handle>& objectHandleList, std::vector<common::Light*>& inLightList,
 		StarWindow& window) :
-		materialManager(materialManager), textureManager(textureManager),
-		star::common::Renderer(configFile, shaderManager, objectManager, inCamera, objectHandleList),
-		glfwRequiredExtensionsCount(new uint32_t), starWindow(window),
-		lightList(inLightList)
+		materialManager(materialManager), 
+		textureManager(textureManager), star::common::Renderer(configFile, renderOptions, shaderManager, objectManager, inCamera, objectHandleList),
+		starWindow(window), lightList(inLightList)
 	{
 		common::GameObject* currentObject = nullptr;
 		common::Light* currLight = nullptr;
@@ -37,6 +37,7 @@ namespace star::core {
 		globalUbo.view = this->camera.getDisplayMatrix();
 		globalUbo.inverseView = this->camera.getInverseViewMatrix(); 
 		globalUbo.numLights = static_cast<uint32_t>(this->lightList.size()); 
+		globalUbo.renderOptions = this->renderOptions.getRenderOptions(); 
 
 		this->globalUniformBuffers[currentImage]->writeToBuffer(&globalUbo, sizeof(globalUbo));
 
@@ -46,7 +47,7 @@ namespace star::core {
 		std::vector<LightBufferObject> lightInformation(this->lightList.size()); 
 		LightBufferObject newBufferObject{};
 		common::Light* currLight = nullptr; 
-
+		
 		//write buffer information
 		for (size_t i = 0; i < this->lightList.size(); i++) {
 			currLight = this->lightList.at(i); 
