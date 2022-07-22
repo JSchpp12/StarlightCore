@@ -21,7 +21,8 @@ namespace star::core{
 
 		common::Handle add(const glm::vec4& surfaceColor, const glm::vec4& highlightColor, const glm::vec4& ambient, 
 			const glm::vec4& diffuse, const glm::vec4& specular, 
-			const int& shinyCoefficient, common::Handle texture);
+			const int& shinyCoefficient, common::Handle texture,
+			common::Handle bumpMap);
 
 		common::Material& get(const common::Handle& handle); 
 

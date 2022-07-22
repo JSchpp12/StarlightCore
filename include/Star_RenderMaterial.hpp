@@ -12,6 +12,7 @@
 #include "Star_Descriptors.hpp"
 #include "MaterialManager.hpp"
 #include "TextureManager.h"
+#include "MapManager.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -22,17 +23,18 @@ namespace star::core {
 	public:
 		class Builder {
 		public:
-			Builder(StarDevice& starDevice, MaterialManager& materialManager, TextureManager& textureManager): starDevice(starDevice), 
-				materialManager(materialManager), textureManager(textureManager){ }
-			Builder& setMaterial(common::Handle material);
+			Builder(StarDevice& starDevice, MaterialManager& materialManager, TextureManager& textureManager, MapManager& mapManager)
+				: starDevice(starDevice), materialManager(materialManager), 
+				textureManager(textureManager), mapManager(mapManager) { }
+			Builder& setMaterial(common::Handle materialHandle);
 			std::unique_ptr<RenderMaterial> build();
 
 		private:
 			StarDevice& starDevice;
 			MaterialManager& materialManager;
 			TextureManager& textureManager;
+			MapManager& mapManager; 
 			common::Material* material = nullptr;
-			common::Texture* texture = nullptr;
 		};
 		/// <summary>
 		/// Initalize the const descriptor set layouts with needed descriptor slots
@@ -47,23 +49,14 @@ namespace star::core {
 
 		//need to gather refs to base materials
 		std::unique_ptr<StarTexture> texture;
+		std::unique_ptr<StarTexture> bumpMap; 
 
-		RenderMaterial(StarDevice& starDevice, common::Material& material) : starDevice(starDevice), material(material) { }
-
-		RenderMaterial(StarDevice& starDevice, common::Material& material, common::Texture& texture);
+		RenderMaterial(StarDevice& starDevice, common::Material& material, common::Texture& texture, common::Texture& bumpMap);
 
 		void bind(vk::CommandBuffer& commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex); 
 
 		//todo: might want to move all descriptor creation to individual classes
 		//void addRequiredBindings();
-
-		/// <summary>
-		/// Build texture descriptors for this material. This should be added onto the other descriptors which will only be updated once
-		/// </summary>
-		/// <param name="writer"></param>
-		/// <param name="binding"></param>
-		/// <param name="layout"></param>
-		void buildTextureDescriptor(StarDescriptorWriter& constDescriptorWriter, int binding, vk::ImageLayout imageLayout);
 
 		//get 
 		common::Material& getMaterial() { return this->material; }

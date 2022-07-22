@@ -20,9 +20,9 @@ namespace star::core{
 	}
 	common::Handle MaterialManager::add(const glm::vec4& surfaceColor, const glm::vec4& highlightColor, const glm::vec4& ambient, 
 		const glm::vec4& diffuse, const glm::vec4& specular, 
-		const int& shinyCoefficient, common::Handle texture)
+		const int& shinyCoefficient, common::Handle texture, common::Handle bumpMap)
 	{
-		return this->addResource(std::make_unique<common::Material>(surfaceColor, highlightColor, ambient, diffuse, specular, shinyCoefficient, texture));
+		return this->addResource(std::make_unique<common::Material>(surfaceColor, highlightColor, ambient, diffuse, specular, shinyCoefficient, texture, bumpMap));
 	}
 
 	common::Material& MaterialManager::get(const common::Handle& handle) {

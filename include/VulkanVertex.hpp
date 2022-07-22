@@ -37,8 +37,8 @@ namespace star::core{
         /// </summary>
         /// <returns>Array containing attribute descriptions</returns>
 
-        static std::array<vk::VertexInputAttributeDescription, 8> getAttributeDescriptions() {
-            std::array<vk::VertexInputAttributeDescription, 8> attributeDescriptions{};
+        static std::array<vk::VertexInputAttributeDescription, 10> getAttributeDescriptions() {
+            std::array<vk::VertexInputAttributeDescription, 10> attributeDescriptions{};
 
             /* Struct */
                 //1. binding - which binding the per-vertex data comes in 
@@ -78,26 +78,36 @@ namespace star::core{
             attributeDescriptions[3].format = vk::Format::eR32G32Sfloat; 
             attributeDescriptions[3].offset = offsetof(common::Vertex, texCoord); 
 
-            //material bindings 
             attributeDescriptions[4].binding = 0;
             attributeDescriptions[4].location = 4;
-            attributeDescriptions[4].format = vk::Format::eR32G32B32Sfloat; 
-            attributeDescriptions[4].offset = offsetof(common::Vertex, matAmbient);
+            attributeDescriptions[4].format = vk::Format::eR32G32B32Sfloat;
+            attributeDescriptions[4].offset = offsetof(common::Vertex, aTangent);
 
             attributeDescriptions[5].binding = 0;
             attributeDescriptions[5].location = 5;
             attributeDescriptions[5].format = vk::Format::eR32G32B32Sfloat;
-            attributeDescriptions[5].offset = offsetof(common::Vertex, matDiffuse);
+            attributeDescriptions[5].offset = offsetof(common::Vertex, aBitangent);
 
+            //material bindings 
             attributeDescriptions[6].binding = 0;
             attributeDescriptions[6].location = 6;
-            attributeDescriptions[6].format = vk::Format::eR32G32B32Sfloat;
-            attributeDescriptions[6].offset = offsetof(common::Vertex, matSpecular);
+            attributeDescriptions[6].format = vk::Format::eR32G32B32Sfloat; 
+            attributeDescriptions[6].offset = offsetof(common::Vertex, matAmbient);
 
             attributeDescriptions[7].binding = 0;
             attributeDescriptions[7].location = 7;
-            attributeDescriptions[7].format = vk::Format::eR32Sfloat;
-            attributeDescriptions[7].offset = offsetof(common::Vertex, matShininess);
+            attributeDescriptions[7].format = vk::Format::eR32G32B32Sfloat;
+            attributeDescriptions[7].offset = offsetof(common::Vertex, matDiffuse);
+
+            attributeDescriptions[8].binding = 0;
+            attributeDescriptions[8].location = 8;
+            attributeDescriptions[8].format = vk::Format::eR32G32B32Sfloat;
+            attributeDescriptions[8].offset = offsetof(common::Vertex, matSpecular);
+
+            attributeDescriptions[9].binding = 0;
+            attributeDescriptions[9].location = 9;
+            attributeDescriptions[9].format = vk::Format::eR32Sfloat;
+            attributeDescriptions[9].offset = offsetof(common::Vertex, matShininess);
             return attributeDescriptions;
         }
     };

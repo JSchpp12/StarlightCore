@@ -19,8 +19,10 @@ namespace star{
         protected: 
             virtual common::Handle createAppropriateHandle() override; 
 
+            unsigned char* loadImage(const std::string& path, int& texWidth, int& texHeight, int& texChannel);
+
         private: 
-            unsigned char* loadImage(const std::string& path, int& texWidth, int& texHeight, int& texChannel); 
+
         }; 
     }
 }

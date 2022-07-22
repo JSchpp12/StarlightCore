@@ -140,7 +140,7 @@ namespace star::core{
 		return *this;
 	}
 
-	StarDescriptorWriter& StarDescriptorWriter::writeImage(uint32_t binding, vk::DescriptorImageInfo* imageInfo) {
+	StarDescriptorWriter& StarDescriptorWriter::writeImage(uint32_t binding, const vk::DescriptorImageInfo& imageInfo) {
 		assert(this->setLayout.bindings.count(binding) == 1 && "Layout does not contain specified binding");
 
 		auto& bindingDescription = setLayout.bindings[binding]; 
@@ -150,7 +150,7 @@ namespace star::core{
 		writeSet.sType = vk::StructureType::eWriteDescriptorSet; 
 		writeSet.descriptorType = bindingDescription.descriptorType; 
 		writeSet.dstBinding = binding; 
-		writeSet.pImageInfo = imageInfo; 
+		writeSet.pImageInfo = &imageInfo; 
 		writeSet.descriptorCount = 1; 
 
 		this->writeSets.push_back(writeSet); 
