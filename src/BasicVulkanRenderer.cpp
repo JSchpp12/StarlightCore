@@ -5,12 +5,12 @@ typedef std::chrono::high_resolution_clock Clock;
 namespace star::core {
 	VulkanRenderer::VulkanRenderer(common::ConfigFile& configFile, common::RenderOptions& renderOptions,
 		common::FileResourceManager<common::Shader>& shaderManager, common::FileResourceManager<common::GameObject>& objectManager,
-		TextureManager& textureManager, 
+		TextureManager& textureManager, MapManager& mapManager, 
 		MaterialManager& materialManager, common::Camera& inCamera,
 		std::vector<common::Handle>& objectHandleList, std::vector<common::Light*>& inLightList,
 		StarWindow& window) :
-		materialManager(materialManager), 
-		textureManager(textureManager), star::common::Renderer(configFile, renderOptions, shaderManager, objectManager, inCamera, objectHandleList),
+		materialManager(materialManager), textureManager(textureManager), 
+		mapManager(mapManager), star::common::Renderer(configFile, renderOptions, shaderManager, objectManager, inCamera, objectHandleList),
 		starWindow(window), lightList(inLightList)
 	{
 		common::GameObject* currentObject = nullptr;
@@ -117,7 +117,7 @@ namespace star::core {
 							RenderMesh::Builder(*this->starDevice)
 								.setMesh(*mesh)
 								.setRenderSettings(object->getNumVerticies() + meshVertCounter)
-								.setMaterial(RenderMaterial::Builder(*this->starDevice, this->materialManager, this->textureManager)
+								.setMaterial(RenderMaterial::Builder(*this->starDevice, this->materialManager, this->textureManager, this->mapManager)
 									.setMaterial(mesh->getMaterial())
 									.build())
 								.build());
@@ -145,7 +145,7 @@ namespace star::core {
 						builder.addMesh(RenderMesh::Builder(*this->starDevice)
 							.setMesh(*mesh)
 							.setRenderSettings(object->getNumVerticies() + meshVertCounter)
-							.setMaterial(RenderMaterial::Builder(*this->starDevice, this->materialManager, this->textureManager)
+							.setMaterial(RenderMaterial::Builder(*this->starDevice, this->materialManager, this->textureManager, this->mapManager)
 								.setMaterial(mesh->getMaterial())
 								.build())
 							.build());
@@ -178,7 +178,7 @@ namespace star::core {
 						builder.addMesh(RenderMesh::Builder(*this->starDevice)
 							.setMesh(*mesh)
 							.setRenderSettings(vertexCounter)
-							.setMaterial(RenderMaterial::Builder(*this->starDevice, this->materialManager, this->textureManager)
+							.setMaterial(RenderMaterial::Builder(*this->starDevice, this->materialManager, this->textureManager, this->mapManager)
 								.setMaterial(mesh->getMaterial())
 								.build())
 							.build());

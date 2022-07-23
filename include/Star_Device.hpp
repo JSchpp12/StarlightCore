@@ -63,7 +63,7 @@ namespace star::core{
 		vk::Queue getPresentQueue() { return this->presentQueue; }
 		vk::Queue getTransferQueue() { return this->transferQueue; }
 		std::vector<vk::CommandBuffer>* getGraphicsCommandBuffers() { return &this->graphicsCommandBuffers; }
-		void setGraphicsCommandBuffers(std::vector<vk::CommandBuffer> newBuffers) { this->graphicsCommandBuffers = newBuffers; }
+		void setGraphicsCommandBuffers(std::vector<vk::CommandBuffer>& newBuffers) { this->graphicsCommandBuffers = newBuffers; }
 #pragma endregion
 
 		SwapChainSupportDetails getSwapChainSupportDetails() { return querySwapChainSupport(this->physicalDevice); }

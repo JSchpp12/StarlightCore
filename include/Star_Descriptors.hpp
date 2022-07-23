@@ -94,7 +94,7 @@ namespace star::core{
 
 		StarDescriptorWriter& writeBuffer(uint32_t binding, vk::DescriptorBufferInfo* bufferInfos); 
 
-		StarDescriptorWriter& writeImage(uint32_t binding, vk::DescriptorImageInfo* imageInfo); 
+		StarDescriptorWriter& writeImage(uint32_t binding, const vk::DescriptorImageInfo& imageInfo); 
 
 		bool build(vk::DescriptorSet& set);
 

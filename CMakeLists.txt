@@ -60,6 +60,7 @@ SET(${PROJECT_NAME}_SOURCES
 	"src/ObjectManager.cpp"
 	"src/Object.cpp"
 	"src/TextureManager.cpp"
+	"src/MapManager.cpp"
 	"src/BasicVulkanRenderer.cpp"
 	#composite files 
 	"src/Star_Descriptors.cpp"
@@ -90,7 +91,7 @@ SET(${PROJECT_NAME}_HEADERS
 	"include/Windowing.h"
 	"include/MemoryDescriptor.h"
 	"include/BasicVulkanRenderer.h"
-	"include/RenderMaterial"
+	"include/MapManager.hpp"
 	#composite files
 	"include/Star_Descriptors.hpp"
 	"include/Star_Texture.hpp"

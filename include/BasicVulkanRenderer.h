@@ -14,6 +14,7 @@
 //managers
 #include "MaterialManager.hpp"
 #include "TextureManager.h"
+#include "MapManager.hpp"
 //vulkan wrappers
 #include "VulkanVertex.hpp"
 #include "Star_Descriptors.hpp"
@@ -39,7 +40,7 @@ namespace star::core{
     class VulkanRenderer : public common::Renderer {
     public:
         VulkanRenderer(common::ConfigFile& configFile, common::RenderOptions& renderOptions, common::FileResourceManager<common::Shader>& shaderManager, 
-            common::FileResourceManager<common::GameObject>& objectManager, TextureManager& textureManager, 
+            common::FileResourceManager<common::GameObject>& objectManager, TextureManager& textureManager, MapManager& mapManager,
             MaterialManager& materialManager, common::Camera& inCamera,
             std::vector<common::Handle>& objectHandleList, std::vector<common::Light*>& inLightList,
             StarWindow& window);
@@ -63,6 +64,7 @@ namespace star::core{
         };
         MaterialManager& materialManager; 
         TextureManager& textureManager; 
+        MapManager& mapManager; 
         std::vector<common::Light*>& lightList;
 
         std::unique_ptr<StarDevice> starDevice{};

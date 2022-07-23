@@ -40,10 +40,6 @@ namespace star::core{
 		}
 	}
 
-	common::Handle RenderObject::getHandle() {
-		return this->objectHandle;
-	}
-
 	std::vector<vk::DescriptorSet>& RenderObject::getDefaultDescriptorSets() {
 		return this->uboDescriptorSets;
 	}

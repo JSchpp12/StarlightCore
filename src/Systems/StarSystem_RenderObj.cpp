@@ -222,6 +222,7 @@ void RenderSysObj::createDescriptorLayouts() {
 
 	this->staticDescriptorSetLayout = StarDescriptorSetLayout::Builder(this->starDevice)
 		.addBinding(0, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)		//texture 
+		.addBinding(1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
 		.build(); 
 
 	for (auto& obj : this->renderObjects) {
