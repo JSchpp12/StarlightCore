@@ -29,15 +29,17 @@ namespace star::core {
 	}
 
 	void RenderMaterial::buildConstDescriptor(StarDescriptorWriter writer) {
-		writer.writeImage(0, vk::DescriptorImageInfo{
+		auto texInfo = vk::DescriptorImageInfo{
 			texture->getSampler(),
 			texture->getImageView(),
-			vk::ImageLayout::eShaderReadOnlyOptimal });
+			vk::ImageLayout::eShaderReadOnlyOptimal };
+		writer.writeImage(0, texInfo);
 
-		writer.writeImage(1, vk::DescriptorImageInfo{
+		auto bumpInfo = vk::DescriptorImageInfo{
 			bumpMap->getSampler(),
 			bumpMap->getImageView(),
-			vk::ImageLayout::eShaderReadOnlyOptimal});
+			vk::ImageLayout::eShaderReadOnlyOptimal };
+		writer.writeImage(1, bumpInfo);
 
 		writer.build(descriptor); 
 	}
