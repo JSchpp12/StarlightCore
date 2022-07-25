@@ -17,13 +17,13 @@ namespace star::core{
     //TODO: inherit from manager base
     class ObjectManager : public common::FileResourceManager<common::GameObject> {
     public:  
-        virtual common::Handle add(const std::string& pathToFile); 
-
+        
     protected: 
         //load the object from disk 
-        void load(const std::string& pathToFile, std::vector<common::Vertex>* vertexList, std::vector<uint32_t>* indiciesList);
+        void loadObject(const std::string& pathToFile, std::vector<common::Vertex>* vertexList, std::vector<uint32_t>* indiciesList);
 
         common::Handle createAppropriateHandle() override; 
+        common::Handle_Type handleType() { return common::Handle_Type::object; }
 
     private: 
         //TODO: replace this with the scene builder implementation

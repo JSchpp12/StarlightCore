@@ -5,22 +5,25 @@ namespace star::core {
 	RenderMaterial::Builder& RenderMaterial::Builder::setMaterial(common::Handle materialHandle) {
 		assert(material == nullptr && "A material has already been applied to this object");
 
-		material = &materialManager.get(materialHandle); 
+		material = &materialManager.resource(materialHandle); 
 
 		return *this; 
 	}
 	std::unique_ptr<RenderMaterial> RenderMaterial::Builder::build() {
 		assert(material != nullptr && "A material object is required to create a RenderMaterial object"); 
-
+		if (material->bumpMap.type == common::Handle_Type::map) {
+			auto test2 = mapManager.resource(material->bumpMap);
+		}
+		auto test = material->bumpMap.type == common::Handle_Type::texture ? common::Texture::load(textureManager.getPath(material->bumpMap)) : std::make_unique<common::Texture>(mapManager.resource(material->bumpMap));
 		return std::make_unique<RenderMaterial>(starDevice, *material, 
-			textureManager.getResource(material->texture), 
-			material->bumpMap.type == common::Handle_Type::texture ? textureManager.getResource(material->bumpMap) : mapManager.getResource(material->bumpMap));
+			common::Texture::load(textureManager.getPath(material->texture)),
+			material->bumpMap.type == common::Handle_Type::texture ? common::Texture::load(textureManager.getPath(material->bumpMap)) : std::make_unique<common::Texture>(mapManager.resource(material->bumpMap)));
 	}
 #pragma endregion
-	RenderMaterial::RenderMaterial(StarDevice& starDevice, common::Material& material, common::Texture& texture, common::Texture& bumpMap) 
+	RenderMaterial::RenderMaterial(StarDevice& starDevice, common::Material& material, std::unique_ptr<common::Texture> texture, std::unique_ptr<common::Texture> bumpMap) 
 		: starDevice(starDevice), material(material), 
-		texture(std::make_unique<StarTexture>(starDevice, texture)), 
-		bumpMap(std::make_unique<StarTexture>(starDevice, bumpMap)) {
+		texture(std::make_unique<StarTexture>(starDevice, *texture)), 
+		bumpMap(std::make_unique<StarTexture>(starDevice, *bumpMap)) {
 	}
 
 	void RenderMaterial::initDescriptorLayouts(StarDescriptorSetLayout::Builder& constBuilder) {

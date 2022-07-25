@@ -51,7 +51,7 @@ namespace star::core {
 		std::unique_ptr<StarTexture> texture;
 		std::unique_ptr<StarTexture> bumpMap; 
 
-		RenderMaterial(StarDevice& starDevice, common::Material& material, common::Texture& texture, common::Texture& bumpMap);
+		RenderMaterial(StarDevice& starDevice, common::Material& material, std::unique_ptr<common::Texture> texture, std::unique_ptr<common::Texture> bumpMap);
 
 		void bind(vk::CommandBuffer& commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex); 
 

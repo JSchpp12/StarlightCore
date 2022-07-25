@@ -24,8 +24,6 @@ namespace star::core{
 			const int& shinyCoefficient, common::Handle texture,
 			common::Handle bumpMap);
 
-		common::Material& get(const common::Handle& handle); 
-
 		size_t size() { return this->MemoryManager::size(); }
 
 	protected:

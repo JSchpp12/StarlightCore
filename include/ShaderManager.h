@@ -22,15 +22,13 @@ namespace star::core{
         /// <param name="defaultVert"></param>
         /// <param name="defaultFrag"></param>
         ShaderManager(const std::string& defaultVert, const std::string& defaultFrag);
-
+         
         ~ShaderManager(); 
 
-        ///add shader to manager, will return handle to compiled resource
-        virtual common::Handle add(const std::string& pathToFile); 
-
-        //common::Shader* Get(const common::Handle& handle) override; 
     protected: 
-        common::Handle createAppropriateHandle(); 
+        common::Handle createAppropriateHandle() override;
+        common::Handle_Type handleType() override { return common::Handle_Type::shader; }
+
 
     private: 
         common::Handle defaultVertShader, defaultFragShader; 

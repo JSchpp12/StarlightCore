@@ -86,7 +86,7 @@ SET(${PROJECT_NAME}_HEADERS
 	"include/MaterialManager.hpp"
 	"include/ObjectManager.hpp"
 	"include/Object.h"
-	"include/TextureManager.h"
+	"include/TextureManager.hpp"
 	"include/RenderEngine.h"
 	"include/Windowing.h"
 	"include/MemoryDescriptor.h"

@@ -1,29 +1,7 @@
 #include "ObjectManager.hpp"
 
 namespace star::core {
-	star::common::Handle ObjectManager::add(const std::string& pathToFile) {
-		//TODO: verify file type
-		//TODO: have object manager register callbacks for objects -- if needed
-		throw std::runtime_error("This is deprecated");
-
-		bool hasBeenLoaded = this->fileContainer.fileLoaded(pathToFile);
-		if (!hasBeenLoaded) {
-			std::unique_ptr<std::vector<common::Vertex>> readVertexList(new std::vector<common::Vertex>);
-			std::unique_ptr<std::vector<uint32_t>> readIndiciesList(new std::vector<uint32_t>);
-			//std::unique_ptr<common::GameObject> newObject(this->create(pathToFile, nullptr)); 
-
-			common::Handle newHandle;
-			newHandle.type = common::Handle_Type::object;
-			//record callbacks for object
-			//this->addResource(pathToFile, std::move(newObject), newHandle); 
-			return newHandle;
-		}
-		else {
-			throw std::runtime_error("This object is already loaded");
-		}
-	}
-
-	void ObjectManager::load(const std::string& pathToFile, std::vector<common::Vertex>* vertexList, std::vector<uint32_t>* indiciesList) {
+	void ObjectManager::loadObject(const std::string& pathToFile, std::vector<common::Vertex>* vertexList, std::vector<uint32_t>* indiciesList) {
 		/* Load Object From File */
 		tinyobj::attrib_t attrib;
 		std::vector<tinyobj::shape_t> shapes;

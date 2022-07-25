@@ -25,10 +25,6 @@ namespace star::core{
 		return this->addResource(std::make_unique<common::Material>(surfaceColor, highlightColor, ambient, diffuse, specular, shinyCoefficient, texture, bumpMap));
 	}
 
-	common::Material& MaterialManager::get(const common::Handle& handle) {
-		return this->getResource(handle); 
-	}
-
 	common::Handle MaterialManager::createAppropriateHandle() {
 		common::Handle newHandle; 
 		newHandle.type = common::Handle_Type::material; 
