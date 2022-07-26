@@ -25,8 +25,8 @@ namespace star::core{
 			vk::BufferUsageFlagBits::eTransferSrc,
 			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 		stagingBuffer.map();
-		auto textureData = texture.data(); 
-
+		std::unique_ptr<unsigned char> textureData(texture.data());
+		std::cout << *textureData.get() << std::endl; 
 		stagingBuffer.writeToBuffer(textureData.get(), imageSize);
 
 		//stbi_image_free(pixels);

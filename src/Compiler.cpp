@@ -12,7 +12,7 @@ namespace star::core {
         std::string preprocessed = preprocessShader(name, stageC, fileCode.c_str());
 
         shaderc::SpvCompilationResult compileResult = shaderCompiler.CompileGlslToSpv(preprocessed.c_str(), stageC, name.c_str(), compilerOptions);
-        std::cout << preprocessed << std::endl; 
+
         if (compileResult.GetCompilationStatus() != shaderc_compilation_status_success) {
             std::cerr << compileResult.GetErrorMessage();
             throw std::runtime_error("Failed to compile shader");

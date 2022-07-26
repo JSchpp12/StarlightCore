@@ -61,7 +61,7 @@ namespace star::core {
 			RenderSysObjs.at(i)->updateBuffers(currentImage);
 		}
 
-		//this->lightRenderSys->updateBuffers(currentImage); 
+		this->lightRenderSys->updateBuffers(currentImage); 
 	}
 
 
@@ -156,40 +156,40 @@ namespace star::core {
 		tmpRenderSysObj->init(globalSets);
 
 		/* Init Point Light Render System */
-		//this->lightRenderSys = std::make_unique<RenderSysPointLight>(*this->starDevice, this->swapChainImages.size(), this->globalSetLayout->getDescriptorSetLayout(), this->swapChainExtent, this->renderPass);
-		//common::GameObject* currLinkedObj = nullptr; 
-		//int vertexCounter = 0; 
-		//for (auto light : this->lightList) {
-		//	if (light->hasLinkedObject()) {
-		//		currLinkedObj = &this->objectManager.resource(light->getLinkedObjectHandle());
-		//		if (!this->lightRenderSys->hasShader(vk::ShaderStageFlagBits::eVertex) && !this->lightRenderSys->hasShader(vk::ShaderStageFlagBits::eFragment)) {
-		//			this->lightRenderSys->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager.resource(currLinkedObj->getVertShader()), currLinkedObj->getVertShader()); 
-		//			this->lightRenderSys->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager.resource(currLinkedObj->getFragShader()), currLinkedObj->getFragShader()); 
-		//		}
-		//		if ((lightRenderSys->getBaseShader(vk::ShaderStageFlagBits::eFragment).containerIndex == currLinkedObj->getFragShader().containerIndex)
-		//				|| (lightRenderSys->getBaseShader(vk::ShaderStageFlagBits::eVertex).containerIndex == currLinkedObj->getVertShader().containerIndex)) {
-		//			auto builder = RenderObject::Builder(*this->starDevice, this->objectManager.resource(light->getLinkedObjectHandle()));
-		//			builder.setNumFrames(this->swapChainImages.size());
+		this->lightRenderSys = std::make_unique<RenderSysPointLight>(*this->starDevice, this->swapChainImages.size(), this->globalSetLayout->getDescriptorSetLayout(), this->swapChainExtent, this->renderPass);
+		common::GameObject* currLinkedObj = nullptr; 
+		int vertexCounter = 0; 
+		for (auto light : this->lightList) {
+			if (light->hasLinkedObject()) {
+				currLinkedObj = &this->objectManager.resource(light->getLinkedObjectHandle());
+				if (!this->lightRenderSys->hasShader(vk::ShaderStageFlagBits::eVertex) && !this->lightRenderSys->hasShader(vk::ShaderStageFlagBits::eFragment)) {
+					this->lightRenderSys->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager.resource(currLinkedObj->getVertShader()), currLinkedObj->getVertShader()); 
+					this->lightRenderSys->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager.resource(currLinkedObj->getFragShader()), currLinkedObj->getFragShader()); 
+				}
+				if ((lightRenderSys->getBaseShader(vk::ShaderStageFlagBits::eFragment).containerIndex == currLinkedObj->getFragShader().containerIndex)
+						|| (lightRenderSys->getBaseShader(vk::ShaderStageFlagBits::eVertex).containerIndex == currLinkedObj->getVertShader().containerIndex)) {
+					auto builder = RenderObject::Builder(*this->starDevice, this->objectManager.resource(light->getLinkedObjectHandle()));
+					builder.setNumFrames(this->swapChainImages.size());
 
-		//			for (auto& mesh : currLinkedObj->getMeshes()) {
-		//				builder.addMesh(RenderMesh::Builder(*this->starDevice)
-		//					.setMesh(*mesh)
-		//					.setRenderSettings(vertexCounter)
-		//					.setMaterial(RenderMaterial::Builder(*this->starDevice, this->materialManager, this->textureManager, this->mapManager)
-		//						.setMaterial(mesh->getMaterial())
-		//						.build())
-		//					.build());
-		//				vertexCounter += mesh->getTriangles()->size() * 3; 
-		//			}
-		//			lightRenderSys->addLight(light, builder.build(), this->swapChainImages.size());
-		//		}
-		//		else {
-		//			throw std::runtime_error("More than one shader type is not permitted for light linked object");
-		//		}
-		//	}
-		//}
-		//this->lightRenderSys->setPipelineLayout(this->RenderSysObjs.at(0)->getPipelineLayout()); 
-		//this->lightRenderSys->init(globalSets); 
+					for (auto& mesh : currLinkedObj->getMeshes()) {
+						builder.addMesh(RenderMesh::Builder(*this->starDevice)
+							.setMesh(*mesh)
+							.setRenderSettings(vertexCounter)
+							.setMaterial(RenderMaterial::Builder(*this->starDevice, this->materialManager, this->textureManager, this->mapManager)
+								.setMaterial(mesh->getMaterial())
+								.build())
+							.build());
+						vertexCounter += mesh->getTriangles()->size() * 3; 
+					}
+					lightRenderSys->addLight(light, builder.build(), this->swapChainImages.size());
+				}
+				else {
+					throw std::runtime_error("More than one shader type is not permitted for light linked object");
+				}
+			}
+		}
+		this->lightRenderSys->setPipelineLayout(this->RenderSysObjs.at(0)->getPipelineLayout()); 
+		this->lightRenderSys->init(globalSets); 
 
 		createDepthResources();
 		createFramebuffers();
@@ -946,8 +946,8 @@ namespace star::core {
 				tmpRenderSysObj->render(newBuffers[i], i);
 
 				//bind light pipe 
-				//this->lightRenderSys->bind(newBuffers[i]);
-				//this->lightRenderSys->render(newBuffers[i], i);
+				this->lightRenderSys->bind(newBuffers[i]);
+				this->lightRenderSys->render(newBuffers[i], i);
 
 				newBuffers[i].endRenderPass();
 
