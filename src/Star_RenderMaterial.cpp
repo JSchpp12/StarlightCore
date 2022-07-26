@@ -11,10 +11,6 @@ namespace star::core {
 	}
 	std::unique_ptr<RenderMaterial> RenderMaterial::Builder::build() {
 		assert(material != nullptr && "A material object is required to create a RenderMaterial object"); 
-		if (material->bumpMap.type == common::Handle_Type::map) {
-			auto& test2 = mapManager.resource(material->bumpMap);
-		}
-		auto& test = material->bumpMap.type == common::Handle_Type::texture ? textureManager.resource(material->bumpMap) : mapManager.resource(material->bumpMap);
 		return std::make_unique<RenderMaterial>(starDevice, *material, 
 			textureManager.resource(material->texture),
 			material->bumpMap.type == common::Handle_Type::texture ? textureManager.resource(material->bumpMap) : mapManager.resource(material->bumpMap));

@@ -102,7 +102,9 @@ namespace star::core{
 		allocInfo.pSetLayouts = &descriptorSetLayout;
 		allocInfo.descriptorSetCount = 1;
 
-		if (this->starDevice.getDevice().allocateDescriptorSets(&allocInfo, &descriptorSet) != vk::Result::eSuccess) {
+		auto result = this->starDevice.getDevice().allocateDescriptorSets(&allocInfo, &descriptorSet);
+		if (result != vk::Result::eSuccess) {
+			std::cout << "Failed to allocate descriptor set " << result << std::endl;
 			return false; 
 		}
 

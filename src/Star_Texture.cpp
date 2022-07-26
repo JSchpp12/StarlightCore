@@ -26,10 +26,7 @@ namespace star::core{
 			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 		stagingBuffer.map();
 		std::unique_ptr<unsigned char> textureData(texture.data());
-		std::cout << *textureData.get() << std::endl; 
 		stagingBuffer.writeToBuffer(textureData.get(), imageSize);
-
-		//stbi_image_free(pixels);
 
 		createImage(texture.width, texture.height, vk::Format::eR8G8B8A8Srgb, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::MemoryPropertyFlagBits::eDeviceLocal, textureImage, imageMemory);
 
@@ -40,7 +37,6 @@ namespace star::core{
 
 		//prepare final image for texture mapping in shaders 
 		transitionImageLayout(textureImage, vk::Format::eR8G8B8A8Srgb, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
-
 	}
 
 	void StarTexture::createImage(uint32_t width, uint32_t height, vk::Format format,

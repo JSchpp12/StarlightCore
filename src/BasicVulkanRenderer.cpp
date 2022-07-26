@@ -39,8 +39,6 @@ namespace star::core {
 		this->globalUniformBuffers[currentImage]->writeToBuffer(&globalUbo, sizeof(globalUbo));
 
 		//update buffer for light positions
-		//std::vector<glm::vec4> lightPositions(this->lightList.size());
-		//std::vector<glm::vec4> lightColors(this->lightList.size());
 		std::vector<LightBufferObject> lightInformation(this->lightList.size()); 
 		LightBufferObject newBufferObject{};
 		common::Light* currLight = nullptr; 
@@ -75,9 +73,9 @@ namespace star::core {
 		createRenderPass();
 
 		this->globalPool = StarDescriptorPool::Builder(*this->starDevice.get())
-			.setMaxSets((this->swapChainImages.size()))
-			.addPoolSize(vk::DescriptorType::eUniformBuffer, this->swapChainImages.size())
-			.addPoolSize(vk::DescriptorType::eStorageBuffer, this->lightList.size())
+			.setMaxSets(15)
+			.addPoolSize(vk::DescriptorType::eUniformBuffer, this->swapChainImages.size() * this->swapChainImages.size())
+			.addPoolSize(vk::DescriptorType::eStorageBuffer, this->lightList.size() * this->swapChainImages.size())
 			.build();
 
 		this->globalSetLayout = StarDescriptorSetLayout::Builder(*this->starDevice.get())
@@ -244,7 +242,6 @@ namespace star::core {
 		this->starDevice->getDevice().waitForFences(inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
 		/* Get Image From Swapchain */
-
 
 		//as is extension we must use vk*KHR naming convention
 		//UINT64_MAX -> 3rd argument: used to specify timeout in nanoseconds for image to become available
