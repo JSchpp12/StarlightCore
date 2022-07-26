@@ -107,8 +107,6 @@ namespace star::core{
 		common::Handle fragShaderHandle;
 		common::Shader* fragShader = nullptr;
 
-		common::Light* ambientLight = nullptr;
-
 		vk::DescriptorSetLayout globalSetLayout; 
 		std::vector<common::Light*> lights; 
 		std::vector<std::unique_ptr<RenderObject>> renderObjects;

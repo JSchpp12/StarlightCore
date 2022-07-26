@@ -13,7 +13,7 @@
 #include "SC/RenderOptions.hpp"
 //managers
 #include "MaterialManager.hpp"
-#include "TextureManager.h"
+#include "TextureManager.hpp"
 #include "MapManager.hpp"
 //vulkan wrappers
 #include "VulkanVertex.hpp"

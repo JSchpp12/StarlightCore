@@ -11,11 +11,8 @@ namespace star::core {
 		StarWindow& window) :
 		materialManager(materialManager), textureManager(textureManager), 
 		mapManager(mapManager), star::common::Renderer(configFile, renderOptions, shaderManager, objectManager, inCamera, objectHandleList),
-		starWindow(window), lightList(inLightList)
-	{
-		common::GameObject* currentObject = nullptr;
-		common::Light* currLight = nullptr;
-		this->starDevice = std::unique_ptr<StarDevice>(new StarDevice(this->starWindow));
+		starWindow(window), lightList(inLightList) {
+		starDevice = std::make_unique<StarDevice>(starWindow);
 	}
 
 	VulkanRenderer::~VulkanRenderer() {

@@ -13,26 +13,13 @@ namespace star::core{
 
         virtual ~TextureManager() { };
 
-        virtual common::Handle addResource(const std::string& path) { return this->common::FileResourceManager<common::Texture>::addResource(path, std::make_unique<common::Texture>(path)); }
-
-        std::string getPath(const common::Handle& texture) { return this->fileContainer.getPath(texture); };
-
-        std::unique_ptr<unsigned char> load(const std::string& path) {
-            int texWidth = 0, texHeight = 0, texChannels = 0;
-
-            //load from disk
-            std::unique_ptr<unsigned char> pixelData(stbi_load(path.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha));
-            if (!pixelData) {
-                throw std::runtime_error("Unable to load image");
-            }
-
-            return std::move(pixelData);
-        }
+        virtual common::Handle addResource(const std::string& path) { return this->FileResourceManager<common::Texture>::addResource(path, std::make_unique<common::Texture>(path)); }
+        virtual common::Texture& resource(const common::Handle& resourceHandle) override { return this->FileResourceManager<common::Texture>::resource(resourceHandle); }
 
     protected: 
         virtual common::Handle createAppropriateHandle() override; 
         virtual common::Handle_Type handleType() override { return common::Handle_Type::texture; }
-        
+
     private: 
 
     }; 

@@ -3,6 +3,8 @@
 #include "SC/Shader.h"
 #include "Star_Device.hpp"
 #include "VulkanVertex.hpp"
+#include "Star_Shader.h"
+#include "Compiler.h"
 
 #include <vulkan/vulkan.hpp>
 
@@ -31,7 +33,7 @@ namespace star::core{
 
 	class StarPipeline {
 	public:
-		StarPipeline(StarDevice* device, common::Shader* vertShader, common::Shader* fragShader, PipelineConfigSettings& configSettings);
+		StarPipeline(StarDevice* device, common::Shader& inVertShader, common::Shader& inFragShader, PipelineConfigSettings& configSettings);
 		~StarPipeline(); 
 
 		//no copy
@@ -49,7 +51,7 @@ namespace star::core{
 		vk::Pipeline graphicsPipeline; 
 		vk::ShaderModule vertShaderModule, fragShaderModule; 
 
-		void createGraphicsPipeline(common::Shader* vertShader, common::Shader* fragShader, PipelineConfigSettings& configSettings); 
+		void createGraphicsPipeline(const common::Shader& inVertShader, const common::Shader& inFragShader, PipelineConfigSettings& configSettings); 
 
 		vk::ShaderModule createShaderModule(const std::vector<uint32_t>& sourceCode); 
 	};

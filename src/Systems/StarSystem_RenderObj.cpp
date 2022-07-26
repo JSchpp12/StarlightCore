@@ -397,6 +397,6 @@ void RenderSysObj::createPipeline() {
 	config.pipelineLayout = this->pipelineLayout; 
 	config.renderPass = this->renderPass;
 
-	this->starPipeline = std::make_unique<StarPipeline>(&this->starDevice, this->vertShader, this->fragShader, config);
+	this->starPipeline = std::make_unique<StarPipeline>(&this->starDevice, *this->vertShader, *this->fragShader, config);
 }
 }

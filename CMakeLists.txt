@@ -53,7 +53,7 @@ endif()
 
 SET(${PROJECT_NAME}_SOURCES
 	"src/Compiler.cpp" 
-	"src/GLSLShader.cpp" 
+	"src/Star_Shader.cpp" 
 	"src/ShaderManager.cpp"
 	"src/LightManager.cpp"
 	"src/MaterialManager.cpp"
@@ -80,7 +80,7 @@ SET(${PROJECT_NAME}_SOURCES
   
 SET(${PROJECT_NAME}_HEADERS
 	"include/Compiler.h"
-	"include/GLSLShader.h"
+	"include/Star_Shader.h"
 	"include/ShaderManager.h"
 	"include/LightManager.hpp"
 	"include/MaterialManager.hpp"

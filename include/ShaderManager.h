@@ -5,8 +5,8 @@
 #include "SC/ResourceContainer.hpp"
 #include "SC/ConfigFile.hpp"
 #include "SC/FileResourceManager.hpp"
+#include "SC/Shader.h"
 
-#include "GLSLShader.h"
 #include "Compiler.h"
 
 #include <map> 
@@ -25,7 +25,9 @@ namespace star::core{
          
         ~ShaderManager(); 
 
+        common::Shader& resource(const common::Handle& resourceHandle) override; 
     protected: 
+
         common::Handle createAppropriateHandle() override;
         common::Handle_Type handleType() override { return common::Handle_Type::shader; }
 

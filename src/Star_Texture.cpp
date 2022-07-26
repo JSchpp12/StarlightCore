@@ -16,7 +16,7 @@ namespace star::core{
 	}
 
 	void StarTexture::createTextureImage(common::Texture& texture) {
-		vk::DeviceSize imageSize = texture.width() * texture.height() * 4;
+		vk::DeviceSize imageSize = texture.width * texture.height * 4;
 
 		StarBuffer stagingBuffer(
 			starDevice,
@@ -25,16 +25,18 @@ namespace star::core{
 			vk::BufferUsageFlagBits::eTransferSrc,
 			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 		stagingBuffer.map();
-		stagingBuffer.writeToBuffer(texture.data(), imageSize);
+		auto textureData = texture.data(); 
+
+		stagingBuffer.writeToBuffer(textureData.get(), imageSize);
 
 		//stbi_image_free(pixels);
 
-		createImage(texture.width(), texture.height(), vk::Format::eR8G8B8A8Srgb, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::MemoryPropertyFlagBits::eDeviceLocal, textureImage, imageMemory);
+		createImage(texture.width, texture.height, vk::Format::eR8G8B8A8Srgb, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::MemoryPropertyFlagBits::eDeviceLocal, textureImage, imageMemory);
 
 		//copy staging buffer to texture image 
 		transitionImageLayout(textureImage, vk::Format::eR8G8B8A8Srgb, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
 
-		starDevice.copyBufferToImage(stagingBuffer.getBuffer(), textureImage, static_cast<uint32_t>(texture.width()), static_cast<uint32_t>(texture.height()));
+		starDevice.copyBufferToImage(stagingBuffer.getBuffer(), textureImage, static_cast<uint32_t>(texture.width), static_cast<uint32_t>(texture.height));
 
 		//prepare final image for texture mapping in shaders 
 		transitionImageLayout(textureImage, vk::Format::eR8G8B8A8Srgb, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);

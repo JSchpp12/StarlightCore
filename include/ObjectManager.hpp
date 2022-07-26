@@ -17,7 +17,7 @@ namespace star::core{
     //TODO: inherit from manager base
     class ObjectManager : public common::FileResourceManager<common::GameObject> {
     public:  
-        
+        common::GameObject& resource(const common::Handle& resourceHandle) override { return this->FileResourceManager::resource(resourceHandle); }
     protected: 
         //load the object from disk 
         void loadObject(const std::string& pathToFile, std::vector<common::Vertex>* vertexList, std::vector<uint32_t>* indiciesList);

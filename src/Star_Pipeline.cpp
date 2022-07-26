@@ -1,9 +1,9 @@
 #include "Star_Pipeline.hpp"
 
 namespace star::core{
-	StarPipeline::StarPipeline(StarDevice* device, common::Shader* vertShader, common::Shader* fragShader, PipelineConfigSettings& configSettings) :
+	StarPipeline::StarPipeline(StarDevice* device, common::Shader& inVertShader, common::Shader& inFragShader, PipelineConfigSettings& configSettings) :
 		starDevice(device) {
-        createGraphicsPipeline(vertShader, fragShader, configSettings); 
+        createGraphicsPipeline(inVertShader, inFragShader, configSettings); 
 	}
 	
 	StarPipeline::~StarPipeline() {
@@ -117,13 +117,13 @@ namespace star::core{
 
     }
 
-	void StarPipeline::createGraphicsPipeline(common::Shader* vertShader, common::Shader* fragShader, PipelineConfigSettings& configSettings) {
-		//std::vector<uint32_t> vertShaderCode = vertShader->GetSpirV();
-
+	void StarPipeline::createGraphicsPipeline(const common::Shader& inVertShader, const common::Shader& inFragShader, PipelineConfigSettings& configSettings) {
         assert(configSettings.pipelineLayout && "Pipeline layout must be defined"); 
+		Shader vertShader = Shader(inVertShader); 
+		Shader fragShader = Shader(inFragShader);
 
-		this->vertShaderModule = createShaderModule(vertShader->GetSpirV());
-		this->fragShaderModule = createShaderModule(fragShader->GetSpirV());
+		this->vertShaderModule = createShaderModule(*vertShader.compiledCode);
+		this->fragShaderModule = createShaderModule(*fragShader.compiledCode);
 
         auto bindingDescriptions = VulkanVertex::getBindingDescription();
         auto attributeDescriptions = VulkanVertex::getAttributeDescriptions();
