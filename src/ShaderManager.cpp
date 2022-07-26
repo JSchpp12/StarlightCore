@@ -1,35 +1,27 @@
 #include "ShaderManager.h"
 
 namespace star::core {
-    ShaderManager::ShaderManager(const std::string& defaultVert, const std::string& defaultFrag)
-    {
-        this->defaultVertShader = this->add(defaultVert);
-        this->defaultFragShader = this->add(defaultFrag);
-    }
+    ShaderManager::ShaderManager(const std::string& defaultVert, const std::string& defaultFrag) : 
+        defaultVertShader(this->addResource(defaultVert, std::make_unique<common::Shader>(defaultVert))),
+        defaultFragShader(this->addResource(defaultFrag, std::make_unique<common::Shader>(defaultFrag)))
+    { }
 
-    ShaderManager::~ShaderManager() {
+    ShaderManager::~ShaderManager() { }
 
-    }
-
-    common::Handle ShaderManager::add(const std::string& pathToFile) {
-        //create shader object for new thing 
-        common::Shader_File_Type fileType = common::FileHelpers::GetFileType(pathToFile);
-
-        common::Shader_Stage stage = common::FileHelpers::GetStageOfShader(pathToFile);
-
-        //check if shader was previously requested
-        bool hasBeenLoaded = this->fileContainer.fileLoaded(pathToFile);
-        if (!hasBeenLoaded && (fileType == common::Shader_File_Type::glsl)) {
-            std::unique_ptr<common::Shader> newShader(GLSLShader::New(pathToFile));
-            std::cout << "Completed compilation of: " << pathToFile << std::endl;
-            return this->addResource(pathToFile, std::move(newShader));
-        }
-        else if (hasBeenLoaded) {
-            std::cout << "Shader has already been loaded. Returning shared object." << std::endl;
-            return this->fileContainer.get(pathToFile);
+    common::Shader& ShaderManager::resource(const common::Handle& resourceHandle) {
+        if (resourceHandle.type == common::Handle_Type::defaultHandle) {
+            if (resourceHandle.shaderStage.has_value() && resourceHandle.shaderStage.value() == common::Shader_Stage::vertex) {
+                return this->FileResourceManager<common::Shader>::resource(this->defaultVertShader);
+            }
+            else if (resourceHandle.shaderStage.has_value() && resourceHandle.shaderStage.value() == common::Shader_Stage::fragment) {
+                return this->FileResourceManager<common::Shader>::resource(this->defaultFragShader);
+            }
+            else {
+                throw std::runtime_error("Unexpected default shader requested");
+            }
         }
         else {
-            throw std::runtime_error("This file type is not yet supported");
+            return this->FileResourceManager<common::Shader>::resource(resourceHandle);
         }
     }
 
@@ -39,14 +31,3 @@ namespace star::core {
         return newHandle; 
     }
 }
-
-
-//star::common::Shader* star::core::ShaderManager::Get(const common::Handle& handle) {
-//    if (handle.type != common::Handle_Type::defaultHandle) {
-//        this->FileResourceManager::Get(handle); 
-//    }
-//    else {
-//        //determine what type of shader to return 
-//
-//    }
-//}

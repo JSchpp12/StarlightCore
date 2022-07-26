@@ -11,7 +11,7 @@
 #include "Star_Texture.hpp"
 #include "Star_Descriptors.hpp"
 #include "MaterialManager.hpp"
-#include "TextureManager.h"
+#include "TextureManager.hpp"
 #include "MapManager.hpp"
 
 #include <vulkan/vulkan.hpp>

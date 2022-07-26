@@ -11,11 +11,8 @@ namespace star::core {
 		StarWindow& window) :
 		materialManager(materialManager), textureManager(textureManager), 
 		mapManager(mapManager), star::common::Renderer(configFile, renderOptions, shaderManager, objectManager, inCamera, objectHandleList),
-		starWindow(window), lightList(inLightList)
-	{
-		common::GameObject* currentObject = nullptr;
-		common::Light* currLight = nullptr;
-		this->starDevice = std::unique_ptr<StarDevice>(new StarDevice(this->starWindow));
+		starWindow(window), lightList(inLightList) {
+		starDevice = std::make_unique<StarDevice>(starWindow);
 	}
 
 	VulkanRenderer::~VulkanRenderer() {
@@ -42,8 +39,6 @@ namespace star::core {
 		this->globalUniformBuffers[currentImage]->writeToBuffer(&globalUbo, sizeof(globalUbo));
 
 		//update buffer for light positions
-		//std::vector<glm::vec4> lightPositions(this->lightList.size());
-		//std::vector<glm::vec4> lightColors(this->lightList.size());
 		std::vector<LightBufferObject> lightInformation(this->lightList.size()); 
 		LightBufferObject newBufferObject{};
 		common::Light* currLight = nullptr; 
@@ -78,9 +73,9 @@ namespace star::core {
 		createRenderPass();
 
 		this->globalPool = StarDescriptorPool::Builder(*this->starDevice.get())
-			.setMaxSets((this->swapChainImages.size()))
-			.addPoolSize(vk::DescriptorType::eUniformBuffer, this->swapChainImages.size())
-			.addPoolSize(vk::DescriptorType::eStorageBuffer, this->lightList.size())
+			.setMaxSets(15)
+			.addPoolSize(vk::DescriptorType::eUniformBuffer, this->swapChainImages.size() * this->swapChainImages.size())
+			.addPoolSize(vk::DescriptorType::eStorageBuffer, this->lightList.size() * this->swapChainImages.size())
 			.build();
 
 		this->globalSetLayout = StarDescriptorSetLayout::Builder(*this->starDevice.get())
@@ -98,7 +93,7 @@ namespace star::core {
 		uint32_t meshVertCounter = 0; 
 
 		for (size_t i = 0; i < this->objectList.size(); i++) {
-			common::GameObject& currObject = this->objectManager.get(this->objectList.at(i));
+			common::GameObject& currObject = this->objectManager.resource(this->objectList.at(i));
 			meshVertCounter = 0;
 
 			//check if the vulkan object has a shader registered for the desired stage that is different than the one needed for the current object
@@ -107,8 +102,8 @@ namespace star::core {
 				RenderSysObj* object = this->RenderSysObjs.at(j).get();
 				if (!object->hasShader(vk::ShaderStageFlagBits::eVertex) && (!object->hasShader(vk::ShaderStageFlagBits::eFragment))) {
 					//vulkan object does not have either a vertex or a fragment shader 
-					object->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager.get(currObject.getVertShader()), currObject.getVertShader());
-					object->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager.get(currObject.getFragShader()), currObject.getFragShader());
+					object->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager.resource(currObject.getVertShader()), currObject.getVertShader());
+					object->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager.resource(currObject.getFragShader()), currObject.getFragShader());
 					RenderObject::Builder builder(*this->starDevice, currObject);
 					builder.setNumFrames(this->swapChainImages.size()); 
 
@@ -130,8 +125,8 @@ namespace star::core {
 					//vulkan object has shaders but they are not the same as the shaders needed for current render object
 					this->RenderSysObjs.push_back(std::make_unique<RenderSysObj>(*this->starDevice, this->swapChainImages.size(), this->globalSetLayout->getDescriptorSetLayout(), this->swapChainExtent, this->renderPass));
 					RenderSysObj* newObject = this->RenderSysObjs.at(this->RenderSysObjs.size()).get();
-					newObject->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager.get(currObject.getVertShader()), currObject.getVertShader());
-					newObject->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager.get(currObject.getFragShader()), currObject.getFragShader());
+					newObject->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager.resource(currObject.getVertShader()), currObject.getVertShader());
+					newObject->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager.resource(currObject.getFragShader()), currObject.getFragShader());
 					newObject->addObject(std::move(RenderObject::Builder(*this->starDevice, currObject)
 						.setNumFrames(this->swapChainImages.size())
 						.build()));
@@ -164,14 +159,14 @@ namespace star::core {
 		int vertexCounter = 0; 
 		for (auto light : this->lightList) {
 			if (light->hasLinkedObject()) {
-				currLinkedObj = &this->objectManager.get(light->getLinkedObjectHandle());
+				currLinkedObj = &this->objectManager.resource(light->getLinkedObjectHandle());
 				if (!this->lightRenderSys->hasShader(vk::ShaderStageFlagBits::eVertex) && !this->lightRenderSys->hasShader(vk::ShaderStageFlagBits::eFragment)) {
-					this->lightRenderSys->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager.getResource(currLinkedObj->getVertShader()), currLinkedObj->getVertShader()); 
-					this->lightRenderSys->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager.getResource(currLinkedObj->getFragShader()), currLinkedObj->getFragShader()); 
+					this->lightRenderSys->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager.resource(currLinkedObj->getVertShader()), currLinkedObj->getVertShader()); 
+					this->lightRenderSys->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager.resource(currLinkedObj->getFragShader()), currLinkedObj->getFragShader()); 
 				}
 				if ((lightRenderSys->getBaseShader(vk::ShaderStageFlagBits::eFragment).containerIndex == currLinkedObj->getFragShader().containerIndex)
 						|| (lightRenderSys->getBaseShader(vk::ShaderStageFlagBits::eVertex).containerIndex == currLinkedObj->getVertShader().containerIndex)) {
-					auto builder = RenderObject::Builder(*this->starDevice, this->objectManager.get(light->getLinkedObjectHandle()));
+					auto builder = RenderObject::Builder(*this->starDevice, this->objectManager.resource(light->getLinkedObjectHandle()));
 					builder.setNumFrames(this->swapChainImages.size());
 
 					for (auto& mesh : currLinkedObj->getMeshes()) {
@@ -247,7 +242,6 @@ namespace star::core {
 		this->starDevice->getDevice().waitForFences(inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
 		/* Get Image From Swapchain */
-
 
 		//as is extension we must use vk*KHR naming convention
 		//UINT64_MAX -> 3rd argument: used to specify timeout in nanoseconds for image to become available

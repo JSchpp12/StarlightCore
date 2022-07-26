@@ -5,16 +5,15 @@ namespace star::core {
 	RenderMaterial::Builder& RenderMaterial::Builder::setMaterial(common::Handle materialHandle) {
 		assert(material == nullptr && "A material has already been applied to this object");
 
-		material = &materialManager.get(materialHandle); 
+		material = &materialManager.resource(materialHandle); 
 
 		return *this; 
 	}
 	std::unique_ptr<RenderMaterial> RenderMaterial::Builder::build() {
 		assert(material != nullptr && "A material object is required to create a RenderMaterial object"); 
-
 		return std::make_unique<RenderMaterial>(starDevice, *material, 
-			textureManager.getResource(material->texture), 
-			material->bumpMap.type == common::Handle_Type::texture ? textureManager.getResource(material->bumpMap) : mapManager.getResource(material->bumpMap));
+			textureManager.resource(material->texture),
+			material->bumpMap.type == common::Handle_Type::texture ? textureManager.resource(material->bumpMap) : mapManager.resource(material->bumpMap));
 	}
 #pragma endregion
 	RenderMaterial::RenderMaterial(StarDevice& starDevice, common::Material& material, common::Texture& texture, common::Texture& bumpMap) 

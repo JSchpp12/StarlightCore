@@ -63,7 +63,6 @@ namespace star::core {
 		common::Mesh& mesh; 
 		std::unique_ptr<RenderMaterial> renderMaterial; 
 		uint32_t startIndex;								//index in vertex buffer where draw will begin             
-		vk::DescriptorSet constDescriptorSet; 
 
 	};
 }
