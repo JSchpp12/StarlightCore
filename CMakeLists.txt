@@ -185,12 +185,12 @@ target_include_directories(${PROJECT_NAME}
 	PRIVATE
 		${StarlightCommon_INCLUDE_DIR}
 		${STB_DIRECTORY}
-		${CMAKE_CURRENT_SOURCE_DIR}/external/spirvreflect/include
 	PUBLIC 
 		${Vulkan_INCLUDE_DIRS}
 		${CMAKE_CURRENT_SOURCE_DIR}/include
 		${CMAKE_CURRENT_SOURCE_DIR}/include/Systems
 		${CMAKE_CURRENT_SOURCE_DIR}/external/shaderc/libshaderc/include
+		${CMAKE_CURRENT_SOURCE_DIR}/external/spirvreflect
 		#${CMAKE_CURRENT_SOURCE_DIR}/external/tinyobjectloader
 		"external/tinyobjloader"
 		${GLM_HEADER_DIR}
