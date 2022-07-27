@@ -76,6 +76,8 @@ SET(${PROJECT_NAME}_SOURCES
 	#rendering sytems
 	"src/Systems/StarSystem_RenderObj.cpp"
 	"src/Systems/StarSystem_RenderPointLight.cpp"
+	#external requirements
+	"external/spirvreflect/spirv_reflect.cpp"
 )
   
 SET(${PROJECT_NAME}_HEADERS
@@ -108,6 +110,8 @@ SET(${PROJECT_NAME}_HEADERS
 	"include/Systems/RenderPointLight.hpp"
 	#header only files
 	"include/VulkanVertex.hpp"
+	#external requirenments
+	"external/spirvreflect/spirv_reflect.h"
 )
 
 SET(${PROJECT_NAME}_INCLUDE "${PROJECT_SOURCE_DIR}/src")
@@ -181,6 +185,7 @@ target_include_directories(${PROJECT_NAME}
 	PRIVATE
 		${StarlightCommon_INCLUDE_DIR}
 		${STB_DIRECTORY}
+		${CMAKE_CURRENT_SOURCE_DIR}/external/spirvreflect/include
 	PUBLIC 
 		${Vulkan_INCLUDE_DIRS}
 		${CMAKE_CURRENT_SOURCE_DIR}/include
