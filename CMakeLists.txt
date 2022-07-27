@@ -76,6 +76,8 @@ SET(${PROJECT_NAME}_SOURCES
 	#rendering sytems
 	"src/Systems/StarSystem_RenderObj.cpp"
 	"src/Systems/StarSystem_RenderPointLight.cpp"
+	#external requirements
+	"external/spirvreflect/spirv_reflect.cpp"
 )
   
 SET(${PROJECT_NAME}_HEADERS
@@ -108,6 +110,8 @@ SET(${PROJECT_NAME}_HEADERS
 	"include/Systems/RenderPointLight.hpp"
 	#header only files
 	"include/VulkanVertex.hpp"
+	#external requirenments
+	"external/spirvreflect/spirv_reflect.h"
 )
 
 SET(${PROJECT_NAME}_INCLUDE "${PROJECT_SOURCE_DIR}/src")
@@ -130,6 +134,11 @@ set(SHADERC_SKIP_COPYRIGHT_CHECK ON CACHE BOOL "" FORCE)
 add_subdirectory("external/shaderc")
 
 add_subdirectory("external/tinyobjloader")
+
+set(SPIRV_REFLECT_EXECUTABLE OFF CACHE BOOL "" FORCE)
+set(SPIRV_REFLECT_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(SPIRV_REFLECT_STATIC_LIB ON CACHE BOOL "" FORCE)
+add_subdirectory("external/spirvreflect")
 
 add_library(${PROJECT_NAME} STATIC "${${PROJECT_NAME}_SOURCES}"  )
 
@@ -169,6 +178,7 @@ target_link_libraries(${PROJECT_NAME}
 		shaderc
 		tinyobjloader
 		glfw
+		spirv-reflect-static
 )
 message("test: ${StarlightCommon_INCLUDE_DIR}")
 target_include_directories(${PROJECT_NAME}
@@ -180,6 +190,7 @@ target_include_directories(${PROJECT_NAME}
 		${CMAKE_CURRENT_SOURCE_DIR}/include
 		${CMAKE_CURRENT_SOURCE_DIR}/include/Systems
 		${CMAKE_CURRENT_SOURCE_DIR}/external/shaderc/libshaderc/include
+		${CMAKE_CURRENT_SOURCE_DIR}/external/spirvreflect
 		#${CMAKE_CURRENT_SOURCE_DIR}/external/tinyobjectloader
 		"external/tinyobjloader"
 		${GLM_HEADER_DIR}
