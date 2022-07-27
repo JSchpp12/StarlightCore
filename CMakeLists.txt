@@ -131,6 +131,11 @@ add_subdirectory("external/shaderc")
 
 add_subdirectory("external/tinyobjloader")
 
+set(SPIRV_REFLECT_EXECUTABLE OFF CACHE BOOL "" FORCE)
+set(SPIRV_REFLECT_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(SPIRV_REFLECT_STATIC_LIB ON CACHE BOOL "" FORCE)
+add_subdirectory("external/spirvreflect")
+
 add_library(${PROJECT_NAME} STATIC "${${PROJECT_NAME}_SOURCES}"  )
 
 #ensure all needed external dependencies are available
@@ -169,6 +174,7 @@ target_link_libraries(${PROJECT_NAME}
 		shaderc
 		tinyobjloader
 		glfw
+		spirv-reflect-static
 )
 message("test: ${StarlightCommon_INCLUDE_DIR}")
 target_include_directories(${PROJECT_NAME}
