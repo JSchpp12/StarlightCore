@@ -50,6 +50,7 @@ namespace star::core {
 		const vk::MemoryPropertyFlagBits& properties) {
 		/* Create vulkan image */
 		vk::ImageCreateInfo imageInfo{};
+
 		imageInfo.sType = vk::StructureType::eImageCreateInfo;
 		imageInfo.imageType = vk::ImageType::e2D;
 		imageInfo.extent.width = width;

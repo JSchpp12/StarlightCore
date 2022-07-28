@@ -1,18 +1,13 @@
 #include "Star_Texture.hpp"
 
 namespace star::core{
-	StarTexture::StarTexture(StarDevice& starDevice, common::Texture& texture) : starDevice(starDevice) {
+	StarTexture::StarTexture(StarDevice& starDevice, common::Texture& texture) : StarImage(starDevice) {
 		createTextureImage(texture);
-		createTextureImageView(); 
 		createImageSampler();
 	}
 
 	StarTexture::~StarTexture() {
 		this->starDevice.getDevice().destroySampler(this->textureSampler);
-		this->starDevice.getDevice().destroyImageView(this->textureImageView);
-		this->starDevice.getDevice().destroyImage(this->textureImage);
-
-		this->starDevice.getDevice().freeMemory(this->imageMemory);
 	}
 
 	void StarTexture::createTextureImage(common::Texture& texture) {
@@ -28,56 +23,15 @@ namespace star::core{
 		std::unique_ptr<unsigned char> textureData(texture.data());
 		stagingBuffer.writeToBuffer(textureData.get(), imageSize);
 
-		createImage(texture.width, texture.height, vk::Format::eR8G8B8A8Srgb, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::MemoryPropertyFlagBits::eDeviceLocal, textureImage, imageMemory);
+		this->StarImage::init(texture.width, texture.height, vk::Format::eR8G8B8A8Srgb, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::ImageAspectFlagBits::eColor, vk::MemoryPropertyFlagBits::eDeviceLocal);
 
 		//copy staging buffer to texture image 
-		transitionImageLayout(textureImage, vk::Format::eR8G8B8A8Srgb, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
+		transitionImageLayout(this->image, vk::Format::eR8G8B8A8Srgb, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
 
-		starDevice.copyBufferToImage(stagingBuffer.getBuffer(), textureImage, static_cast<uint32_t>(texture.width), static_cast<uint32_t>(texture.height));
+		starDevice.copyBufferToImage(stagingBuffer.getBuffer(), this->image, static_cast<uint32_t>(texture.width), static_cast<uint32_t>(texture.height));
 
 		//prepare final image for texture mapping in shaders 
-		transitionImageLayout(textureImage, vk::Format::eR8G8B8A8Srgb, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
-	}
-
-	void StarTexture::createImage(uint32_t width, uint32_t height, vk::Format format,
-		vk::ImageTiling tiling, vk::ImageUsageFlags usage,
-		vk::MemoryPropertyFlagBits properties, vk::Image& image, vk::DeviceMemory& imageMemory) {
-
-		/* Create vulkan image */
-		vk::ImageCreateInfo imageInfo{};
-		imageInfo.sType = vk::StructureType::eImageCreateInfo;
-		imageInfo.imageType = vk::ImageType::e2D;
-		imageInfo.extent.width = width;
-		imageInfo.extent.height = height;
-		imageInfo.extent.depth = 1;
-		imageInfo.mipLevels = 1;
-		imageInfo.arrayLayers = 1;
-		imageInfo.format = format;
-		imageInfo.tiling = tiling;
-		imageInfo.initialLayout = vk::ImageLayout::eUndefined;
-		imageInfo.usage = usage;
-		imageInfo.samples = vk::SampleCountFlagBits::e1;
-		imageInfo.sharingMode = vk::SharingMode::eExclusive;
-
-		image = this->starDevice.getDevice().createImage(imageInfo);
-		if (!image) {
-			throw std::runtime_error("failed to create image");
-		}
-
-		/* Allocate the memory for the imag*/
-		vk::MemoryRequirements memRequirements = this->starDevice.getDevice().getImageMemoryRequirements(image);
-
-		vk::MemoryAllocateInfo allocInfo{};
-		allocInfo.sType = vk::StructureType::eMemoryAllocateInfo;
-		allocInfo.allocationSize = memRequirements.size;
-		allocInfo.memoryTypeIndex = this->starDevice.findMemoryType(memRequirements.memoryTypeBits, properties);
-
-		imageMemory = this->starDevice.getDevice().allocateMemory(allocInfo);
-		if (!imageMemory) {
-			throw std::runtime_error("failed to allocate image memory!");
-		}
-
-		this->starDevice.getDevice().bindImageMemory(image, imageMemory, 0);
+		transitionImageLayout(this->image, vk::Format::eR8G8B8A8Srgb, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
 	}
 
 	void StarTexture::transitionImageLayout(vk::Image image, vk::Format format, vk::ImageLayout oldLayout,
@@ -182,31 +136,5 @@ namespace star::core{
 		if (!this->textureSampler) {
 			throw std::runtime_error("failed to create texture sampler!");
 		}
-	}
-
-	//TODO: allow for more formats 
-	void StarTexture::createTextureImageView() {
-		this->textureImageView = createImageView(textureImage, vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor);
-	}
-
-	vk::ImageView StarTexture::createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlagBits aspectFlags) {
-		vk::ImageViewCreateInfo viewInfo{};
-		viewInfo.sType = vk::StructureType::eImageViewCreateInfo;
-		viewInfo.image = image;
-		viewInfo.viewType = vk::ImageViewType::e2D;
-		viewInfo.format = format;
-		viewInfo.subresourceRange.aspectMask = aspectFlags;
-		viewInfo.subresourceRange.baseMipLevel = 0;
-		viewInfo.subresourceRange.levelCount = 1;
-		viewInfo.subresourceRange.baseArrayLayer = 0;
-		viewInfo.subresourceRange.layerCount = 1;
-
-		vk::ImageView imageView = this->starDevice.getDevice().createImageView(viewInfo);
-
-		if (!imageView) {
-			throw std::runtime_error("failed to create texture image view!");
-		}
-
-		return imageView;
 	}
 }
