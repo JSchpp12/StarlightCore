@@ -443,13 +443,11 @@ namespace star::core {
 		createInfo.oldSwapchain = VK_NULL_HANDLE;
 
 		this->swapChain = this->starDevice->getDevice().createSwapchainKHR(createInfo);
-
-		//if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain) != VK_SUCCESS) {
-		//    throw std::runtime_error("failed to create swap chain");
-		//}
+		assert(swapChain && "Failed to create swapchain");
 
 		//get images in the newly created swapchain 
 		this->swapChainImages = this->starDevice->getDevice().getSwapchainImagesKHR(this->swapChain);
+		assert(swapChainImages.size() > 0 && "Failed to get swap chain images");
 
 		//save swapChain information for later use
 		swapChainImageFormat = surfaceFormat.format;
