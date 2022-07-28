@@ -73,6 +73,7 @@ SET(${PROJECT_NAME}_SOURCES
 	"src/Star_Swapchain.cpp"
 	"src/Star_RenderMesh.cpp"
 	"src/Star_RenderMaterial.cpp"
+	"src/Star_RenderSystem.cpp"
 	#rendering sytems
 	"src/Systems/StarSystem_RenderObj.cpp"
 	"src/Systems/StarSystem_RenderPointLight.cpp"
@@ -105,11 +106,13 @@ SET(${PROJECT_NAME}_HEADERS
 	"include/Star_Window.hpp"
 	"include/Star_Swapchain.hpp"
 	"include/Star_RenderMaterial.hpp"
+	"include/Star_RenderSystem.h"
 	#rendering systems 
 	"include/Systems/StarSystem_RenderObj.hpp"
 	"include/Systems/RenderPointLight.hpp"
 	#header only files
 	"include/VulkanVertex.hpp"
+	"include/Interfaces/RenderSystem.hpp"
 	#external requirenments
 	"external/spirvreflect/spirv_reflect.h"
 )
