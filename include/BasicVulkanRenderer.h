@@ -22,12 +22,13 @@
 #include "Star_Buffer.hpp"
 #include "Star_RenderMesh.hpp"
 #include "Star_RenderMaterial.hpp"
+#include "Star_Image.hpp"
 
 //render systems
 #include "StarSystem_RenderPointLight.hpp"
 #include "StarSystem_RenderObj.hpp"
 
-#include <stb_image.h>
+#include <vulkan/vulkan.hpp>
 
 #include <string> 
 #include <optional> 
@@ -80,12 +81,6 @@ namespace star::core{
         //tracker for which frame is being processed of the available permitted frames
         size_t currentFrame = 0;
 
-        //texture information
-        vk::ImageView textureImageView;
-        vk::Sampler textureSampler;
-        vk::Image textureImage;
-        vk::DeviceMemory textureImageMemory;
-
         //Sync obj storage 
         std::vector<vk::Semaphore> imageAvailableSemaphores;
         std::vector<vk::Semaphore> renderFinishedSemaphores;
@@ -112,15 +107,10 @@ namespace star::core{
         std::vector<vk::Fence> imagesInFlight;
 
         std::unique_ptr<StarDescriptorPool> globalPool{};
-        //std::unique_ptr<StarDescriptorPool> perObjectDynamicPool{}; 
-        //std::unique_ptr<StarDescriptorPool> perObjectStaticPool{}; 
         std::unique_ptr<StarDescriptorSetLayout> globalSetLayout{};
-        //std::unique_ptr<StarDescriptorSetLayout> perObjectStaticLayout{};
 
         //depth testing storage 
-        vk::Image depthImage;
-        vk::DeviceMemory depthImageMemory;
-        vk::ImageView depthImageView;
+        std::unique_ptr<StarImage> depthImage; 
 
         void updateUniformBuffer(uint32_t currentImage);
 
@@ -169,25 +159,14 @@ namespace star::core{
         /// <param name="code">bytecode for the shader program</param>
         /// <returns></returns>
         vk::ShaderModule createShaderModule(const std::vector<uint32_t>& code);
-
+        /// <summary>
+        /// Create needed resources for rendering to a seperate image for shadows.
+        /// </summary>
+        void createShadowResources();
         /// <summary>
         /// Create the depth images that will be used by vulkan to run depth tests on fragments. 
         /// </summary>
         void createDepthResources();
-
-        /// <summary>
-        /// Create Vulkan Image object with properties provided in function arguments. 
-        /// </summary>
-        /// <param name="width">Width of the image being created</param>
-        /// <param name="height">Height of the image being created</param>
-        /// <param name="format"></param>
-        /// <param name="tiling"></param>
-        /// <param name="usage"></param>
-        /// <param name="properties"></param>
-        /// <param name="image"></param>
-        /// <param name="imageMemory"></param>
-        void createImage(uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlagBits properties, vk::Image& image, vk::DeviceMemory& imageMemory);
-
         /// <summary>
         /// Create framebuffers that will hold representations of the images in the swapchain
         /// </summary>
