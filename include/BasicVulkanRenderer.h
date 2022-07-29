@@ -61,9 +61,13 @@ namespace star::core{
             glm::vec4 ambient;
             glm::vec4 diffuse;
             glm::vec4 specular;
-            uint32_t type; 
-            alignas(4) float diameter; 
-            alignas(4) bool enabled; 
+            glm::vec4 pointDirection; //direction in which the light is pointing
+            //controls.x = enabled
+            //controls.y = type
+            //controls.z = diameter
+            glm::vec4 controls; 
+            //float diameter; 
+            //bool enabled; 
         };
         MaterialManager& materialManager; 
         TextureManager& textureManager; 

@@ -51,9 +51,9 @@ namespace star::core {
 			newBufferObject.ambient = currLight->getAmbient();
 			newBufferObject.diffuse = currLight->getDiffuse();
 			newBufferObject.specular = currLight->getSpecular();
-			newBufferObject.type = currLight->getType(); 
-			newBufferObject.diameter = 0.0f; 
-			newBufferObject.enabled = true; 
+			newBufferObject.controls.x = currLight->enabled ? 1 : 0; 
+			newBufferObject.controls.y = currLight->getType(); 
+			newBufferObject.controls.z = 1.0f; 
 			lightInformation[i] = newBufferObject; 
 		}
 		this->lightBuffers[currentImage]->writeToBuffer(lightInformation.data(), sizeof(LightBufferObject) * lightInformation.size());
