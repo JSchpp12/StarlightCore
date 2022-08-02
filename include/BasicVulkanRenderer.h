@@ -62,7 +62,8 @@ namespace star::core{
             glm::vec4 ambient    = glm::vec4();
             glm::vec4 diffuse    = glm::vec4();
             glm::vec4 specular   = glm::vec4();
-            //controls.x = diameter
+            //controls.x = inner cutoff diameter 
+            //controls.y = outer cutoff diameter
             glm::vec4 controls = glm::vec4();       //container for single float values
             //settings.x = enabled
             //settings.y = type
