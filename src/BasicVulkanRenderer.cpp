@@ -54,8 +54,8 @@ namespace star::core {
 			newBufferObject.specular = currLight->getSpecular();
 			newBufferObject.settings.x = currLight->enabled ? 1 : 0; 
 			newBufferObject.settings.y = currLight->getType(); 
-			newBufferObject.controls.x = glm::cos(glm::radians(currLight->innerDiameter));		//represent the diameter of light as the cos of the light (increase shader performance when doing comparison)
-			newBufferObject.controls.y = glm::cos(glm::radians(currLight->outerDiameter));
+			newBufferObject.controls.x = glm::cos(glm::radians(currLight->getInnerDiameter()));		//represent the diameter of light as the cos of the light (increase shader performance when doing comparison)
+			newBufferObject.controls.y = glm::cos(glm::radians(currLight->getOuterDiameter()));
 			lightInformation[i] = newBufferObject; 
 		}
 		this->lightBuffers[currentImage]->writeToBuffer(lightInformation.data(), sizeof(LightBufferObject) * lightInformation.size());
