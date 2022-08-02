@@ -47,6 +47,7 @@ namespace star::core {
 		for (size_t i = 0; i < this->lightList.size(); i++) {
 			currLight = this->lightList.at(i); 
 			newBufferObject.position = glm::vec4{ currLight->getPosition(), 1.0f };
+			newBufferObject.direction = currLight->direction; 
 			newBufferObject.specular = currLight->getSpecular();
 			newBufferObject.ambient = currLight->getAmbient();
 			newBufferObject.diffuse = currLight->getDiffuse();

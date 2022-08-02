@@ -58,16 +58,14 @@ namespace star::core{
     protected:
         struct LightBufferObject {
             glm::vec4 position;
+            glm::vec4 direction; //direction in which the light is pointing
             glm::vec4 ambient;
             glm::vec4 diffuse;
             glm::vec4 specular;
-            glm::vec4 pointDirection; //direction in which the light is pointing
             //controls.x = enabled
             //controls.y = type
             //controls.z = diameter
-            glm::vec4 controls; 
-            //float diameter; 
-            //bool enabled; 
+            glm::uvec4 controls; 
         };
         MaterialManager& materialManager; 
         TextureManager& textureManager; 
