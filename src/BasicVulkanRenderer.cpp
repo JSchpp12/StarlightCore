@@ -47,10 +47,14 @@ namespace star::core {
 		for (size_t i = 0; i < this->lightList.size(); i++) {
 			currLight = this->lightList.at(i); 
 			newBufferObject.position = glm::vec4{ currLight->getPosition(), 1.0f };
+			newBufferObject.direction = currLight->direction; 
 			newBufferObject.specular = currLight->getSpecular();
 			newBufferObject.ambient = currLight->getAmbient();
 			newBufferObject.diffuse = currLight->getDiffuse();
 			newBufferObject.specular = currLight->getSpecular();
+			newBufferObject.settings.x = currLight->enabled ? 1 : 0; 
+			newBufferObject.settings.y = currLight->getType(); 
+			newBufferObject.controls.x = glm::cos(glm::radians(currLight->diameter));		//represent the diameter of light as the cos of the light (increase shader performance when doing comparison)
 			lightInformation[i] = newBufferObject; 
 		}
 		this->lightBuffers[currentImage]->writeToBuffer(lightInformation.data(), sizeof(LightBufferObject) * lightInformation.size());
@@ -59,7 +63,9 @@ namespace star::core {
 			RenderSysObjs.at(i)->updateBuffers(currentImage);
 		}
 
-		this->lightRenderSys->updateBuffers(currentImage); 
+		if (lightRenderSys) {
+			this->lightRenderSys->updateBuffers(currentImage);
+		}
 	}
 
 
@@ -154,11 +160,14 @@ namespace star::core {
 		tmpRenderSysObj->init(globalSets);
 
 		/* Init Point Light Render System */
-		this->lightRenderSys = std::make_unique<RenderSysPointLight>(*this->starDevice, this->swapChainImages.size(), this->globalSetLayout->getDescriptorSetLayout(), this->swapChainExtent, this->renderPass);
+
 		common::GameObject* currLinkedObj = nullptr; 
 		int vertexCounter = 0; 
 		for (auto light : this->lightList) {
 			if (light->hasLinkedObject()) {
+				if (!lightRenderSys) {
+					this->lightRenderSys = std::make_unique<RenderSysPointLight>(*this->starDevice, this->swapChainImages.size(), this->globalSetLayout->getDescriptorSetLayout(), this->swapChainExtent, this->renderPass);
+				}
 				currLinkedObj = &this->objectManager.resource(light->getLinkedObjectHandle());
 				if (!this->lightRenderSys->hasShader(vk::ShaderStageFlagBits::eVertex) && !this->lightRenderSys->hasShader(vk::ShaderStageFlagBits::eFragment)) {
 					this->lightRenderSys->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager.resource(currLinkedObj->getVertShader()), currLinkedObj->getVertShader()); 
@@ -186,8 +195,11 @@ namespace star::core {
 				}
 			}
 		}
-		this->lightRenderSys->setPipelineLayout(this->RenderSysObjs.at(0)->getPipelineLayout()); 
-		this->lightRenderSys->init(globalSets); 
+		//init light render system if it was created 
+		if (lightRenderSys) {
+			this->lightRenderSys->setPipelineLayout(this->RenderSysObjs.at(0)->getPipelineLayout());
+			this->lightRenderSys->init(globalSets);
+		}
 
 		createDepthResources();
 		//createShadowResources();
@@ -869,8 +881,10 @@ namespace star::core {
 				tmpRenderSysObj->render(newBuffers[i], i);
 
 				//bind light pipe 
-				this->lightRenderSys->bind(newBuffers[i]);
-				this->lightRenderSys->render(newBuffers[i], i);
+				if (lightRenderSys) {
+					this->lightRenderSys->bind(newBuffers[i]);
+					this->lightRenderSys->render(newBuffers[i], i);
+				}
 
 				newBuffers[i].endRenderPass();
 
