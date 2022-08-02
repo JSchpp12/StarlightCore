@@ -63,7 +63,9 @@ namespace star::core {
 			RenderSysObjs.at(i)->updateBuffers(currentImage);
 		}
 
-		this->lightRenderSys->updateBuffers(currentImage); 
+		if (lightRenderSys) {
+			this->lightRenderSys->updateBuffers(currentImage);
+		}
 	}
 
 
@@ -158,11 +160,14 @@ namespace star::core {
 		tmpRenderSysObj->init(globalSets);
 
 		/* Init Point Light Render System */
-		this->lightRenderSys = std::make_unique<RenderSysPointLight>(*this->starDevice, this->swapChainImages.size(), this->globalSetLayout->getDescriptorSetLayout(), this->swapChainExtent, this->renderPass);
+
 		common::GameObject* currLinkedObj = nullptr; 
 		int vertexCounter = 0; 
 		for (auto light : this->lightList) {
 			if (light->hasLinkedObject()) {
+				if (!lightRenderSys) {
+					this->lightRenderSys = std::make_unique<RenderSysPointLight>(*this->starDevice, this->swapChainImages.size(), this->globalSetLayout->getDescriptorSetLayout(), this->swapChainExtent, this->renderPass);
+				}
 				currLinkedObj = &this->objectManager.resource(light->getLinkedObjectHandle());
 				if (!this->lightRenderSys->hasShader(vk::ShaderStageFlagBits::eVertex) && !this->lightRenderSys->hasShader(vk::ShaderStageFlagBits::eFragment)) {
 					this->lightRenderSys->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager.resource(currLinkedObj->getVertShader()), currLinkedObj->getVertShader()); 
@@ -190,8 +195,11 @@ namespace star::core {
 				}
 			}
 		}
-		this->lightRenderSys->setPipelineLayout(this->RenderSysObjs.at(0)->getPipelineLayout()); 
-		this->lightRenderSys->init(globalSets); 
+		//init light render system if it was created 
+		if (lightRenderSys) {
+			this->lightRenderSys->setPipelineLayout(this->RenderSysObjs.at(0)->getPipelineLayout());
+			this->lightRenderSys->init(globalSets);
+		}
 
 		createDepthResources();
 		createFramebuffers();
@@ -947,8 +955,10 @@ namespace star::core {
 				tmpRenderSysObj->render(newBuffers[i], i);
 
 				//bind light pipe 
-				this->lightRenderSys->bind(newBuffers[i]);
-				this->lightRenderSys->render(newBuffers[i], i);
+				if (lightRenderSys) {
+					this->lightRenderSys->bind(newBuffers[i]);
+					this->lightRenderSys->render(newBuffers[i], i);
+				}
 
 				newBuffers[i].endRenderPass();
 
