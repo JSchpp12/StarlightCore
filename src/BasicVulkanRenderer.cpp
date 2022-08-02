@@ -52,9 +52,9 @@ namespace star::core {
 			newBufferObject.ambient = currLight->getAmbient();
 			newBufferObject.diffuse = currLight->getDiffuse();
 			newBufferObject.specular = currLight->getSpecular();
-			newBufferObject.controls.x = currLight->enabled ? 1 : 0; 
-			newBufferObject.controls.y = currLight->getType(); 
-			newBufferObject.controls.z = 1.0f; 
+			newBufferObject.settings.x = currLight->enabled ? 1 : 0; 
+			newBufferObject.settings.y = currLight->getType(); 
+			newBufferObject.controls.x = glm::cos(glm::radians(currLight->diameter));		//represent the diameter of light as the cos of the light (increase shader performance when doing comparison)
 			lightInformation[i] = newBufferObject; 
 		}
 		this->lightBuffers[currentImage]->writeToBuffer(lightInformation.data(), sizeof(LightBufferObject) * lightInformation.size());
