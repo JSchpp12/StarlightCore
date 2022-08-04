@@ -223,7 +223,6 @@ namespace star::core {
 		}
 		//init light render system if it was created 
 		if (lightRenderSys) {
-			this->lightRenderSys->setPipelineLayout(this->RenderSysObjs.at(0)->getPipelineLayout());
 			this->lightRenderSys->init(globalSets);
 		}
 		shadowRenderSys->registerShader(vk::ShaderStageFlagBits::eVertex, shaderManager.resource(shadowVert), shadowVert); 
@@ -384,8 +383,6 @@ namespace star::core {
 	void VulkanRenderer::cleanup() {
 		cleanupSwapChain();
 
-		RenderSysObj* currRenderSysObj = this->RenderSysObjs.at(0).get();
-
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 			this->starDevice->getDevice().destroySemaphore(renderFinishedSemaphores[i]);
 			this->starDevice->getDevice().destroySemaphore(imageAvailableSemaphores[i]);
@@ -396,10 +393,13 @@ namespace star::core {
 	void VulkanRenderer::cleanupSwapChain() {
 		auto& tmpRenderSysObj = this->RenderSysObjs.at(0);
 
+		for (auto framebuffer : shadowFramebuffers) {
+			this->starDevice->getDevice().destroyFramebuffer(framebuffer);
+		}
 		for (auto framebuffer : this->swapChainFramebuffers) {
 			this->starDevice->getDevice().destroyFramebuffer(framebuffer);
 		}
-
+		this->starDevice->getDevice().destroyRenderPass(this->shadowRenderPass);
 		this->starDevice->getDevice().destroyRenderPass(this->renderPass);
 
 		for (auto imageView : this->swapChainImageViews) {
@@ -790,6 +790,8 @@ namespace star::core {
 	}
 
 	void VulkanRenderer::createShadowFrameBuffers() {
+		shadowFramebuffers.resize(swapChainImages.size()); 
+
 		for (int i = 0; i < swapChainImages.size(); i++) {
 			vk::FramebufferCreateInfo framebufferInfo{}; 
 			framebufferInfo.sType = vk::StructureType::eFramebufferCreateInfo; 
@@ -802,8 +804,8 @@ namespace star::core {
 			framebufferInfo.layers = 1; 
 			framebufferInfo.flags = {}; 
 
-			shadowFramebuffer = starDevice->getDevice().createFramebuffer(framebufferInfo); 
-			if (!shadowFramebuffer) {
+			shadowFramebuffers[i] = starDevice->getDevice().createFramebuffer(framebufferInfo);
+			if (!shadowFramebuffers[i]) {
 				throw std::runtime_error("Failed to create shadow frame buffer info"); 
 			}
 		}
@@ -930,7 +932,7 @@ namespace star::core {
 				vk::RenderPassBeginInfo shadowRenderPassBegin{}; 
 				shadowRenderPassBegin.sType = vk::StructureType::eRenderPassBeginInfo; 
 				shadowRenderPassBegin.renderPass = shadowRenderPass;
-				shadowRenderPassBegin.framebuffer = shadowFramebuffer; 
+				shadowRenderPassBegin.framebuffer = shadowFramebuffers[i];
 				shadowRenderPassBegin.renderArea.extent = swapChainExtent; 
 				shadowRenderPassBegin.clearValueCount = 1; 
 				shadowRenderPassBegin.pClearValues = &shadowClear; 

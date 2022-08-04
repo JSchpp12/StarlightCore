@@ -117,8 +117,7 @@ namespace star::core{
 
         std::vector<vk::ImageView> swapChainImageViews;
         std::vector<vk::Framebuffer> swapChainFramebuffers;
-        vk::Framebuffer shadowFramebuffer;
-        std::unique_ptr<StarPipeline> shadowPipeline;
+        std::vector<vk::Framebuffer> shadowFramebuffers;
         std::vector<vk::Fence> inFlightFences;
         std::vector<vk::Fence> imagesInFlight;
 

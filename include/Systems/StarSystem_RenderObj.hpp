@@ -42,10 +42,6 @@ namespace star::core{
 
 		RenderSysObj(const RenderSysObj& baseObject); 
 
-		virtual ~RenderSysObj();
-
-		virtual void setPipelineLayout(vk::PipelineLayout newPipelineLayout);
-
 		virtual void updateBuffers(uint32_t currentImage); 
 
 		virtual void init(std::vector<vk::DescriptorSetLayout> globalDescriptorSets) override; 

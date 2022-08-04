@@ -20,7 +20,7 @@ namespace star::core {
 	public:
 		RenderSystem(StarDevice& device);
 
-		virtual ~RenderSystem() = default; 
+		virtual ~RenderSystem(); 
 		/// <summary>
 		/// Setup needed buffers and descriptors needed for rendering operations
 		/// </summary>

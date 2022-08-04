@@ -34,8 +34,6 @@ namespace star::core{
 		
 		virtual void render(vk::CommandBuffer& commandBuffer, int swapChainImageIndex) { this->RenderSysObj::render(commandBuffer, swapChainImageIndex); }
 
-		virtual void setPipelineLayout(vk::PipelineLayout newPipelineLayout) { this->RenderSysObj::setPipelineLayout(newPipelineLayout); }
-
 		virtual bool hasShader(vk::ShaderStageFlagBits stage) { return this->RenderSysObj::hasShader(stage); }
 
 		virtual common::Handle getBaseShader(vk::ShaderStageFlags stage) { return this->RenderSysObj::getBaseShader(stage); }

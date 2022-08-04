@@ -3,6 +3,10 @@
 namespace star::core {
 	RenderSystem::RenderSystem(StarDevice& starDevice) : starDevice(starDevice) { }
 
+	RenderSystem::~RenderSystem() {
+		starDevice.getDevice().destroyPipelineLayout(pipelineLayout);
+	}
+
 	void RenderSystem::init(std::vector<vk::DescriptorSetLayout> globalDescriptorSets) { 
 		createVertexBuffer();
 		createIndexBuffer();
@@ -10,8 +14,7 @@ namespace star::core {
 		createDescriptorPool();
 		createDescriptorLayouts();
 		createDescriptors();
-		if (!this->pipelineLayout)
-			createPipelineLayout(globalDescriptorSets);
+		createPipelineLayout(globalDescriptorSets);
 		createPipeline();
 		checkRenderRequirenments();
 	}

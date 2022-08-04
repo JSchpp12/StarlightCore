@@ -2,16 +2,6 @@
 
 namespace star::core{
 
-RenderSysObj::~RenderSysObj() {
-	if (this->ownerOfSetLayout)
-		this->starDevice.getDevice().destroyPipelineLayout(this->pipelineLayout);
-}
-
-void RenderSysObj::setPipelineLayout(vk::PipelineLayout newPipelineLayout) {
-	this->ownerOfSetLayout = false; 
-	this->pipelineLayout = newPipelineLayout;
-} 
-
 size_t RenderSysObj::getNumRenderObjects()
 {
 	return this->renderObjects.size();
