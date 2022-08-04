@@ -75,8 +75,10 @@ SET(${PROJECT_NAME}_SOURCES
 	"src/Star_RenderMaterial.cpp"
 	"src/Star_Image.cpp"
 	#rendering sytems
+	"src/Systems/StarSystem_Render.cpp"
 	"src/Systems/StarSystem_RenderObj.cpp"
 	"src/Systems/StarSystem_RenderPointLight.cpp"
+	"src/Systems/StarSystem_RenderShadows.cpp"
 	#external requirements
 	"external/spirvreflect/spirv_reflect.cpp"
 )
@@ -108,8 +110,10 @@ SET(${PROJECT_NAME}_HEADERS
 	"include/Star_RenderMaterial.hpp"
 	"include/Star_Image.hpp"
 	#rendering systems 
+	"include/Systems/StarSystem_Render.hpp"
 	"include/Systems/StarSystem_RenderObj.hpp"
 	"include/Systems/RenderPointLight.hpp"
+	"include/Systems/StarSystem_RenderShadows.hpp"
 	#header only files
 	"include/VulkanVertex.hpp"
 	#external requirenments
