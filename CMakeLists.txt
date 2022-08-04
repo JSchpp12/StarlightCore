@@ -70,7 +70,6 @@ SET(${PROJECT_NAME}_SOURCES
 	"src/Star_Device.cpp"
 	"src/Star_Pipeline.cpp"
 	"src/Star_Window.cpp"
-	"src/Star_Swapchain.cpp"
 	"src/Star_RenderMesh.cpp"
 	"src/Star_RenderMaterial.cpp"
 	"src/Star_Image.cpp"
@@ -106,7 +105,6 @@ SET(${PROJECT_NAME}_HEADERS
 	"include/Star_Device.hpp"
 	"include/Star_Pipeline.hpp"
 	"include/Star_Window.hpp"
-	"include/Star_Swapchain.hpp"
 	"include/Star_RenderMaterial.hpp"
 	"include/Star_Image.hpp"
 	#rendering systems 

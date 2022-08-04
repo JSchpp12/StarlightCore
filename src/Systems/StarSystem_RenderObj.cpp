@@ -35,6 +35,12 @@ void star::core::RenderSysObj::updateBuffers(uint32_t currentImage) {
 	}
 }
 
+void RenderSysObj::init(std::vector<vk::DescriptorSetLayout> globalDescriptorSets) {
+	this->RenderSystem::init(globalDescriptorSets); 
+
+	//TODO: create framebuffers
+}
+
 void star::core::RenderSysObj::render(vk::CommandBuffer& commandBuffer, int swapChainImageIndex) {
 	vk::DeviceSize offsets{};
 	commandBuffer.bindVertexBuffers(0, this->vertexBuffer->getBuffer(), offsets);

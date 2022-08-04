@@ -48,6 +48,8 @@ namespace star::core{
 
 		virtual void updateBuffers(uint32_t currentImage); 
 
+		virtual void init(std::vector<vk::DescriptorSetLayout> globalDescriptorSets) override; 
+
 		/// <summary>
 		/// Render the object
 		/// </summary>
@@ -83,6 +85,7 @@ namespace star::core{
 		/// Create buffers needed for render operations. Such as those used by descriptors
 		/// </summary>
 		virtual void createRenderBuffers() override;
+
 		virtual void createDescriptorLayouts() override;
 		/// <summary>
 		/// Create descriptors for binding render buffers to shaders.

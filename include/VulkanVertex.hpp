@@ -110,5 +110,33 @@ namespace star::core{
             attributeDescriptions[9].offset = offsetof(common::Vertex, matShininess);
             return attributeDescriptions;
         }
+
+        /// <summary>
+        /// Generates the bare minimum vertex attributes. Currently used for shadow rendering system.
+        /// </summary>
+        /// <returns></returns>
+        static std::array<vk::VertexInputAttributeDescription, 1> getMinimumAttributes() {
+            std::array<vk::VertexInputAttributeDescription, 1> attributeDescriptions{};
+
+            /* Struct */
+                //1. binding - which binding the per-vertex data comes in 
+                //2. location - references the location directive of the input in the vertex shader 
+                //3. format - describes type of data 
+                    // common shader and formats used 
+                    // float : VK_FORMAT_R32_SFLOAT 
+                    // vec2  : VK_FORMAT_R32G32_SFLOAT
+                    // vec3  : VK_FORMAT_R32G32B32_SFLOAT
+                    // vec4  : VK_FORMAT_R32G32B32A32_SFLOAT
+                        //more odd examples
+                            // ivec2 : VK_FORMAT_R32G32_SINT -- 2 component vector of 32-bit signed integers
+                            // uvec4 : VK_FORMAT_R32G32B32A32_UINT -- 4 component vector of 32-bit unsigned integers 
+                            // double: VK_FORMAT_R64_SFLOAT -- double precision 64-bit float 
+                //4. offset - specifies the number of bytes since the start of the per-vertex data to read from
+            attributeDescriptions[0].binding = 0;
+            attributeDescriptions[0].location = 0;
+            attributeDescriptions[0].format = vk::Format::eR32G32B32Sfloat;
+
+            return attributeDescriptions;
+        }
     };
 }

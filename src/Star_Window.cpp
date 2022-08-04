@@ -32,7 +32,7 @@ namespace star::core{
         glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
         //create a window, 3rd argument allows selection of monitor, 4th argument only applies to openGL
-        this->window = glfwCreateWindow(width, height, this->windowName.c_str(), nullptr, nullptr);
+        this->window = glfwCreateWindow(width, height, "Starlight", nullptr, nullptr);
 
         //need to give GLFW a pointer to current instance of this class
         glfwSetWindowUserPointer(this->window, this);

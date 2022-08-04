@@ -8,11 +8,14 @@ namespace star::core {
 		TextureManager& textureManager, MapManager& mapManager, 
 		MaterialManager& materialManager, common::Camera& inCamera,
 		std::vector<common::Handle>& objectHandleList, std::vector<common::Light*>& inLightList,
-		StarWindow& window) :
+		StarWindow& window, common::Handle& shadowVertHandle, common::Handle& shadowFragHandle) :
 		materialManager(materialManager), textureManager(textureManager), 
-		mapManager(mapManager), star::common::Renderer(configFile, renderOptions, shaderManager, objectManager, inCamera, objectHandleList),
-		starWindow(window), lightList(inLightList) {
+		mapManager(mapManager), starWindow(window), 
+		lightList(inLightList),
+		star::common::Renderer(configFile, renderOptions, shaderManager, objectManager, inCamera, objectHandleList) {
 		starDevice = std::make_unique<StarDevice>(starWindow);
+		shadowVert = &shaderManager.resource(shadowVertHandle); 
+		shadowFrag = &shaderManager.resource(shadowFragHandle);
 	}
 
 	VulkanRenderer::~VulkanRenderer() {
@@ -76,6 +79,7 @@ namespace star::core {
 	void VulkanRenderer::prepare() {
 		createSwapChain();
 		createImageViews();
+		createShadowRenderPass();
 		createRenderPass();
 
 		this->globalPool = StarDescriptorPool::Builder(*this->starDevice.get())
@@ -201,9 +205,11 @@ namespace star::core {
 			this->lightRenderSys->init(globalSets);
 		}
 
+		createShadowResources(); 
+		createShadowFrameBuffers();
 		createDepthResources();
-		//createShadowResources();
 		createFramebuffers();
+		createShadowPipeline(); 
 		createRenderingBuffers();
 
 		std::unique_ptr<std::vector<vk::DescriptorBufferInfo>> bufferInfos{};
@@ -485,8 +491,14 @@ namespace star::core {
 		//image views depend directly on swap chain images so these need to be recreated
 		createImageViews();
 
+		createShadowRenderPass(); 
+
 		//render pass depends on the format of swap chain images
 		createRenderPass();
+
+		createShadowResources(); 
+
+		createShadowFrameBuffers();
 
 		createDepthResources();
 
@@ -572,12 +584,58 @@ namespace star::core {
 		}
 	}
 
+	void VulkanRenderer::createShadowRenderPass() {
+		/*Shadow Subpass */
+		vk::AttachmentDescription shadowDepthAttachment{};
+		shadowDepthAttachment.format = findShadowFormat();
+		shadowDepthAttachment.samples = vk::SampleCountFlagBits::e1;
+		shadowDepthAttachment.loadOp = vk::AttachmentLoadOp::eClear;
+		shadowDepthAttachment.storeOp = vk::AttachmentStoreOp::eDontCare;
+		shadowDepthAttachment.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+		shadowDepthAttachment.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+		shadowDepthAttachment.initialLayout = vk::ImageLayout::eUndefined;
+		shadowDepthAttachment.finalLayout = vk::ImageLayout::eShaderReadOnlyOptimal; 
+		shadowDepthAttachment.flags = {};
+
+		vk::AttachmentReference shadowDepthRef{};
+		shadowDepthRef.attachment = 0;
+		shadowDepthRef.layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+
+		vk::SubpassDescription subpass; 
+		subpass.pipelineBindPoint = vk::PipelineBindPoint::eGraphics; 
+		subpass.flags = {}; 
+		subpass.inputAttachmentCount = 0; 
+		subpass.pInputAttachments = VK_NULL_HANDLE;
+		subpass.colorAttachmentCount = 0; 
+		subpass.pColorAttachments = VK_NULL_HANDLE;
+		subpass.pResolveAttachments = VK_NULL_HANDLE; 
+		subpass.pDepthStencilAttachment = &shadowDepthRef;
+		subpass.preserveAttachmentCount = 0; 
+		subpass.pPreserveAttachments = VK_NULL_HANDLE; 
+
+		vk::RenderPassCreateInfo renderPass{}; 
+		renderPass.sType = vk::StructureType::eRenderPassCreateInfo; 
+		renderPass.pNext = VK_NULL_HANDLE; 
+		renderPass.attachmentCount = 1; 
+		renderPass.pAttachments = &shadowDepthAttachment; 
+		renderPass.subpassCount = 1; 
+		renderPass.pSubpasses = &subpass; 
+		renderPass.dependencyCount = 0; 
+		renderPass.pDependencies = VK_NULL_HANDLE; 
+		renderPass.flags = {};
+
+		shadowRenderPass = starDevice->getDevice().createRenderPass(renderPass); 
+		if (!shadowRenderPass) {
+			throw std::runtime_error("Failed to create shadow render pass");
+		}
+	}
+
 	void VulkanRenderer::createRenderPass() {
-		/*  Single render pass consists of many small subpasses
-		each subpasses are subsequent rendering operations that depend on the contents of framebuffers in the previous pass.
-		It is best to group these into one rendering pass, then vulkan can optimize for this in order to save memory bandwidth.
-		For this program, we are going to stick with one subpass
-	*/
+	/*  Single render pass consists of many small subpasses
+	each subpasses are subsequent rendering operations that depend on the contents of framebuffers in the previous pass.
+	It is best to group these into one rendering pass, then vulkan can optimize for this in order to save memory bandwidth.
+	For this program, we are going to stick with one subpass	*/ 
+
 	/* Depth attachment */
 		vk::AttachmentDescription depthAttachment{};
 		depthAttachment.format = findDepthFormat();
@@ -634,19 +692,19 @@ namespace star::core {
 
 		/* Subpass */
 		vk::SubpassDescription subpass{};
-		subpass.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
-		subpass.colorAttachmentCount = 1;
-		subpass.pColorAttachments = &colorAttachmentRef;
-		subpass.pDepthStencilAttachment = &depthAttachmentRef;
+		subpass.pipelineBindPoint		 = vk::PipelineBindPoint::eGraphics;
+		subpass.colorAttachmentCount	 = 1;
+		subpass.pColorAttachments		 = &colorAttachmentRef;
+		subpass.pDepthStencilAttachment	 = &depthAttachmentRef;
 
 		/* Subpass Dependencies */
 		vk::SubpassDependency dependency{};
-		dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-		dependency.dstSubpass = 0;
-		dependency.srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests;
-		dependency.srcAccessMask = vk::AccessFlagBits::eNone;
-		dependency.dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests;
-		dependency.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentWrite; //allow for write 
+		dependency.srcSubpass		 = VK_SUBPASS_EXTERNAL;
+		dependency.dstSubpass		 = 0;
+		dependency.srcStageMask		 = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests;
+		dependency.srcAccessMask	 = vk::AccessFlagBits::eNone;
+		dependency.dstStageMask		 = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests;
+		dependency.dstAccessMask	 = vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentWrite; //allow for write 
 
 		/* Render Pass */
 		std::array<vk::AttachmentDescription, 2> attachments = { colorAttachment, depthAttachment };
@@ -666,6 +724,39 @@ namespace star::core {
 		}
 	}
 
+	//TODO: this hurts to write, please put shadows into their own render system
+	void VulkanRenderer::createShadowPipeline() {
+		PipelineConfigSettings defaultConfig; 
+		StarPipeline::defaultPipelineConfigInfo(defaultConfig, swapChainExtent); 
+		
+		//viewport 
+		vk::Rect2D scissor{};
+		scissor.offset = vk::Offset2D{ 0, 0 };
+		scissor.extent = swapChainExtent;
+
+		vk::Viewport viewport{};
+		viewport.x = 0.0f;
+		viewport.y = 0.0f;
+
+		viewport.width = (float)this->swapChainExtent.width;
+		viewport.height = (float)this->swapChainExtent.height;
+		//Specify values range of depth values to use for the framebuffer. If not doing anything special, leave at default
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
+
+		vk::PipelineViewportStateCreateInfo viewportState{};
+		viewportState.sType = vk::StructureType::ePipelineViewportStateCreateInfo;
+		viewportState.viewportCount = 1;
+		viewportState.pViewports = &viewport;
+		viewportState.scissorCount = 1;
+		viewportState.pScissors = &scissor;
+
+		defaultConfig.pipelineLayout = this->RenderSysObjs.at(0)->getPipelineLayout();
+		defaultConfig.viewportInfo = viewportState; 
+		defaultConfig.renderPass = shadowRenderPass; 
+		shadowPipeline = std::make_unique<StarPipeline>(starDevice.get(), *shadowVert, *shadowFrag, defaultConfig);
+	}
+
 	vk::Format VulkanRenderer::findDepthFormat() {
 		//utilizing the VK_FORMAT_FEATURE_ flag to check for candidates that have a depth component.
 		return this->starDevice->findSupportedFormat(
@@ -674,18 +765,19 @@ namespace star::core {
 			vk::FormatFeatureFlagBits::eDepthStencilAttachment);
 	}
 
-	vk::ShaderModule VulkanRenderer::createShaderModule(const std::vector<uint32_t>& code) {
-		vk::ShaderModuleCreateInfo createInfo{};
-		createInfo.sType = vk::StructureType::eShaderModuleCreateInfo;
-		createInfo.codeSize = 4 * code.size();
-		createInfo.pCode = code.data();
+	void VulkanRenderer::createShadowResources() {
+		vk::Format shadowFormat = findShadowFormat();
 
-		VkShaderModule shaderModule = this->starDevice->getDevice().createShaderModule(createInfo);
-		if (!shaderModule) {
-			throw std::runtime_error("failed to create shader module");
-		}
+		shadowImage = std::make_unique<StarImage>(*starDevice, swapChainExtent.width, swapChainExtent.height, shadowFormat,
+			vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled,
+			vk::ImageAspectFlagBits::eDepth, vk::MemoryPropertyFlagBits::eDeviceLocal); 
+	}
 
-		return shaderModule;
+	vk::Format VulkanRenderer::findShadowFormat() {
+		return starDevice->findSupportedFormat(
+			{ vk::Format::eD32Sfloat },
+			vk::ImageTiling::eOptimal,
+			vk::FormatFeatureFlagBits::eDepthStencilAttachment);
 	}
 
 	void VulkanRenderer::createDepthResources() {
@@ -703,6 +795,26 @@ namespace star::core {
 		depthImage = std::make_unique<StarImage>(*starDevice, swapChainExtent.width, swapChainExtent.height, depthFormat,
 			vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment, vk::ImageAspectFlagBits::eDepth,
 			vk::MemoryPropertyFlagBits::eDeviceLocal);
+	}
+
+	void VulkanRenderer::createShadowFrameBuffers() {
+		for (int i = 0; i < swapChainImages.size(); i++) {
+			vk::FramebufferCreateInfo framebufferInfo{}; 
+			framebufferInfo.sType = vk::StructureType::eFramebufferCreateInfo; 
+			framebufferInfo.renderPass = shadowRenderPass; 
+			framebufferInfo.attachmentCount = 1; 
+			framebufferInfo.pAttachments = &shadowImage->getImageView(); 
+			framebufferInfo.pNext = VK_NULL_HANDLE; 
+			framebufferInfo.width = swapChainExtent.width; 
+			framebufferInfo.height = swapChainExtent.height; 
+			framebufferInfo.layers = 1; 
+			framebufferInfo.flags = {}; 
+
+			shadowFramebuffer = starDevice->getDevice().createFramebuffer(framebufferInfo); 
+			if (!shadowFramebuffer) {
+				throw std::runtime_error("Failed to create shadow frame buffer info"); 
+			}
+		}
 	}
 
 	void VulkanRenderer::createFramebuffers() {
@@ -818,11 +930,30 @@ namespace star::core {
 
 				newBuffers[i].setViewport(0, viewport);
 
+				vk::ClearValue shadowClear{}; 
+				shadowClear.depthStencil.depth = 1.0f; 
+				shadowClear.depthStencil.stencil = 0; 
+
+
+				vk::RenderPassBeginInfo shadowRenderPassBegin{}; 
+				shadowRenderPassBegin.sType = vk::StructureType::eRenderPassBeginInfo; 
+				shadowRenderPassBegin.renderPass = shadowRenderPass;
+				shadowRenderPassBegin.framebuffer = shadowFramebuffer; 
+				shadowRenderPassBegin.renderArea.extent = swapChainExtent; 
+				shadowRenderPassBegin.clearValueCount = 1; 
+				shadowRenderPassBegin.pClearValues = &shadowClear; 
+
+				newBuffers[i].beginRenderPass(shadowRenderPassBegin, vk::SubpassContents::eInline);
+
+				//NOTE TO SELF: ROUGH IDEA TO ZOMBIE THE STANDARD RENDER SYSTEM FOR THE TIME BEING -- PLEASE FIX LATER!!!!!!!!!!!
+				newBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, tmpRenderSysObj->getPipelineLayout(), 0, 1, &this->globalDescriptorSets.at(i), 0, nullptr);
+				shadowPipeline->bind(newBuffers[i]);
+				tmpRenderSysObj->render(newBuffers[i], i); 
+				newBuffers[i].endRenderPass();
 
 				/* Begin render pass */
 				//drawing starts by beginning a render pass 
 				vk::RenderPassBeginInfo renderPassInfo{};
-				//renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 				renderPassInfo.sType = vk::StructureType::eRenderPassBeginInfo;
 
 				//define the render pass we want
@@ -843,7 +974,6 @@ namespace star::core {
 					//0.0 - closest viewing plane 
 					//1.0 - furthest possible depth
 				clearValues[1].depthStencil = vk::ClearDepthStencilValue{ 1.0, 0 };
-
 				renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 				renderPassInfo.pClearValues = clearValues.data();
 

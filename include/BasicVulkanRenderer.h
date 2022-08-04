@@ -23,10 +23,12 @@
 #include "Star_RenderMesh.hpp"
 #include "Star_RenderMaterial.hpp"
 #include "Star_Image.hpp"
+#include "Star_Pipeline.hpp"
 
 //render systems
 #include "StarSystem_RenderPointLight.hpp"
 #include "StarSystem_RenderObj.hpp"
+#include "StarSystem_RenderShadows.hpp"
 
 #include <vulkan/vulkan.hpp>
 #include <glm/glm.hpp>
@@ -45,7 +47,7 @@ namespace star::core{
             common::FileResourceManager<common::GameObject>& objectManager, TextureManager& textureManager, MapManager& mapManager,
             MaterialManager& materialManager, common::Camera& inCamera,
             std::vector<common::Handle>& objectHandleList, std::vector<common::Light*>& inLightList,
-            StarWindow& window);
+            StarWindow& window, common::Handle& shadowVertHandle, common::Handle& shadowFragHandle);
 
         ~VulkanRenderer();
 
@@ -58,6 +60,9 @@ namespace star::core{
         void cleanup();
 
     protected:
+        common::Shader* shadowVert = nullptr; 
+        common::Shader* shadowFrag = nullptr;             //TODO: This is very bad design, move shadow operations to their own render system
+
         struct LightBufferObject {
             glm::vec4 position      = glm::vec4(1.0f);
             glm::vec4 direction     = glm::vec4(1.0f);     //direction in which the light is pointing
@@ -93,7 +98,6 @@ namespace star::core{
         std::vector<vk::Semaphore> imageAvailableSemaphores;
         std::vector<vk::Semaphore> renderFinishedSemaphores;
 
-
         //storage for multiple buffers for each swap chain image  
         std::vector<std::unique_ptr<StarBuffer>> globalUniformBuffers;
         std::vector<vk::DescriptorSet> globalDescriptorSets;
@@ -102,6 +106,7 @@ namespace star::core{
 
         //pipeline and dependency storage
         vk::RenderPass renderPass;
+        vk::RenderPass shadowRenderPass;
 
         //more swapchain info 
         vk::SwapchainKHR swapChain;
@@ -111,6 +116,8 @@ namespace star::core{
 
         std::vector<vk::ImageView> swapChainImageViews;
         std::vector<vk::Framebuffer> swapChainFramebuffers;
+        vk::Framebuffer shadowFramebuffer;
+        std::unique_ptr<StarPipeline> shadowPipeline;
         std::vector<vk::Fence> inFlightFences;
         std::vector<vk::Fence> imagesInFlight;
 
@@ -119,6 +126,7 @@ namespace star::core{
 
         //depth testing storage 
         std::unique_ptr<StarImage> depthImage; 
+        std::unique_ptr<StarImage> shadowImage; 
 
         void updateUniformBuffer(uint32_t currentImage);
 
@@ -148,12 +156,19 @@ namespace star::core{
         void createImageViews();
 
         vk::ImageView createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlagBits aspectFlags);
-
+        /// <summary>
+        /// Create off-screen render pass for shadow map generation
+        /// </summary>
+        void createShadowRenderPass(); 
         /// <summary>
         /// Create a rendering pass object which will tell vulkan information about framebuffer attachments:
         /// number of color and depth buffers, how many samples to use for each, how to handle contents
         /// </summary>
         void createRenderPass();
+        /// <summary>
+        /// Create the basic pipeline that will be used to render shadows
+        /// </summary>
+        void createShadowPipeline(); 
 
         /// <summary>
         /// Helper function -- TODO 
@@ -161,12 +176,8 @@ namespace star::core{
         /// <returns></returns>
         vk::Format findDepthFormat();
 
-        /// <summary>
-        /// Create a shader module from bytecode. The shader module is a wrapper around the shader code with function definitions. 
-        /// </summary>
-        /// <param name="code">bytecode for the shader program</param>
-        /// <returns></returns>
-        vk::ShaderModule createShaderModule(const std::vector<uint32_t>& code);
+        vk::Format findShadowFormat();
+
         /// <summary>
         /// Create needed resources for rendering to a seperate image for shadows.
         /// </summary>
@@ -175,6 +186,10 @@ namespace star::core{
         /// Create the depth images that will be used by vulkan to run depth tests on fragments. 
         /// </summary>
         void createDepthResources();
+        /// <summary>
+        /// Create framebuffers for shadow rendering operations
+        /// </summary>
+        void createShadowFrameBuffers(); 
         /// <summary>
         /// Create framebuffers that will hold representations of the images in the swapchain
         /// </summary>

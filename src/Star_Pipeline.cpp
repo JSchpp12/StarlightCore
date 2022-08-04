@@ -15,18 +15,6 @@ namespace star::core{
     }
 
     void StarPipeline::defaultPipelineConfigInfo(PipelineConfigSettings& configInfo, vk::Extent2D swapChainExtent) {
-
-		//vk::Rect2D scissor{};
-		//scissor.offset = vk::Offset2D{ 0, 0 };
-		//scissor.extent = swapChainExtent;
-
-		//vk::PipelineViewportStateCreateInfo viewportState{};
-		//viewportState.sType = vk::StructureType::ePipelineViewportStateCreateInfo;
-		//viewportState.viewportCount = 1;
-		//viewportState.pViewports = VK_NULL_HANDLE;
-		//viewportState.scissorCount = 1;
-		//viewportState.pScissors = &scissor;
-
 		/* Rasterizer */
 		//takes the geometry and creates fragments which are then passed onto the fragment shader 
 		//also does: depth testing, face culling, and the scissor test
@@ -107,18 +95,18 @@ namespace star::core{
 		colorBlending.blendConstants[1] = 0.0f;
 		colorBlending.blendConstants[2] = 0.0f;
 		colorBlending.blendConstants[3] = 0.0f;
-
+		
 		configInfo.rasterizationInfo = rasterizer;
 		configInfo.multisampleInfo = multisampling;
 		configInfo.depthStencilInfo = depthStencil;
 		configInfo.colorBlendInfo = colorBlending;
 		configInfo.colorBlendAttachment = colorBlendAttachment;
-		//configInfo.viewportInfo = viewportState; 
-
     }
 
 	void StarPipeline::createGraphicsPipeline(const common::Shader& inVertShader, const common::Shader& inFragShader, PipelineConfigSettings& configSettings) {
         assert(configSettings.pipelineLayout && "Pipeline layout must be defined"); 
+		assert(configSettings.viewportInfo.viewportCount != 0 && configSettings.viewportInfo.pViewports && "Pipeline must have viewport defined");
+
 		Shader vertShader = Shader(inVertShader); 
 		Shader fragShader = Shader(inFragShader);
 
