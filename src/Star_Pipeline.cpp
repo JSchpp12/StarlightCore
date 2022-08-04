@@ -1,11 +1,11 @@
 #include "Star_Pipeline.hpp"
 
 namespace star::core{
-	StarPipeline::StarPipeline(StarDevice* device, common::Shader& inVertShader, common::Shader& inFragShader, PipelineConfigSettings& configSettings) :
+	StarPipeline::StarPipeline(StarDevice* device, PipelineConfigSettings& configSettings, common::Shader& inVertShader, common::Shader* inFragShader) :
 		starDevice(device) {
         createGraphicsPipeline(inVertShader, inFragShader, configSettings); 
 	}
-	
+
 	StarPipeline::~StarPipeline() {
 		this->starDevice->getDevice().destroyPipeline(this->graphicsPipeline); 
 	}
@@ -103,15 +103,17 @@ namespace star::core{
 		configInfo.colorBlendAttachment = colorBlendAttachment;
     }
 
-	void StarPipeline::createGraphicsPipeline(const common::Shader& inVertShader, const common::Shader& inFragShader, PipelineConfigSettings& configSettings) {
+	void StarPipeline::createGraphicsPipeline(const common::Shader& inVertShader, common::Shader* inFragShader, PipelineConfigSettings& configSettings) {
         assert(configSettings.pipelineLayout && "Pipeline layout must be defined"); 
 		assert(configSettings.viewportInfo.viewportCount != 0 && configSettings.viewportInfo.pViewports && "Pipeline must have viewport defined");
+		std::vector<vk::PipelineShaderStageCreateInfo> shaderStages;
 
-		Shader vertShader = Shader(inVertShader); 
-		Shader fragShader = Shader(inFragShader);
-
+		Shader vertShader = Shader(inVertShader);\
 		this->vertShaderModule = createShaderModule(*vertShader.compiledCode);
-		this->fragShaderModule = createShaderModule(*fragShader.compiledCode);
+		if (inFragShader != nullptr) {
+			Shader fragShader = Shader(*inFragShader);
+			this->fragShaderModule = createShaderModule(*fragShader.compiledCode);
+		}
 
         auto bindingDescriptions = VulkanVertex::getBindingDescription();
         auto attributeDescriptions = VulkanVertex::getAttributeDescriptions();
@@ -123,14 +125,16 @@ namespace star::core{
         vertShaderStageInfo.module = this->vertShaderModule;
         vertShaderStageInfo.pName = "main"; //the function to invoke in the shader module
 
-        vk::PipelineShaderStageCreateInfo fragShaderStageInfo{};
-        fragShaderStageInfo.sType = vk::StructureType::ePipelineShaderStageCreateInfo;
-        fragShaderStageInfo.stage = vk::ShaderStageFlagBits::eFragment;
-        fragShaderStageInfo.module = this->fragShaderModule; 
-        fragShaderStageInfo.pName = "main";
+		shaderStages.push_back(vertShaderStageInfo);
 
-        //store these creation infos for later use 
-        vk::PipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
+		if (fragShaderModule) {
+			vk::PipelineShaderStageCreateInfo fragShaderStageInfo{};
+			fragShaderStageInfo.sType = vk::StructureType::ePipelineShaderStageCreateInfo;
+			fragShaderStageInfo.stage = vk::ShaderStageFlagBits::eFragment;
+			fragShaderStageInfo.module = this->fragShaderModule;
+			fragShaderStageInfo.pName = "main";
+			shaderStages.push_back(fragShaderStageInfo);
+		}
 
         vk::PipelineVertexInputStateCreateInfo vertexInputInfo{};
         vertexInputInfo.sType = vk::StructureType::ePipelineVertexInputStateCreateInfo;
@@ -174,8 +178,8 @@ namespace star::core{
         /* Pipeline */
         vk::GraphicsPipelineCreateInfo pipelineInfo{};
         pipelineInfo.sType = vk::StructureType::eGraphicsPipelineCreateInfo;
-        pipelineInfo.stageCount = 2;
-        pipelineInfo.pStages = shaderStages;
+        pipelineInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
+        pipelineInfo.pStages = shaderStages.data();
         //ref all previously created structs
         pipelineInfo.pVertexInputState = &vertexInputInfo;
         pipelineInfo.pInputAssemblyState = &inputAssembly;

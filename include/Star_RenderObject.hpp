@@ -37,8 +37,8 @@ namespace star::core{
 		private: 
 			StarDevice& starDevice; 
 			common::GameObject& gameObject; 
-			size_t numSwapChainImages; 
-			std::vector<std::unique_ptr<RenderMesh>> meshes; 
+			size_t numSwapChainImages = 0; 
+			std::vector<std::unique_ptr<RenderMesh>> meshes{};
 		};
 
 		RenderObject(StarDevice& starDevice, common::GameObject& gameObject, std::vector<std::unique_ptr<RenderMesh>> meshes,

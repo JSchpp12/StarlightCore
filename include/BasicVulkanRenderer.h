@@ -60,8 +60,8 @@ namespace star::core{
         void cleanup();
 
     protected:
-        common::Shader* shadowVert = nullptr; 
-        common::Shader* shadowFrag = nullptr;             //TODO: This is very bad design, move shadow operations to their own render system
+        common::Handle& shadowVert; 
+        common::Handle& shadowFrag;             //TODO: This is very bad design, move shadow operations to their own render system
 
         struct LightBufferObject {
             glm::vec4 position      = glm::vec4(1.0f);
@@ -85,6 +85,7 @@ namespace star::core{
 
         std::vector<std::unique_ptr<RenderSysObj>> RenderSysObjs;
         std::unique_ptr<RenderSysPointLight> lightRenderSys;
+        std::unique_ptr<RenderSys_Shadows> shadowRenderSys; 
 
         bool frameBufferResized = false; //explicit declaration of resize, used if driver does not trigger VK_ERROR_OUT_OF_DATE
 
@@ -165,10 +166,6 @@ namespace star::core{
         /// number of color and depth buffers, how many samples to use for each, how to handle contents
         /// </summary>
         void createRenderPass();
-        /// <summary>
-        /// Create the basic pipeline that will be used to render shadows
-        /// </summary>
-        void createShadowPipeline(); 
 
         /// <summary>
         /// Helper function -- TODO 

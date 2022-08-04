@@ -10,7 +10,7 @@ RenderSysObj::~RenderSysObj() {
 void RenderSysObj::setPipelineLayout(vk::PipelineLayout newPipelineLayout) {
 	this->ownerOfSetLayout = false; 
 	this->pipelineLayout = newPipelineLayout;
-}
+} 
 
 size_t RenderSysObj::getNumRenderObjects()
 {
@@ -257,6 +257,6 @@ void RenderSysObj::createPipeline() {
 	config.pipelineLayout = this->pipelineLayout; 
 	config.renderPass = this->renderPass;
 
-	this->starPipeline = std::make_unique<StarPipeline>(&this->starDevice, *this->vertShader, *this->fragShader, config);
+	this->starPipeline = std::make_unique<StarPipeline>(&this->starDevice, config, *this->vertShader, this->fragShader);
 }
 }

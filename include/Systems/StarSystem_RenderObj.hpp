@@ -60,7 +60,6 @@ namespace star::core{
 		virtual StarDescriptorSetLayout* getSetLayout() { return this->descriptorSetLayout.get(); }
 		virtual StarDescriptorPool* getDescriptorPool() { return this->descriptorPool.get(); }
 		virtual StarBuffer* getBufferAt(int i) { return this->uniformBuffers.at(i).get(); }
-		uint32_t getNumVerticies() { return this->totalNumVerticies; }
 		virtual size_t getNumRenderObjects();
 	protected:
 		bool ownerOfSetLayout = true; 

@@ -18,8 +18,6 @@
 namespace star::core {
 	class RenderSystem {
 	public:
-		uint32_t totalNumVerticies = 0;
-
 		RenderSystem(StarDevice& device);
 
 		virtual ~RenderSystem() = default; 
@@ -52,13 +50,15 @@ namespace star::core {
 		/// </summary>
 		/// <param name="commandBUffer"></param>
 		/// <param name="swapChainImageIndex"></param>
-		virtual void render(vk::CommandBuffer& commandBUffer, int swapChainImageIndex) = 0; 
+		virtual void render(vk::CommandBuffer& commandBuffer, int swapChainImageIndex) = 0; 
 		//TODO: combine these and remove one 
 		virtual bool hasShader(vk::ShaderStageFlagBits stage); 
 		virtual common::Handle getBaseShader(vk::ShaderStageFlags stage); 
+		uint32_t getNumVerticies() { return this->totalNumVerticies; }
 	protected:
 		StarDevice& starDevice; 
 		int numMeshes = 0;
+		uint32_t totalNumVerticies = 0;
 		common::Handle vertShaderHandle;
 		common::Shader* vertShader = nullptr;
 		common::Handle fragShaderHandle;

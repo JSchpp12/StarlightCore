@@ -15,9 +15,14 @@ namespace star::core {
 		return *this; 
 	}
 	std::unique_ptr<RenderMesh> RenderMesh::Builder::build() {
-		assert(this->mesh != nullptr && this->renderMaterial && "A mesh and render material are required to create a RenderMesh object"); 
-
-		return std::make_unique<RenderMesh>(this->starDevice, *this->mesh, std::move(this->renderMaterial), this->beginIndex); 
+		assert(this->mesh != nullptr  && "A mesh is required to create a RenderMesh object"); 
+		if (this->renderMaterial) {
+			return std::make_unique<RenderMesh>(this->starDevice, *this->mesh, std::move(this->renderMaterial), this->beginIndex);
+		}
+		else {
+			return std::make_unique<RenderMesh>(starDevice, *mesh, beginIndex);
+		}
+		
 	}
 #pragma endregion 
 	void RenderMesh::initDescriptorLayouts(StarDescriptorSetLayout::Builder& constBuilder) {
@@ -29,10 +34,12 @@ namespace star::core {
 		//add per object const descriptors
 
 		//build per mesh descriptors
-		this->renderMaterial->buildConstDescriptor(writer); 
+		if (this->renderMaterial)
+			this->renderMaterial->buildConstDescriptor(writer); 
 	}
 	void RenderMesh::render(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainImageIndex) {
-		this->renderMaterial->bind(commandBuffer, pipelineLayout, swapChainImageIndex);
+		if (this->renderMaterial)
+			this->renderMaterial->bind(commandBuffer, pipelineLayout, swapChainImageIndex);
 
 		auto testTriangle = this->mesh.getTriangles()->size() * 3; 
 		commandBuffer.drawIndexed(testTriangle, 1, 0, this->startIndex, 0);

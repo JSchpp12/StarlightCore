@@ -33,7 +33,7 @@ namespace star::core{
 
 	class StarPipeline {
 	public:
-		StarPipeline(StarDevice* device, common::Shader& inVertShader, common::Shader& inFragShader, PipelineConfigSettings& configSettings);
+		StarPipeline(StarDevice* device, PipelineConfigSettings& configSettings, common::Shader& inVertShader, common::Shader* inFragShader = nullptr);
 		~StarPipeline(); 
 
 		//no copy
@@ -51,7 +51,7 @@ namespace star::core{
 		vk::Pipeline graphicsPipeline; 
 		vk::ShaderModule vertShaderModule, fragShaderModule; 
 
-		void createGraphicsPipeline(const common::Shader& inVertShader, const common::Shader& inFragShader, PipelineConfigSettings& configSettings); 
+		void createGraphicsPipeline(const common::Shader& inVertShader, common::Shader* inFragShader, PipelineConfigSettings& configSettings); 
 
 		vk::ShaderModule createShaderModule(const std::vector<uint32_t>& sourceCode); 
 	};

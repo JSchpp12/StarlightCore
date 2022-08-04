@@ -11,11 +11,9 @@ namespace star::core {
 		StarWindow& window, common::Handle& shadowVertHandle, common::Handle& shadowFragHandle) :
 		materialManager(materialManager), textureManager(textureManager), 
 		mapManager(mapManager), starWindow(window), 
-		lightList(inLightList),
+		lightList(inLightList), shadowVert(shadowVertHandle), shadowFrag(shadowFragHandle),
 		star::common::Renderer(configFile, renderOptions, shaderManager, objectManager, inCamera, objectHandleList) {
 		starDevice = std::make_unique<StarDevice>(starWindow);
-		shadowVert = &shaderManager.resource(shadowVertHandle); 
-		shadowFrag = &shaderManager.resource(shadowFragHandle);
 	}
 
 	VulkanRenderer::~VulkanRenderer() {
@@ -50,7 +48,7 @@ namespace star::core {
 		for (size_t i = 0; i < this->lightList.size(); i++) {
 			currLight = this->lightList.at(i); 
 			newBufferObject.position = glm::vec4{ currLight->getPosition(), 1.0f };
-			newBufferObject.direction = currLight->direction; 
+			newBufferObject.direction = currLight->direction;
 			newBufferObject.ambient = currLight->getAmbient();
 			newBufferObject.diffuse = currLight->getDiffuse();
 			newBufferObject.specular = currLight->getSpecular();
@@ -69,6 +67,8 @@ namespace star::core {
 		if (lightRenderSys) {
 			this->lightRenderSys->updateBuffers(currentImage);
 		}
+
+		shadowRenderSys->updateBuffers(currentImage);
 	}
 
 
@@ -99,17 +99,36 @@ namespace star::core {
 		vk::ShaderStageFlagBits stages{};
 		vk::Device device = this->starDevice->getDevice();
 		this->RenderSysObjs.push_back(std::make_unique<RenderSysObj>(*this->starDevice, this->swapChainImages.size(), this->globalSetLayout->getDescriptorSetLayout(), this->swapChainExtent, this->renderPass));
+		shadowRenderSys = std::make_unique<RenderSys_Shadows>(*this->starDevice, swapChainImages.size(), globalSetLayout->getDescriptorSetLayout(), swapChainExtent, shadowRenderPass);
 		RenderSysObj* tmpRenderSysObj = this->RenderSysObjs.at(0).get();
 		uint32_t meshVertCounter = 0; 
 
+		//TODO: move all object assignment to Engine rather than core 
 		for (size_t i = 0; i < this->objectList.size(); i++) {
 			common::GameObject& currObject = this->objectManager.resource(this->objectList.at(i));
 			meshVertCounter = 0;
+
+			RenderObject::Builder builder(*this->starDevice, currObject);
+			builder.setNumFrames(swapChainImages.size());
+
+			//add all objects to shadow system
+			for (auto& mesh : currObject.getMeshes()) {
+				builder.addMesh(RenderMesh::Builder(*this->starDevice)
+					.setMesh(*mesh)
+					.setRenderSettings(shadowRenderSys->getNumVerticies() + meshVertCounter)
+					.build());
+				meshVertCounter += mesh->getTriangles()->size() * 3;
+			}
+			shadowRenderSys->addObject(builder.build());
 
 			//check if the vulkan object has a shader registered for the desired stage that is different than the one needed for the current object
 			for (size_t j = 0; j < this->RenderSysObjs.size(); j++) {
 				//check if object shaders are in vulkan object
 				RenderSysObj* object = this->RenderSysObjs.at(j).get();
+
+				//reset counter (shared)
+				meshVertCounter = 0;
+
 				if (!object->hasShader(vk::ShaderStageFlagBits::eVertex) && (!object->hasShader(vk::ShaderStageFlagBits::eFragment))) {
 					//vulkan object does not have either a vertex or a fragment shader 
 					object->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager.resource(currObject.getVertShader()), currObject.getVertShader());
@@ -168,6 +187,9 @@ namespace star::core {
 		common::GameObject* currLinkedObj = nullptr; 
 		int vertexCounter = 0; 
 		for (auto light : this->lightList) {
+			if (light->type == common::Type::Light::directional) {
+				shadowRenderSys->addLight(light);
+			}
 			if (light->hasLinkedObject()) {
 				if (!lightRenderSys) {
 					this->lightRenderSys = std::make_unique<RenderSysPointLight>(*this->starDevice, this->swapChainImages.size(), this->globalSetLayout->getDescriptorSetLayout(), this->swapChainExtent, this->renderPass);
@@ -204,12 +226,15 @@ namespace star::core {
 			this->lightRenderSys->setPipelineLayout(this->RenderSysObjs.at(0)->getPipelineLayout());
 			this->lightRenderSys->init(globalSets);
 		}
+		shadowRenderSys->registerShader(vk::ShaderStageFlagBits::eVertex, shaderManager.resource(shadowVert), shadowVert); 
+		shadowRenderSys->registerShader(vk::ShaderStageFlagBits::eFragment, shaderManager.resource(shadowFrag), shadowFrag); 
+		
+		shadowRenderSys->init(globalSets);
 
 		createShadowResources(); 
 		createShadowFrameBuffers();
 		createDepthResources();
 		createFramebuffers();
-		createShadowPipeline(); 
 		createRenderingBuffers();
 
 		std::unique_ptr<std::vector<vk::DescriptorBufferInfo>> bufferInfos{};
@@ -724,39 +749,6 @@ namespace star::core {
 		}
 	}
 
-	//TODO: this hurts to write, please put shadows into their own render system
-	void VulkanRenderer::createShadowPipeline() {
-		PipelineConfigSettings defaultConfig; 
-		StarPipeline::defaultPipelineConfigInfo(defaultConfig, swapChainExtent); 
-		
-		//viewport 
-		vk::Rect2D scissor{};
-		scissor.offset = vk::Offset2D{ 0, 0 };
-		scissor.extent = swapChainExtent;
-
-		vk::Viewport viewport{};
-		viewport.x = 0.0f;
-		viewport.y = 0.0f;
-
-		viewport.width = (float)this->swapChainExtent.width;
-		viewport.height = (float)this->swapChainExtent.height;
-		//Specify values range of depth values to use for the framebuffer. If not doing anything special, leave at default
-		viewport.minDepth = 0.0f;
-		viewport.maxDepth = 1.0f;
-
-		vk::PipelineViewportStateCreateInfo viewportState{};
-		viewportState.sType = vk::StructureType::ePipelineViewportStateCreateInfo;
-		viewportState.viewportCount = 1;
-		viewportState.pViewports = &viewport;
-		viewportState.scissorCount = 1;
-		viewportState.pScissors = &scissor;
-
-		defaultConfig.pipelineLayout = this->RenderSysObjs.at(0)->getPipelineLayout();
-		defaultConfig.viewportInfo = viewportState; 
-		defaultConfig.renderPass = shadowRenderPass; 
-		shadowPipeline = std::make_unique<StarPipeline>(starDevice.get(), *shadowVert, *shadowFrag, defaultConfig);
-	}
-
 	vk::Format VulkanRenderer::findDepthFormat() {
 		//utilizing the VK_FORMAT_FEATURE_ flag to check for candidates that have a depth component.
 		return this->starDevice->findSupportedFormat(
@@ -945,11 +937,11 @@ namespace star::core {
 
 				newBuffers[i].beginRenderPass(shadowRenderPassBegin, vk::SubpassContents::eInline);
 
-				//NOTE TO SELF: ROUGH IDEA TO ZOMBIE THE STANDARD RENDER SYSTEM FOR THE TIME BEING -- PLEASE FIX LATER!!!!!!!!!!!
 				newBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, tmpRenderSysObj->getPipelineLayout(), 0, 1, &this->globalDescriptorSets.at(i), 0, nullptr);
-				shadowPipeline->bind(newBuffers[i]);
-				tmpRenderSysObj->render(newBuffers[i], i); 
-				newBuffers[i].endRenderPass();
+				shadowRenderSys->bind(newBuffers[i]);
+
+				shadowRenderSys->render(newBuffers[i], i);
+				shadowRenderSys->end(newBuffers[i]);
 
 				/* Begin render pass */
 				//drawing starts by beginning a render pass 

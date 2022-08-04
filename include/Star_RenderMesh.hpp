@@ -40,11 +40,24 @@ namespace star::core {
 			uint32_t beginIndex = 0; 
 
 		};
-
+		/// <summary>
+		/// Create render mesh with attached material 
+		/// </summary>
+		/// <param name="starDevice"></param>
+		/// <param name="mesh"></param>
+		/// <param name="material"></param>
+		/// <param name="vbOffset"></param>
 		RenderMesh(StarDevice& starDevice, common::Mesh& mesh, std::unique_ptr<RenderMaterial> material, uint32_t vbOffset = 0)
-			: starDevice(starDevice), mesh(mesh), renderMaterial(std::move(material)) {
-			this->startIndex = vbOffset;
-		}
+			: starDevice(starDevice), mesh(mesh), renderMaterial(std::move(material)), startIndex(vbOffset) { }
+		/// <summary>
+		/// Create render mesh without an attached material
+		/// </summary>
+		/// <param name="starDevice"></param>
+		/// <param name="mesh"></param>
+		/// <param name="vbOffset"></param>
+		RenderMesh(StarDevice& starDevice, common::Mesh& mesh, uint32_t vbOffset = 0)
+			:starDevice(starDevice), mesh(mesh), startIndex(vbOffset) { }
+
 		void initDescriptorLayouts(StarDescriptorSetLayout::Builder& constBuilder);
 		/// <summary>
 		/// Init object with needed structures such as descriptors
