@@ -1,12 +1,6 @@
-/*
-* Initially based off Ive_buffer by Brendan Galea -
-*https://github.com/SaschaWillems/Vulkan/blob/master/base/VulkanBuffer.h
-*/
-
 #include "Star_Buffer.hpp"
 
-namespace star {
-namespace core {
+namespace star::core {
 	vk::DeviceSize StarBuffer::getAlignment(vk::DeviceSize instanceSize, vk::DeviceSize minOffsetAlignment) {
 		if (minOffsetAlignment > 0) {
 			return  (instanceSize + minOffsetAlignment - 1) & ~(minOffsetAlignment - 1); 
@@ -99,5 +93,4 @@ namespace core {
 	vk::Result StarBuffer::invalidateIndex(int index) {
 		return invalidate(this->alignmentSize, index * this->alignmentSize); 
 	}
-}
 }
