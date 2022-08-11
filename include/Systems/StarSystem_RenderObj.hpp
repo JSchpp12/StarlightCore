@@ -52,7 +52,6 @@ namespace star::core{
 		virtual void render(vk::CommandBuffer& commandBuffer, int swapChainImageIndex);
 
 		virtual RenderObject* getRenderObjectAt(size_t index);								//this really needs to be removed
-		virtual vk::PipelineLayout getPipelineLayout() { return this->pipelineLayout; }
 		virtual StarDescriptorSetLayout* getSetLayout() { return this->descriptorSetLayout.get(); }
 		virtual StarDescriptorPool* getDescriptorPool() { return this->descriptorPool.get(); }
 		virtual StarBuffer* getBufferAt(int i) { return this->uniformBuffers.at(i).get(); }

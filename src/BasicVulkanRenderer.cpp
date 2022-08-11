@@ -610,6 +610,7 @@ namespace star::core {
 	}
 
 	void VulkanRenderer::createShadowRenderPass() {
+
 		/*Shadow Subpass */
 		vk::AttachmentDescription shadowDepthAttachment{};
 		shadowDepthAttachment.format = findShadowFormat();
@@ -619,24 +620,41 @@ namespace star::core {
 		shadowDepthAttachment.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
 		shadowDepthAttachment.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
 		shadowDepthAttachment.initialLayout = vk::ImageLayout::eUndefined;
-		shadowDepthAttachment.finalLayout = vk::ImageLayout::eShaderReadOnlyOptimal; 
+		shadowDepthAttachment.finalLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
 		shadowDepthAttachment.flags = {};
 
 		vk::AttachmentReference shadowDepthRef{};
 		shadowDepthRef.attachment = 0;
 		shadowDepthRef.layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
 
-		vk::SubpassDescription subpass; 
-		subpass.pipelineBindPoint = vk::PipelineBindPoint::eGraphics; 
-		subpass.flags = {}; 
-		subpass.inputAttachmentCount = 0; 
+		vk::SubpassDescription subpass;
+		subpass.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
+		subpass.flags = {};
+		subpass.inputAttachmentCount = 0;
 		subpass.pInputAttachments = VK_NULL_HANDLE;
-		subpass.colorAttachmentCount = 0; 
+		subpass.colorAttachmentCount = 0;
 		subpass.pColorAttachments = VK_NULL_HANDLE;
-		subpass.pResolveAttachments = VK_NULL_HANDLE; 
+		subpass.pResolveAttachments = VK_NULL_HANDLE;
 		subpass.pDepthStencilAttachment = &shadowDepthRef;
-		subpass.preserveAttachmentCount = 0; 
-		subpass.pPreserveAttachments = VK_NULL_HANDLE; 
+		subpass.preserveAttachmentCount = 0;
+		subpass.pPreserveAttachments = VK_NULL_HANDLE;
+
+		std::array<vk::SubpassDependency, 2> shadowDependencies;
+		shadowDependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+		shadowDependencies[0].dstSubpass = 0;
+		shadowDependencies[0].srcStageMask = vk::PipelineStageFlagBits::eFragmentShader;
+		shadowDependencies[0].dstStageMask = vk::PipelineStageFlagBits::eEarlyFragmentTests;
+		shadowDependencies[0].srcAccessMask = vk::AccessFlagBits::eShaderRead;
+		shadowDependencies[0].dstAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite;
+		shadowDependencies[0].dependencyFlags = vk::DependencyFlagBits::eByRegion;
+
+		shadowDependencies[1].srcSubpass = 0; 
+		shadowDependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL; 
+		shadowDependencies[1].srcStageMask = vk::PipelineStageFlagBits::eLateFragmentTests; 
+		shadowDependencies[1].dstStageMask = vk::PipelineStageFlagBits::eFragmentShader; 
+		shadowDependencies[1].srcAccessMask = vk::AccessFlagBits::eShaderRead; 
+		shadowDependencies[1].dstAccessMask = vk::AccessFlagBits::eShaderRead; 
+		shadowDependencies[1].dependencyFlags = vk::DependencyFlagBits::eByRegion; 
 
 		vk::RenderPassCreateInfo renderPass{}; 
 		renderPass.sType = vk::StructureType::eRenderPassCreateInfo; 
@@ -645,8 +663,8 @@ namespace star::core {
 		renderPass.pAttachments = &shadowDepthAttachment; 
 		renderPass.subpassCount = 1; 
 		renderPass.pSubpasses = &subpass; 
-		renderPass.dependencyCount = 0; 
-		renderPass.pDependencies = VK_NULL_HANDLE; 
+		renderPass.dependencyCount = static_cast<uint32_t>(shadowDependencies.size());
+		renderPass.pDependencies = shadowDependencies.data();
 		renderPass.flags = {};
 
 		shadowRenderPass = starDevice->getDevice().createRenderPass(renderPass); 
@@ -743,7 +761,7 @@ namespace star::core {
 		renderPassInfo.dependencyCount = 1;
 		renderPassInfo.pDependencies = &dependency;
 
-		this->renderPass = this->starDevice->getDevice().createRenderPass(renderPassInfo);
+		renderPass = this->starDevice->getDevice().createRenderPass(renderPassInfo);
 		if (!renderPass) {
 			throw std::runtime_error("failed to create render pass");
 		}

@@ -55,6 +55,7 @@ namespace star::core {
 		virtual bool hasShader(vk::ShaderStageFlagBits stage); 
 		virtual common::Handle getBaseShader(vk::ShaderStageFlags stage); 
 		uint32_t getNumVerticies() { return this->totalNumVerticies; }
+		virtual vk::PipelineLayout getPipelineLayout() { return this->pipelineLayout; }
 	protected:
 		StarDevice& starDevice; 
 		int numMeshes = 0;

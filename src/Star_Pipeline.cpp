@@ -34,7 +34,7 @@ namespace star::core{
 		rasterizer.lineWidth = 1.0f; //measured in fragment widths
 
 		//cullMode : type of face culling to use.
-		rasterizer.cullMode = vk::CullModeFlagBits::eBack;
+		rasterizer.cullMode = vk::CullModeFlagBits::eNone;
 		rasterizer.frontFace = vk::FrontFace::eCounterClockwise;
 
 		//depth values can be used in way that is known as 'shadow mapping'. 
