@@ -778,7 +778,7 @@ namespace star::core {
 	void VulkanRenderer::createShadowResources() {
 		vk::Format shadowFormat = findShadowFormat();
 
-		shadowImage = std::make_unique<StarImage>(*starDevice, swapChainExtent.width, swapChainExtent.height, shadowFormat,
+		shadowImage = std::make_unique<StarTexture>(*starDevice, swapChainExtent.width, swapChainExtent.height, shadowFormat,
 			vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled,
 			vk::ImageAspectFlagBits::eDepth, vk::MemoryPropertyFlagBits::eDeviceLocal); 
 	}

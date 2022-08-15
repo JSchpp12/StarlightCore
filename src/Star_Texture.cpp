@@ -6,6 +6,13 @@ namespace star::core{
 		createImageSampler();
 	}
 
+	StarTexture::StarTexture(StarDevice& starDevice, const uint32_t& width, const uint32_t& height,
+		const vk::Format& format, const vk::ImageTiling& tiling,
+		const vk::ImageUsageFlags& usage, const vk::ImageAspectFlags& aspectFlags,
+		const vk::MemoryPropertyFlagBits& memoryProperties = {})
+		: StarImage(starDevice, width, height, format, tiling, usage, aspectFlags, memoryProperties) {
+	}
+
 	StarTexture::~StarTexture() {
 		this->starDevice.getDevice().destroySampler(this->textureSampler);
 	}

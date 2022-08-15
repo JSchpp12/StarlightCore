@@ -10,6 +10,14 @@
 namespace star::core {
 	class StarImage {
 	public: 
+		struct ImageCreationDetails	{
+			uint32_t width = 0;
+			uint32_t height = 0;
+			vk::Format format = {};
+			vk::ImageTiling tiling = {};
+			vk::ImageUsageFlags usage = {};
+			vk::MemoryPropertyFlags memoryProperties = {};
+		};
 		/// <summary>
 		/// Create vk::image and all required structures with provided arguments
 		/// </summary>
@@ -35,7 +43,8 @@ namespace star::core {
 		vk::ImageView imageView; 
 		vk::DeviceMemory imageMemory;
 		/// <summary>
-		/// Only allow inhertied classes access to the basic constructor of this class
+		/// Only allow inhertied classes access to the basic constructor of this class.
+		/// This requires that the inherited class initialize all of the necessary structures needed during rendering ops. 
 		/// </summary>
 		/// <param name="starDevice"></param>
 		StarImage(StarDevice& starDevice) : starDevice(starDevice) { }
